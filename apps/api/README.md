@@ -17,8 +17,8 @@ Set `ADMIN_EMAILS` to a comma-separated list of exact email addresses to enable 
 
 The admin dashboard shows visit and search totals, daily traffic for the last 30 UTC days, popular searches, and paginated user records with scan counts, saved locations, wishlist phrases, and provider cart contents. Traffic begins when collection is deployed; it cannot reconstruct historical visits or searches. Anonymous visits use a random first-party browser identifier; the analytics table stores no IP addresses, user agents, or authentication credentials. Search events require a signed-in session. Visit and search events are idempotent by event ID. Browser identifiers are an estimate of visitors, not a count of people.
 
-The existing SQLite application migrations and scan-queue schema are embedded in the Go module. Point `VPS_DATABASE_PATH` at the existing database to preserve user, location, scan, and deal data. Migration and existing-database compatibility still need runtime verification before rollout.
+The existing SQLite application migrations and scan-queue schema are embedded in the Go module. Point `VPS_DATABASE_PATH` at the existing database to preserve user, location, scan, and deal data. Back up the database before applying migrations; this guide does not record the live database's migration state.
 
 The frontend remains the Next and React application in `apps/web`; its TypeScript shared package contains UI contracts and formatting helpers. The Go backend has no TypeScript or JavaScript runtime. `apps/web/public/sw.js` runs in browsers for push notifications; it is not a server process.
 
-Snapp store-campaign enrichment and Okala shared-offer caching are not implemented in this Go port. Provider behavior, full API compatibility, push delivery, and idle memory have not yet been verified against a running deployment. No deployment has been performed.
+The Go API is deployed on the VPS from this workspace. The backend has no TypeScript or JavaScript runtime; TypeScript is limited to the web frontend and shared UI contracts. This guide does not record live provider or push-delivery health.

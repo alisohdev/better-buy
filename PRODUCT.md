@@ -43,7 +43,7 @@ The supplied market-party response establishes vendor-grouped products with disc
 - Make the best deal legible at a glance.
 - Treat location and scan time as essential context.
 - Preserve successful history even when upstream collection fails.
-- Okala scans ignore legacy credential rows and use no customer or guest tokens. Keep Snapp guest access ephemeral in the Worker, out of browser responses and logs.
+- Okala scans ignore legacy credential rows and use no customer or guest tokens. Keep Snapp guest access ephemeral in the Go server, out of browser responses and logs.
 - Promotional feed absence does not establish that a product is out of stock across Okala.
 - Prefer explicit operational states over silent failure.
 

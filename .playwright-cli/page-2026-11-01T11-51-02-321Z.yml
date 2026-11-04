@@ -1,0 +1,648 @@
+- generic [active] [ref=f1e1]:
+    - button "Open Next.js Dev Tools" [ref=f1e7] [cursor=pointer]
+    - alert [ref=f1e11]
+    - main [ref=f1e12]:
+        - generic [ref=f1e13]:
+            - button "بهتر بخر، پیشنهادها" [ref=f1e14] [cursor=pointer]:
+                - generic [ref=f1e15]: ب
+                - generic [ref=f1e16]:
+                    - strong [ref=f1e17]: بهتر بخر
+                    - generic [ref=f1e18]: Better Buy
+            - generic [ref=f1e19]:
+                - navigation "دسترسی سریع" [ref=f1e20]:
+                    - button "علاقه‌مندی‌ها" [ref=f1e21] [cursor=pointer]
+                    - button "اعلان‌ها، ۲ خوانده‌نشده" [ref=f1e22] [cursor=pointer]:
+                        - generic [aria-hidden] [ref=f1e23]: ۲
+                    - button "موقعیت‌ها" [ref=f1e24] [cursor=pointer]
+                    - button "تاریخچه اسکن" [ref=f1e25] [cursor=pointer]
+                    - button "سبد اسنپ‌مارکت، ۱ کالا" [ref=f1e26] [cursor=pointer]:
+                        - generic [aria-hidden] [ref=f1e27]: ۱
+                - button "منوی بیشتر" [ref=f1e29] [cursor=pointer]
+        - generic [ref=f1e30]:
+            - region "موقعیت و تخفیف‌ها" [ref=f1e31]:
+                - generic [ref=f1e32]:
+                    - text: موقعیت تحویل
+                    - combobox "موقعیت تحویل" [ref=f1e33] [cursor=pointer]:
+                        - generic: تست — محل تست
+                - generic [ref=f1e36]:
+                    - button "تنظیمات" [ref=f1e37] [cursor=pointer]
+                    - button "به‌روزرسانی تخفیف‌ها" [ref=f1e38] [cursor=pointer]
+            - status [ref=f1e39]:
+                - generic [ref=f1e40]:
+                    - strong [ref=f1e41]: اسکن ناموفق بود
+                    - paragraph [ref=f1e42]: "Snapp campaign coverage incomplete: conflicting repeated price/stock/identity نتیجه موفق قبلی همچنان نمایش داده می‌شود."
+            - region [ref=f1e43]:
+                - generic [ref=f1e44]:
+                    - generic [ref=f1e45]:
+                        - heading "پیشنهادها" [level=1] [ref=f1e46]
+                        - paragraph [ref=f1e47]: تست — محل تست · اسنپ‌مارکت · حداقل ۴۰٪
+                        - paragraph [ref=f1e48]:
+                            - time [ref=f1e49]: ۵ آبان ۱۴۰۵، ۱۳:۰۶
+                    - group [ref=f1e50]:
+                        - generic "جزئیات نتیجه" [ref=f1e51] [cursor=pointer]
+                - paragraph [ref=f1e52]: بعضی از فهرست‌ها کامل بررسی نشدند. پیشنهادهای تأییدشده نمایش داده می‌شوند؛ نبودن کالا در این نتیجه به معنی ناموجود بودن آن نیست.
+                - generic [ref=f1e53]:
+                    - generic [ref=f1e54]:
+                        - text: جست‌وجو
+                        - searchbox "جست‌وجوی کالا یا فروشگاه" [ref=f1e55]
+                    - generic [ref=f1e56]:
+                        - text: مرتب‌سازی
+                        - combobox "مرتب‌سازی" [ref=f1e57] [cursor=pointer]:
+                            - generic: اولویت علاقه‌مندی‌ها
+                - status [ref=f1e60]: ۵۰ محصول نمایش‌داده‌شده
+                - generic [ref=f1e61]:
+                    - article [ref=f1e62]:
+                        - generic [ref=f1e64]:
+                            - heading "پنیر سفید فتا دوشه کم نمک کم چرب پروبیوتیک هراز 300 گرمی" [level=2] [ref=f1e65]
+                            - paragraph [ref=f1e66]: فروشگاه هفت کاشانی (همواره تخفیف)
+                            - generic [ref=f1e67]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e68]:
+                            - generic [ref=f1e69]:
+                                - deletion [ref=f1e70]: ۲۱۵٬۰۰۰ تومان
+                                - generic [ref=f1e71]: ۴۵٪
+                            - strong [ref=f1e72]: ۱۱۸٬۲۵۰ تومان
+                            - button "افزودن پنیر سفید فتا دوشه کم نمک کم چرب پروبیوتیک هراز 300 گرمی به سبد" [ref=f1e73] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e74]:
+                            - generic "مقایسه فروشگاه‌ها ۴" [ref=f1e75] [cursor=pointer]
+                    - article [ref=f1e76]:
+                        - generic [ref=f1e78]:
+                            - heading "پنیر سفید کم چرب روزانه 510 گرمی" [level=2] [ref=f1e79]
+                            - paragraph [ref=f1e80]: جانبو سازمان برنامه (همواره تخفیف)
+                            - generic [ref=f1e81]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e82]:
+                            - generic [ref=f1e83]:
+                                - deletion [ref=f1e84]: ۳۲۶٬۰۰۰ تومان
+                                - generic [ref=f1e85]: ۴۴٪
+                            - strong [ref=f1e86]: ۱۸۲٬۵۶۰ تومان
+                            - button "افزودن پنیر سفید کم چرب روزانه 510 گرمی به سبد" [ref=f1e87] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e88]:
+                            - generic "مقایسه فروشگاه‌ها ۳" [ref=f1e89] [cursor=pointer]
+                    - article [ref=f1e90]:
+                        - generic [ref=f1e92]:
+                            - heading "پنیر خامه‌ای پرچرب ویچیتا کالین 300 گرمی" [level=2] [ref=f1e93]
+                            - paragraph [ref=f1e94]: جانبو بلوار فردوس (همواره تخفیف)
+                            - generic [ref=f1e95]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e96]:
+                            - generic [ref=f1e97]:
+                                - deletion [ref=f1e98]: ۲۲۰٬۰۰۰ تومان
+                                - generic [ref=f1e99]: ۴۳٪
+                            - strong [ref=f1e100]: ۱۲۵٬۴۰۰ تومان
+                            - button "افزودن پنیر خامه‌ای پرچرب ویچیتا کالین 300 گرمی به سبد" [ref=f1e101] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e102]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e103] [cursor=pointer]
+                    - article [ref=f1e104]:
+                        - generic [ref=f1e106]:
+                            - heading "پنیر لیقوان سنتی گوسفندی مهرآذر 700 گرمی" [level=2] [ref=f1e107]
+                            - paragraph [ref=f1e108]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e109]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e110]:
+                            - generic [ref=f1e111]:
+                                - deletion [ref=f1e112]: ۱٬۴۲۳٬۰۰۰ تومان
+                                - generic [ref=f1e113]: ۴۰٪
+                            - strong [ref=f1e114]: ۸۵۳٬۸۰۰ تومان
+                            - button "افزودن پنیر لیقوان سنتی گوسفندی مهرآذر 700 گرمی به سبد" [ref=f1e115] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e116]:
+                        - generic [ref=f1e118]:
+                            - heading "پنیر گوسفندی تبریز پرچرب مهرآذر 800 گرمی" [level=2] [ref=f1e119]
+                            - paragraph [ref=f1e120]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e121]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e122]:
+                            - generic [ref=f1e123]:
+                                - deletion [ref=f1e124]: ۱٬۳۶۷٬۰۰۰ تومان
+                                - generic [ref=f1e125]: ۴۰٪
+                            - strong [ref=f1e126]: ۸۲۰٬۲۰۰ تومان
+                            - button "افزودن پنیر گوسفندی تبریز پرچرب مهرآذر 800 گرمی به سبد" [ref=f1e127] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e128]:
+                        - generic [ref=f1e130]:
+                            - heading "پنیر تبریز سنتی گوسفندی مهر آذر 700 گرمی" [level=2] [ref=f1e131]
+                            - paragraph [ref=f1e132]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e133]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e134]:
+                            - generic [ref=f1e135]:
+                                - deletion [ref=f1e136]: ۱٬۳۵۹٬۰۰۰ تومان
+                                - generic [ref=f1e137]: ۴۰٪
+                            - strong [ref=f1e138]: ۸۱۵٬۴۰۰ تومان
+                            - button "افزودن پنیر تبریز سنتی گوسفندی مهر آذر 700 گرمی به سبد" [ref=f1e139] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e140]:
+                        - generic [ref=f1e142]:
+                            - heading "پنیر تاپینگ پیتزا پرچرب رنده شده ناپولی کاله 950 گرمی" [level=2] [ref=f1e143]
+                            - paragraph [ref=f1e144]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e145]: در فهرست فعلی · پنیر آشپزی
+                        - generic [ref=f1e146]:
+                            - generic [ref=f1e147]:
+                                - deletion [ref=f1e148]: ۱٬۰۶۱٬۰۰۰ تومان
+                                - generic [ref=f1e149]: ۴۰٪
+                            - strong [ref=f1e150]: ۶۳۶٬۶۰۰ تومان
+                            - button "افزودن پنیر تاپینگ پیتزا پرچرب رنده شده ناپولی کاله 950 گرمی به سبد" [ref=f1e151] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e152]:
+                        - generic [ref=f1e154]:
+                            - heading "ناگت مرغ و پنیر کیمبال 800 گرمی" [level=2] [ref=f1e155]
+                            - paragraph [ref=f1e156]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e157]: در فهرست فعلی · غذای نیمه آماده منجمد و یخچالی
+                        - generic [ref=f1e158]:
+                            - generic [ref=f1e159]:
+                                - deletion [ref=f1e160]: ۸۸۰٬۰۰۰ تومان
+                                - generic [ref=f1e161]: ۴۰٪
+                            - strong [ref=f1e162]: ۵۲۸٬۰۰۰ تومان
+                            - button "افزودن ناگت مرغ و پنیر کیمبال 800 گرمی به سبد" [ref=f1e163] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e164]:
+                        - generic [ref=f1e166]:
+                            - heading "پنیر خامه ای پرچرب ویلی کاله 350 گرمی" [level=2] [ref=f1e167]
+                            - paragraph [ref=f1e168]: دیلی مارکت بلوار آیت الله کاشانی تهران(همواره تخفیف)
+                            - generic [ref=f1e169]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e170]:
+                            - generic [ref=f1e171]:
+                                - deletion [ref=f1e172]: ۲۶۵٬۰۰۰ تومان
+                                - generic [ref=f1e173]: ۴۰٪
+                            - strong [ref=f1e174]: ۱۵۹٬۰۰۰ تومان
+                            - button "افزودن پنیر خامه ای پرچرب ویلی کاله 350 گرمی به سبد" [ref=f1e175] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e176]:
+                        - generic [ref=f1e178]:
+                            - heading "پنیر سفید پرچرب اُماه کاله 400 گرمی" [level=2] [ref=f1e179]
+                            - paragraph [ref=f1e180]: جانبو سازمان برنامه (همواره تخفیف)
+                            - generic [ref=f1e181]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e182]:
+                            - generic [ref=f1e183]:
+                                - deletion [ref=f1e184]: ۲۱۵٬۰۰۰ تومان
+                                - generic [ref=f1e185]: ۴۰٪
+                            - strong [ref=f1e186]: ۱۲۹٬۰۰۰ تومان
+                            - button "افزودن پنیر سفید پرچرب اُماه کاله 400 گرمی به سبد" [ref=f1e187] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e188]:
+                            - generic "مقایسه فروشگاه‌ها ۳" [ref=f1e189] [cursor=pointer]
+                    - article [ref=f1e190]:
+                        - generic [ref=f1e192]:
+                            - heading "پنیر لبنه کالین 300 گرمی" [level=2] [ref=f1e193]
+                            - paragraph [ref=f1e194]: جانبو بلوار فردوس (همواره تخفیف)
+                            - generic [ref=f1e195]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e196]:
+                            - generic [ref=f1e197]:
+                                - deletion [ref=f1e198]: ۲۱۰٬۰۰۰ تومان
+                                - generic [ref=f1e199]: ۴۰٪
+                            - strong [ref=f1e200]: ۱۲۶٬۰۰۰ تومان
+                            - button "افزودن پنیر لبنه کالین 300 گرمی به سبد" [ref=f1e201] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e202]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e203] [cursor=pointer]
+                    - article [ref=f1e204]:
+                        - generic [ref=f1e206]:
+                            - heading "پنیر سفید پرچرب پنج ستاره آمل کاله 200 گرمی" [level=2] [ref=f1e207]
+                            - paragraph [ref=f1e208]: سوپرمارکت سون تو الون سبحان (فردوس)
+                            - generic [ref=f1e209]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e210]:
+                            - generic [ref=f1e211]:
+                                - deletion [ref=f1e212]: ۱۵۲٬۰۰۰ تومان
+                                - generic [ref=f1e213]: ۴۰٪
+                            - strong [ref=f1e214]: ۹۱٬۲۰۰ تومان
+                            - button "افزودن پنیر سفید پرچرب پنج ستاره آمل کاله 200 گرمی به سبد" [ref=f1e215] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e216]:
+                        - generic [ref=f1e218]:
+                            - heading "پنیر فتا دانمارکی آلیما 300 گرمی" [level=2] [ref=f1e219]
+                            - paragraph [ref=f1e220]: فروشگاه هفت کاشانی (همواره تخفیف)
+                            - generic [ref=f1e221]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e222]:
+                            - generic [ref=f1e223]:
+                                - deletion [ref=f1e224]: ۱۴۹٬۰۰۰ تومان
+                                - generic [ref=f1e225]: ۴۰٪
+                            - strong [ref=f1e226]: ۸۹٬۴۰۰ تومان
+                            - button "افزودن پنیر فتا دانمارکی آلیما 300 گرمی به سبد" [ref=f1e227] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e228]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e229] [cursor=pointer]
+                    - article [ref=f1e230]:
+                        - generic [ref=f1e232]:
+                            - heading "پنیر سفید مثلثی روزانه 8 عددی" [level=2] [ref=f1e233]
+                            - paragraph [ref=f1e234]: سوپرمارکت توت فرنگی(بلوار فردوس)
+                            - generic [ref=f1e235]: در فهرست فعلی · پنیر صبحانه
+                        - generic [ref=f1e236]:
+                            - generic [ref=f1e237]:
+                                - deletion [ref=f1e238]: ۱۳۲٬۰۰۰ تومان
+                                - generic [ref=f1e239]: ۴۰٪
+                            - strong [ref=f1e240]: ۷۹٬۲۰۰ تومان
+                            - button "افزودن پنیر سفید مثلثی روزانه 8 عددی به سبد" [ref=f1e241] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e242]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e243] [cursor=pointer]
+                    - article [ref=f1e244]:
+                        - generic [ref=f1e246]:
+                            - heading "اسنک پنیری موتوری چی توز 95 گرمی" [level=2] [ref=f1e247]
+                            - paragraph [ref=f1e248]: سوپرمارکت سازمان برنامه شمالی - یاران دریان (سازمان برنامه شمالی)
+                            - generic [ref=f1e249]: در فهرست فعلی · پفک و اسنک
+                        - generic [ref=f1e250]:
+                            - generic [ref=f1e251]:
+                                - deletion [ref=f1e252]: ۱۲۵٬۰۰۰ تومان
+                                - generic [ref=f1e253]: ۴۰٪
+                            - strong [ref=f1e254]: ۷۵٬۰۰۰ تومان
+                            - button "افزودن اسنک پنیری موتوری چی توز 95 گرمی به سبد" [ref=f1e255] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e256]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e257] [cursor=pointer]
+                    - article [ref=f1e258]:
+                        - generic [ref=f1e260]:
+                            - heading "اسنک پنیری طلایی چی توز 90 گرمی" [level=2] [ref=f1e261]
+                            - paragraph [ref=f1e262]: سوپرمارکت خسروشاهی (آیت الله کاشانی)
+                            - generic [ref=f1e263]: در فهرست فعلی · پفک و اسنک
+                        - generic [ref=f1e264]:
+                            - generic [ref=f1e265]:
+                                - deletion [ref=f1e266]: ۱۲۵٬۰۰۰ تومان
+                                - generic [ref=f1e267]: ۴۰٪
+                            - strong [ref=f1e268]: ۷۵٬۰۰۰ تومان
+                            - button "افزودن اسنک پنیری طلایی چی توز 90 گرمی به سبد" [ref=f1e269] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e270]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e271] [cursor=pointer]
+                    - article [ref=f1e272]:
+                        - generic [ref=f1e274]:
+                            - heading "اسنک کرانچی پنیری چی توز 90 گرمی" [level=2] [ref=f1e275]
+                            - paragraph [ref=f1e276]: سوپرمارکت هایپر فردوس - یاران دریان (فردوس)
+                            - generic [ref=f1e277]: در فهرست فعلی · پفک و اسنک
+                        - generic [ref=f1e278]:
+                            - generic [ref=f1e279]:
+                                - deletion [ref=f1e280]: ۱۲۰٬۰۰۰ تومان
+                                - generic [ref=f1e281]: ۴۰٪
+                            - strong [ref=f1e282]: ۷۲٬۰۰۰ تومان
+                            - button "افزودن اسنک کرانچی پنیری چی توز 90 گرمی به سبد" [ref=f1e283] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e284]:
+                            - generic "مقایسه فروشگاه‌ها ۱۷" [ref=f1e285] [cursor=pointer]
+                    - article [ref=f1e286]:
+                        - generic [ref=f1e288]:
+                            - heading "کیسه زباله رولی متوسط پتروکلین 15 عددی" [level=2] [ref=f1e289]
+                            - paragraph [ref=f1e290]: فروشگاه هفت کاشانی (همواره تخفیف)
+                            - generic [ref=f1e291]: در فهرست فعلی · کیسه زباله
+                        - generic [ref=f1e292]:
+                            - generic [ref=f1e293]:
+                                - deletion [ref=f1e294]: ۳۹۰٬۰۰۰ تومان
+                                - generic [ref=f1e295]: ۶۰٪
+                            - strong [ref=f1e296]: ۱۵۶٬۰۰۰ تومان
+                            - button "افزودن کیسه زباله رولی متوسط پتروکلین 15 عددی به سبد" [ref=f1e297] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e298]:
+                            - generic "مقایسه فروشگاه‌ها ۳" [ref=f1e299] [cursor=pointer]
+                    - article [ref=f1e300]:
+                        - generic [ref=f1e302]:
+                            - heading "ماکارونی فرمی پنه پارسیلا (500 گرم)" [level=2] [ref=f1e303]
+                            - paragraph [ref=f1e304]: فروشگاه هفت کاشانی (همواره تخفیف)
+                            - generic [ref=f1e305]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e306]:
+                            - generic [ref=f1e307]:
+                                - deletion [ref=f1e308]: ۷۹٬۰۰۰ تومان
+                                - generic [ref=f1e309]: ۵۷٪
+                            - strong [ref=f1e310]: ۳۳٬۹۷۰ تومان
+                            - button "افزودن ماکارونی فرمی پنه پارسیلا (500 گرم) به سبد" [ref=f1e311] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e312]:
+                        - generic [ref=f1e314]:
+                            - heading "ماکارونی قطر 1.4 ژیک 700 گرمی" [level=2] [ref=f1e315]
+                            - paragraph [ref=f1e316]: فروشگاه هفت کاشانی (همواره تخفیف)
+                            - generic [ref=f1e317]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e318]:
+                            - generic [ref=f1e319]:
+                                - deletion [ref=f1e320]: ۷۸٬۵۰۰ تومان
+                                - generic [ref=f1e321]: ۵۷٪
+                            - strong [ref=f1e322]: ۳۳٬۷۵۵ تومان
+                            - button "افزودن ماکارونی قطر 1.4 ژیک 700 گرمی به سبد" [ref=f1e323] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e324]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e325] [cursor=pointer]
+                    - article [ref=f1e326]:
+                        - generic [ref=f1e328]:
+                            - heading "همبرگر 75٪ گوشت مهیا پروتئین (400 گرم)" [level=2] [ref=f1e329]
+                            - paragraph [ref=f1e330]: دیلی مارکت بلوار فردوس (همواره تخفیف)
+                            - generic [ref=f1e331]: در فهرست فعلی · غذای نیمه آماده منجمد و یخچالی
+                        - generic [ref=f1e332]:
+                            - generic [ref=f1e333]:
+                                - deletion [ref=f1e334]: ۵۳۹٬۷۰۰ تومان
+                                - generic [ref=f1e335]: ۵۰٪
+                            - strong [ref=f1e336]: ۲۶۹٬۸۵۰ تومان
+                            - button "افزودن همبرگر 75٪ گوشت مهیا پروتئین (400 گرم) به سبد" [ref=f1e337] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e338]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e339] [cursor=pointer]
+                    - article [ref=f1e340]:
+                        - generic [ref=f1e342]:
+                            - heading "سس هزار جزیره دلوسه 400 گرمی" [level=2] [ref=f1e343]
+                            - paragraph [ref=f1e344]: سوپرمارکت آنا مارکت (اکباتان)
+                            - generic [ref=f1e345]: در فهرست فعلی · سس
+                        - generic [ref=f1e346]:
+                            - generic [ref=f1e347]:
+                                - deletion [ref=f1e348]: ۳۴۹٬۵۰۰ تومان
+                                - generic [ref=f1e349]: ۵۰٪
+                            - strong [ref=f1e350]: ۱۷۴٬۷۵۰ تومان
+                            - button "افزودن سس هزار جزیره دلوسه 400 گرمی به سبد" [ref=f1e351] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e352]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e353] [cursor=pointer]
+                    - article [ref=f1e354]:
+                        - generic [ref=f1e356]:
+                            - heading "ماکارونی پیکولی مک 500 گرمی" [level=2] [ref=f1e357]
+                            - paragraph [ref=f1e358]: دیلی مارکت بلوار آیت الله کاشانی تهران(همواره تخفیف)
+                            - generic [ref=f1e359]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e360]:
+                            - generic [ref=f1e361]:
+                                - deletion [ref=f1e362]: ۸۳٬۱۶۰ تومان
+                                - generic [ref=f1e363]: ۵۰٪
+                            - strong [ref=f1e364]: ۴۱٬۵۸۰ تومان
+                            - button "افزودن ماکارونی پیکولی مک 500 گرمی به سبد" [ref=f1e365] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e366]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e367] [cursor=pointer]
+                    - article [ref=f1e368]:
+                        - generic [ref=f1e370]:
+                            - heading "ماکارونی قطر 1.7 اوشان 700 گرمی" [level=2] [ref=f1e371]
+                            - paragraph [ref=f1e372]: فروشگاه هفت فردوس شرق(همواره تخفیف)
+                            - generic [ref=f1e373]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e374]:
+                            - generic [ref=f1e375]:
+                                - deletion [ref=f1e376]: ۷۸٬۵۰۰ تومان
+                                - generic [ref=f1e377]: ۵۰٪
+                            - strong [ref=f1e378]: ۳۹٬۲۵۰ تومان
+                            - button "افزودن ماکارونی قطر 1.7 اوشان 700 گرمی به سبد" [ref=f1e379] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e380]:
+                        - generic [ref=f1e382]:
+                            - heading "ماکارونی قطر ۱.۲ مانا 700 گرمی" [level=2] [ref=f1e383]
+                            - paragraph [ref=f1e384]: سوپرمارکت توت فرنگی(بلوار فردوس)
+                            - generic [ref=f1e385]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e386]:
+                            - generic [ref=f1e387]:
+                                - deletion [ref=f1e388]: ۷۸٬۵۰۰ تومان
+                                - generic [ref=f1e389]: ۵۰٪
+                            - strong [ref=f1e390]: ۳۹٬۲۵۰ تومان
+                            - button "افزودن ماکارونی قطر ۱.۲ مانا 700 گرمی به سبد" [ref=f1e391] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e392]:
+                        - generic [ref=f1e394]:
+                            - heading "ماکارونی قطر 1.2 زر ماکارون 700 گرمی" [level=2] [ref=f1e395]
+                            - paragraph [ref=f1e396]: جانبو سازمان برنامه (همواره تخفیف)
+                            - generic [ref=f1e397]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e398]:
+                            - generic [ref=f1e399]:
+                                - deletion [ref=f1e400]: ۷۸٬۵۰۰ تومان
+                                - generic [ref=f1e401]: ۵۰٪
+                            - strong [ref=f1e402]: ۳۹٬۲۵۰ تومان
+                            - button "افزودن ماکارونی قطر 1.2 زر ماکارون 700 گرمی به سبد" [ref=f1e403] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e404]:
+                            - generic "مقایسه فروشگاه‌ها ۸" [ref=f1e405] [cursor=pointer]
+                    - article [ref=f1e406]:
+                        - generic [ref=f1e408]:
+                            - heading "ماکارونی قطر 1.5 زر ماکارون 700 گرمی" [level=2] [ref=f1e409]
+                            - paragraph [ref=f1e410]: سوپرمارکت بقالی سر کوچه (فردوس)
+                            - generic [ref=f1e411]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e412]:
+                            - generic [ref=f1e413]:
+                                - deletion [ref=f1e414]: ۷۸٬۵۰۰ تومان
+                                - generic [ref=f1e415]: ۵۰٪
+                            - strong [ref=f1e416]: ۳۹٬۲۵۰ تومان
+                            - button "افزودن ماکارونی قطر 1.5 زر ماکارون 700 گرمی به سبد" [ref=f1e417] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e418]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e419] [cursor=pointer]
+                    - article [ref=f1e420]:
+                        - generic [ref=f1e422]:
+                            - heading "ماکارونی پنه تک ماکارون 500 گرمی" [level=2] [ref=f1e423]
+                            - paragraph [ref=f1e424]: سوپرمارکت علمدار 67 (صادقیه)
+                            - generic [ref=f1e425]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e426]:
+                            - generic [ref=f1e427]:
+                                - deletion [ref=f1e428]: ۷۸٬۰۰۰ تومان
+                                - generic [ref=f1e429]: ۵۰٪
+                            - strong [ref=f1e430]: ۳۹٬۰۰۰ تومان
+                            - button "افزودن ماکارونی پنه تک ماکارون 500 گرمی به سبد" [ref=f1e431] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e432]:
+                            - generic "مقایسه فروشگاه‌ها ۳" [ref=f1e433] [cursor=pointer]
+                    - article [ref=f1e434]:
+                        - generic [ref=f1e436]:
+                            - heading "ماکارونی شلز تک ماکارون 500 گرمی" [level=2] [ref=f1e437]
+                            - paragraph [ref=f1e438]: سوپرمارکت هایپر فردوس - یاران دریان (فردوس)
+                            - generic [ref=f1e439]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e440]:
+                            - generic [ref=f1e441]:
+                                - deletion [ref=f1e442]: ۷۸٬۰۰۰ تومان
+                                - generic [ref=f1e443]: ۵۰٪
+                            - strong [ref=f1e444]: ۳۹٬۰۰۰ تومان
+                            - button "افزودن ماکارونی شلز تک ماکارون 500 گرمی به سبد" [ref=f1e445] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e446]:
+                        - generic [ref=f1e448]:
+                            - heading "ماکارونی گراندی مانا 500 گرمی" [level=2] [ref=f1e449]
+                            - paragraph [ref=f1e450]: سوپرمارکت کوروش - یاران دریان (ایت الله کاشانی)
+                            - generic [ref=f1e451]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e452]:
+                            - generic [ref=f1e453]:
+                                - deletion [ref=f1e454]: ۷۵٬۰۰۰ تومان
+                                - generic [ref=f1e455]: ۵۰٪
+                            - strong [ref=f1e456]: ۳۷٬۵۰۰ تومان
+                            - button "افزودن ماکارونی گراندی مانا 500 گرمی به سبد" [ref=f1e457] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e458]:
+                        - generic [ref=f1e460]:
+                            - heading "اسپاگتی 1.4 تک ماکارون 700 گرمی" [level=2] [ref=f1e461]
+                            - paragraph [ref=f1e462]: سوپرمارکت آنا مارکت (اکباتان)
+                            - generic [ref=f1e463]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e464]:
+                            - generic [ref=f1e465]:
+                                - deletion [ref=f1e466]: ۷۵٬۰۰۰ تومان
+                                - generic [ref=f1e467]: ۵۰٪
+                            - strong [ref=f1e468]: ۳۷٬۵۰۰ تومان
+                            - button "افزودن اسپاگتی 1.4 تک ماکارون 700 گرمی به سبد" [ref=f1e469] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e470]:
+                        - generic [ref=f1e472]:
+                            - heading "ماکارونی پنه ریگاته زر ماکارون 500 گرمی" [level=2] [ref=f1e473]
+                            - paragraph [ref=f1e474]: سوپرمارکت تک شرفخانه - یاران دریان (ستاری)
+                            - generic [ref=f1e475]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e476]:
+                            - generic [ref=f1e477]:
+                                - deletion [ref=f1e478]: ۶۷٬۵۰۰ تومان
+                                - generic [ref=f1e479]: ۵۰٪
+                            - strong [ref=f1e480]: ۳۳٬۷۵۰ تومان
+                            - button "افزودن ماکارونی پنه ریگاته زر ماکارون 500 گرمی به سبد" [ref=f1e481] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e482]:
+                            - generic "مقایسه فروشگاه‌ها ۲" [ref=f1e483] [cursor=pointer]
+                    - article [ref=f1e484]:
+                        - generic [ref=f1e486]:
+                            - heading "ماکارونی فرمی پنه رشد 500 گرمی" [level=2] [ref=f1e487]
+                            - paragraph [ref=f1e488]: سوپرمارکت هایپر مقدم(کاشانی)
+                            - generic [ref=f1e489]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e490]:
+                            - generic [ref=f1e491]:
+                                - deletion [ref=f1e492]: ۶۷٬۵۰۰ تومان
+                                - generic [ref=f1e493]: ۵۰٪
+                            - strong [ref=f1e494]: ۳۳٬۷۵۰ تومان
+                            - button "افزودن ماکارونی فرمی پنه رشد 500 گرمی به سبد" [ref=f1e495] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e496]:
+                        - generic [ref=f1e498]:
+                            - heading "نودل مرغ گاردو 75 گرمی" [level=2] [ref=f1e499]
+                            - paragraph [ref=f1e500]: سوپرمارکت شاهین (شهرزیبا)
+                            - generic [ref=f1e501]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e502]:
+                            - generic [ref=f1e503]:
+                                - deletion [ref=f1e504]: ۶۰٬۰۰۰ تومان
+                                - generic [ref=f1e505]: ۵۰٪
+                            - strong [ref=f1e506]: ۳۰٬۰۰۰ تومان
+                            - button "افزودن نودل مرغ گاردو 75 گرمی به سبد" [ref=f1e507] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e508]:
+                        - generic [ref=f1e510]:
+                            - heading "پد بهداشتی روزانه بزرگ پنبه ریز 20 عددی" [level=2] [ref=f1e511]
+                            - paragraph [ref=f1e512]: سوپرمارکت آنا مارکت (اکباتان)
+                            - generic [ref=f1e513]: در فهرست فعلی · بهداشت زنان
+                        - generic [ref=f1e514]:
+                            - generic [ref=f1e515]:
+                                - deletion [ref=f1e516]: ۱۱۹٬۰۰۰ تومان
+                                - generic [ref=f1e517]: ۴۷٪
+                            - strong [ref=f1e518]: ۶۳٬۰۷۰ تومان
+                            - button "افزودن پد بهداشتی روزانه بزرگ پنبه ریز 20 عددی به سبد" [ref=f1e519] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e520]:
+                            - generic "مقایسه فروشگاه‌ها ۴" [ref=f1e521] [cursor=pointer]
+                    - article [ref=f1e522]:
+                        - generic [ref=f1e524]:
+                            - heading "کیسه فریزر یادداشتی ضخیم پتروکلین 250 عددی" [level=2] [ref=f1e525]
+                            - paragraph [ref=f1e526]: اسمارت ارم (سوپرمارکت زنجیره ای اسنپ)
+                            - generic [ref=f1e527]: در فهرست فعلی · کیسه فریزر
+                        - generic [ref=f1e528]:
+                            - generic [ref=f1e529]:
+                                - deletion [ref=f1e530]: ۹۹۰٬۰۰۰ تومان
+                                - generic [ref=f1e531]: ۴۵٪
+                            - strong [ref=f1e532]: ۵۴۴٬۵۰۰ تومان
+                            - button "افزودن کیسه فریزر یادداشتی ضخیم پتروکلین 250 عددی به سبد" [ref=f1e533] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e534]:
+                        - generic [ref=f1e536]:
+                            - heading "مایع لباسشویی جنرال نویتکس 1.35 کیلوگرمی" [level=2] [ref=f1e537]
+                            - paragraph [ref=f1e538]: دیلی مارکت بلوار آیت الله کاشانی تهران(همواره تخفیف)
+                            - generic [ref=f1e539]: در فهرست فعلی · شستشوی لباس
+                        - generic [ref=f1e540]:
+                            - generic [ref=f1e541]:
+                                - deletion [ref=f1e542]: ۴۶۲٬۲۱۴ تومان
+                                - generic [ref=f1e543]: ۴۵٪
+                            - strong [ref=f1e544]: ۲۵۴٬۲۱۸ تومان
+                            - button "افزودن مایع لباسشویی جنرال نویتکس 1.35 کیلوگرمی به سبد" [ref=f1e545] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e546]:
+                        - generic [ref=f1e548]:
+                            - heading "کیسه فریزر تجزیه پذیر چسبدار پتروکلین 100 عددی" [level=2] [ref=f1e549]
+                            - paragraph [ref=f1e550]: اسمارت ارم (سوپرمارکت زنجیره ای اسنپ)
+                            - generic [ref=f1e551]: در فهرست فعلی · کیسه فریزر
+                        - generic [ref=f1e552]:
+                            - generic [ref=f1e553]:
+                                - deletion [ref=f1e554]: ۳۹۰٬۰۰۰ تومان
+                                - generic [ref=f1e555]: ۴۵٪
+                            - strong [ref=f1e556]: ۲۱۴٬۵۰۰ تومان
+                            - button "افزودن کیسه فریزر تجزیه پذیر چسبدار پتروکلین 100 عددی به سبد" [ref=f1e557] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e558]:
+                        - generic [ref=f1e560]:
+                            - heading "مایع ظرفشویی لیمو نویتکس 1 کیلوگرمی" [level=2] [ref=f1e561]
+                            - paragraph [ref=f1e562]: دیلی مارکت بلوار آیت الله کاشانی تهران(همواره تخفیف)
+                            - generic [ref=f1e563]: در فهرست فعلی · شستشوی ظروف
+                        - generic [ref=f1e564]:
+                            - generic [ref=f1e565]:
+                                - deletion [ref=f1e566]: ۲۸۰٬۵۷۴ تومان
+                                - generic [ref=f1e567]: ۴۵٪
+                            - strong [ref=f1e568]: ۱۵۴٬۳۱۶ تومان
+                            - button "افزودن مایع ظرفشویی لیمو نویتکس 1 کیلوگرمی به سبد" [ref=f1e569] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e570]:
+                        - generic [ref=f1e572]:
+                            - heading "ماکارونی قطر 1.4 مانا 700 گرمی" [level=2] [ref=f1e573]
+                            - paragraph [ref=f1e574]: سوپرمارکت رامین(صادقیه)
+                            - generic [ref=f1e575]: در فهرست فعلی · ماکارونی و لازانیا و رشته
+                        - generic [ref=f1e576]:
+                            - generic [ref=f1e577]:
+                                - deletion [ref=f1e578]: ۷۸٬۵۰۰ تومان
+                                - generic [ref=f1e579]: ۴۳٪
+                            - strong [ref=f1e580]: ۴۴٬۷۴۵ تومان
+                            - button "افزودن ماکارونی قطر 1.4 مانا 700 گرمی به سبد" [ref=f1e581] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e582]:
+                        - generic [ref=f1e584]:
+                            - heading "ماست همزده کم چرب پروبیوتیک سبو هراز 1.5 کیلوگرمی" [level=2] [ref=f1e585]
+                            - paragraph [ref=f1e586]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e587]: در فهرست فعلی · ماست
+                        - generic [ref=f1e588]:
+                            - generic [ref=f1e589]:
+                                - deletion [ref=f1e590]: ۴۲۰٬۰۰۰ تومان
+                                - generic [ref=f1e591]: ۴۲٪
+                            - strong [ref=f1e592]: ۲۴۳٬۶۰۰ تومان
+                            - button "افزودن ماست همزده کم چرب پروبیوتیک سبو هراز 1.5 کیلوگرمی به سبد" [ref=f1e593] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e594]:
+                        - generic [ref=f1e596]:
+                            - heading "نوار بهداشتی بالدار پنبه ای متوسط ضخیم سافت درای پنبه ریز 10 عددی" [level=2] [ref=f1e597]
+                            - paragraph [ref=f1e598]: سوپرمارکت رامین(صادقیه)
+                            - generic [ref=f1e599]: در فهرست فعلی · بهداشت زنان
+                        - generic [ref=f1e600]:
+                            - generic [ref=f1e601]:
+                                - deletion [ref=f1e602]: ۱۲۹٬۰۰۰ تومان
+                                - generic [ref=f1e603]: ۴۲٪
+                            - strong [ref=f1e604]: ۷۴٬۸۲۰ تومان
+                            - button "افزودن نوار بهداشتی بالدار پنبه ای متوسط ضخیم سافت درای پنبه ریز 10 عددی به سبد" [ref=f1e605] [cursor=pointer]: افزودن به سبد
+                        - group [ref=f1e606]:
+                            - generic "مقایسه فروشگاه‌ها ۸" [ref=f1e607] [cursor=pointer]
+                    - article [ref=f1e608]:
+                        - generic [ref=f1e610]:
+                            - heading "ساندویچ چاباتای مرغ گریل کاپو 240 گرمی" [level=2] [ref=f1e611]
+                            - paragraph [ref=f1e612]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e613]: در فهرست فعلی · غذای آماده مصرف
+                        - generic [ref=f1e614]:
+                            - generic [ref=f1e615]:
+                                - deletion [ref=f1e616]: ۲۸۹٬۸۰۰ تومان
+                                - generic [ref=f1e617]: ۴۰٪
+                            - strong [ref=f1e618]: ۱۷۳٬۸۲۳ تومان
+                            - button "افزودن ساندویچ چاباتای مرغ گریل کاپو 240 گرمی به سبد" [ref=f1e619] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e620]:
+                        - generic [ref=f1e622]:
+                            - heading "ساندویچ چاباتای ژامبون گوشت 80٪ کاپو 240 گرمی" [level=2] [ref=f1e623]
+                            - paragraph [ref=f1e624]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e625]: در فهرست فعلی · غذای آماده مصرف
+                        - generic [ref=f1e626]:
+                            - generic [ref=f1e627]:
+                                - deletion [ref=f1e628]: ۲۵۹٬۸۰۰ تومان
+                                - generic [ref=f1e629]: ۴۰٪
+                            - strong [ref=f1e630]: ۱۵۵٬۸۲۹ تومان
+                            - button "افزودن ساندویچ چاباتای ژامبون گوشت 80٪ کاپو 240 گرمی به سبد" [ref=f1e631] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e632]:
+                        - generic [ref=f1e634]:
+                            - heading "نخود و لوبیا مخلوط هایپراستار 900 گرمی" [level=2] [ref=f1e635]
+                            - paragraph [ref=f1e636]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e637]: در فهرست فعلی · حبوبات و سویا
+                        - generic [ref=f1e638]:
+                            - generic [ref=f1e639]:
+                                - deletion [ref=f1e640]: ۵۷۴٬۹۰۰ تومان
+                                - generic [ref=f1e641]: ۴۰٪
+                            - strong [ref=f1e642]: ۳۴۴٬۸۸۳ تومان
+                            - button "افزودن نخود و لوبیا مخلوط هایپراستار 900 گرمی به سبد" [ref=f1e643] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e644]:
+                        - generic [ref=f1e646]:
+                            - heading "عدس وینچی (900 گرم)" [level=2] [ref=f1e647]
+                            - paragraph [ref=f1e648]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e649]: در فهرست فعلی · حبوبات و سویا
+                        - generic [ref=f1e650]:
+                            - generic [ref=f1e651]:
+                                - deletion [ref=f1e652]: ۳۵۹٬۹۰۰ تومان
+                                - generic [ref=f1e653]: ۴۰٪
+                            - strong [ref=f1e654]: ۲۱۵٬۹۰۵ تومان
+                            - button "افزودن عدس وینچی (900 گرم) به سبد" [ref=f1e655] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e656]:
+                        - generic [ref=f1e658]:
+                            - heading "عسل چهل گیاه آبشن 900 گرمی" [level=2] [ref=f1e659]
+                            - paragraph [ref=f1e660]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e661]: در فهرست فعلی · عسل
+                        - generic [ref=f1e662]:
+                            - generic [ref=f1e663]:
+                                - deletion [ref=f1e664]: ۱٬۳۴۹٬۹۰۰ تومان
+                                - generic [ref=f1e665]: ۴۰٪
+                            - strong [ref=f1e666]: ۸۰۹٬۹۴۰ تومان
+                            - button "افزودن عسل چهل گیاه آبشن 900 گرمی به سبد" [ref=f1e667] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e668]:
+                        - generic [ref=f1e670]:
+                            - heading "عسل چهل گیاه آبشن 390 گرمی" [level=2] [ref=f1e671]
+                            - paragraph [ref=f1e672]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e673]: در فهرست فعلی · عسل
+                        - generic [ref=f1e674]:
+                            - generic [ref=f1e675]:
+                                - deletion [ref=f1e676]: ۶۲۹٬۹۰۰ تومان
+                                - generic [ref=f1e677]: ۴۰٪
+                            - strong [ref=f1e678]: ۳۷۷٬۹۴۰ تومان
+                            - button "افزودن عسل چهل گیاه آبشن 390 گرمی به سبد" [ref=f1e679] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e680]:
+                        - generic [ref=f1e682]:
+                            - heading "کالباس مرغ 90٪ کیمبال (250 گرم)" [level=2] [ref=f1e683]
+                            - paragraph [ref=f1e684]: هایپراستار ارم ۲ (همواره تخفیف)
+                            - generic [ref=f1e685]: در فهرست فعلی · سوسیس و کالباس
+                        - generic [ref=f1e686]:
+                            - generic [ref=f1e687]:
+                                - deletion [ref=f1e688]: ۵۸۰٬۰۰۰ تومان
+                                - generic [ref=f1e689]: ۴۰٪
+                            - strong [ref=f1e690]: ۳۴۸٬۰۰۰ تومان
+                            - button "افزودن کالباس مرغ 90٪ کیمبال (250 گرم) به سبد" [ref=f1e691] [cursor=pointer]: افزودن به سبد
+                    - article [ref=f1e692]:
+                        - generic [ref=f1e694]:
+                            - heading "برگر گوشت 60% ممتاز هایزم 5 عددی" [level=2] [ref=f1e695]
+                            - paragraph [ref=f1e696]: دیلی مارکت بلوار آیت الله کاشانی تهران(همواره تخفیف)
+                            - generic [ref=f1e697]: در فهرست فعلی · غذای نیمه آماده منجمد و یخچالی
+                        - generic [ref=f1e698]:
+                            - generic [ref=f1e699]:
+                                - deletion [ref=f1e700]: ۵۴۰٬۰۰۰ تومان
+                                - generic [ref=f1e701]: ۴۰٪
+                            - strong [ref=f1e702]: ۳۲۴٬۰۰۰ تومان
+                            - button "افزودن برگر گوشت 60% ممتاز هایزم 5 عددی به سبد" [ref=f1e703] [cursor=pointer]: افزودن به سبد
+                - button "نمایش محصولات بیشتر" [ref=f1e704] [cursor=pointer]
+                - paragraph [ref=f1e705]: قیمت و موجودی، مشاهده زمان اسکن است. پیش از خرید در فروشگاه بررسی کنید.
+                - button "تازه‌سازی نتیجه" [ref=f1e706] [cursor=pointer]

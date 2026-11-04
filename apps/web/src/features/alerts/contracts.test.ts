@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { parseNotifications, parseWishlist, safeOfferUrl } from "./contracts";
+import {
+  parseNotifications,
+  parseWishlist,
+  safeOfferUrl,
+  parseDevWishlistRun,
+  parseDevScanResult,
+} from "./contracts";
 
 describe("wishlist response", () => {
   it("accepts nullable setup and the optional disabled schedule flag", () => {
@@ -84,4 +90,48 @@ describe("notification links", () => {
   ])("rejects unsafe link %s", (value) =>
     expect(safeOfferUrl(value)).toBeUndefined()
   );
+});
+describe("development scan recovery", () => {
+  const run = {
+    version: 1,
+    id: "run",
+    userId: "owner",
+    steps: [
+      {
+        source: "snappmarket",
+        key: "first",
+        scanId: "scan",
+        result: { status: "running" },
+      },
+      { source: "okala", key: "second", scanId: null, result: null },
+    ],
+  };
+  it("restores pending scans only for their owner and provider order", () => {
+    expect(parseDevWishlistRun(run, "owner")).toEqual(run);
+    expect(() => parseDevWishlistRun(run, "other")).toThrow();
+    expect(() =>
+      parseDevWishlistRun({ ...run, steps: [...run.steps].reverse() }, "owner")
+    ).toThrow();
+    expect(() =>
+      parseDevWishlistRun(
+        { ...run, steps: [{ ...run.steps[0], scanId: null }, run.steps[1]] },
+        "owner"
+      )
+    ).toThrow();
+  });
+  it("distinguishes real completion without a notification from malformed results", () => {
+    expect(
+      parseDevScanResult({
+        status: "succeeded",
+        notification: null,
+        push: "not_applicable",
+      })
+    ).toEqual({
+      status: "succeeded",
+      notification: null,
+      push: "not_applicable",
+    });
+    expect(() => parseDevScanResult({ status: "succeeded" })).toThrow();
+    expect(() => parseDevScanResult({ status: "unknown" })).toThrow();
+  });
 });

@@ -80,6 +80,32 @@
   display: grid;
   gap: 12px;
 }
+.dev-wishlist-scan {
+  border-block-start: 1px solid var(--border);
+  padding-block-start: 16px;
+  display: grid;
+  gap: 12px;
+}
+.dev-wishlist-scan h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.dev-wishlist-progress {
+  display: grid;
+  gap: 12px;
+  padding-inline-start: 24px;
+}
+.dev-wishlist-progress > li {
+  overflow-wrap: anywhere;
+}
+.dev-wishlist-progress article {
+  display: grid;
+  gap: 8px;
+}
+.dev-wishlist-progress a {
+  color: var(--primary);
+  text-decoration: underline;
+}
 .push-settings h3,
 .inbox-heading h3 {
   margin: 0;
@@ -130,14 +156,10 @@
 }
 @media (max-width: 1100px) {
   .app-header {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
   }
-  .app-header nav {
+  .app-header-primary {
     max-inline-size: 100%;
-    overflow-x: auto;
-  }
-  .app-header nav > button {
-    flex-shrink: 0;
-    white-space: nowrap;
+    overflow: visible;
   }
 }

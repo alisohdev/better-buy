@@ -15,7 +15,7 @@ Run from the repository root:
 ```sh
 pnpm --filter @better-buy/web exec tsc --noEmit --incremental false
 pnpm --filter @better-buy/web test
-pnpm --filter @better-buy/web exec playwright test tests/alerts.spec.ts
+pnpm --filter @better-buy/web exec playwright test tests/alerts.spec.ts --config playwright.export.config.ts
 ```
 
 The fixture browser tests cover desktop/mobile wishlist CRUD, nullable scan location, schedule-disabled and missing-key states, notification read/deep links, scan restoration, click-only permission, subscription payload/removal, failed-sync rollback, denied permission, and unsupported browsers. Service-worker tests execute the shipped worker in an isolated VM. These are local deterministic tests, not proof of authenticated production delivery or a real OS push notification.

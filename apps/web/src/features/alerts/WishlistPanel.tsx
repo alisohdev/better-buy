@@ -5,6 +5,8 @@ import { Input } from "../../components/ui/input";
 import { Panel, ReadNotice } from "../dashboard/Primitives";
 import { useWishlist } from "./useAlerts";
 import { PushSettings } from "./PushSettings";
+import { DevWishlistScan } from "./DevWishlistScan";
+import { useDevWishlistScan } from "./useDevWishlistScan";
 import type { WishlistItem } from "./contracts";
 import { faNumber } from "../dashboard/format";
 import "./alerts.css";
@@ -23,6 +25,10 @@ export function WishlistPanel({
   trigger?: ReactNode;
 }) {
   const { query, mutation } = useWishlist();
+  const devEnabled =
+    process.env.NODE_ENV === "development" &&
+    query.data?.devScanEnabled === true;
+  const devScan = useDevWishlistScan(devEnabled);
   const [phrase, setPhrase] = useState("");
   const [minDiscount, setMinDiscount] = useState(15);
   const [notice, setNotice] = useState("");
@@ -191,6 +197,18 @@ export function WishlistPanel({
           </p>
         )}
         <p role="status">{mutation.isPending ? "در حال ذخیره…" : notice}</p>
+        {devEnabled && (
+          <DevWishlistScan
+            scan={devScan}
+            canStart={
+              !!query.data?.items.length &&
+              !!savedLocation &&
+              !missingLocation &&
+              locationsReady &&
+              !mutation.isPending
+            }
+          />
+        )}
         <PushSettings
           publicKey={query.data?.pushPublicKey ?? null}
           loading={query.isPending}

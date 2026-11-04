@@ -23,6 +23,12 @@ export interface ProviderCapabilities {
   coverage: "campaign-feed";
 }
 export interface ScanRecord {
+  observation?: {
+    oldestAt: string;
+    newestAt: string;
+    reusedRequestCount: number;
+    totalRequestCount: number;
+  };
   execution?: {
     kind: "workflow";
     phase: string;

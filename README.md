@@ -36,8 +36,6 @@ The frontend build writes static files to `apps/web/out`. The Go server is built
 
 The API requires `BETTER_AUTH_SECRET`, `BOX_KEY`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET`. Configure `APP_ORIGIN`, `BETTER_AUTH_URL`, and `CORS_ORIGIN` for the site. Wishlist scheduling and API rate limits are enabled by default. Browser push requires `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` together.
 
-## Current limits
+## Deployment
 
-The Go queue and core API are implemented, but the rewrite is not ready for production rollout. Snapp store-campaign enrichment and Okala shared-offer caching remain incomplete. Existing-database compatibility, full HTTP/provider parity, real push delivery, and idle memory on the VPS have not been verified. The VPS RAM sample previously shared in this conversation showed about 91.8 MiB RSS for HTTP and 56.2 MiB for the separate scan process; Go memory savings have not been measured.
-
-No production database or deployment has been changed.
+This workspace is deployed on the VPS. The Go API runs from `apps/api`; `deploy/vps` contains the systemd and Caddy configuration. This repository does not record the live service health or database migration state.

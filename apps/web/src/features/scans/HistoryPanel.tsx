@@ -69,6 +69,16 @@ export function HistoryPanel({
                       {faNumber.format(s.vendorCount)} فروشگاه بررسی‌شده ·{" "}
                       {faNumber.format(s.productCount)} رکورد کالا
                     </p>
+                    {s.observation && (
+                      <p>
+                        زمان داده‌ها:{" "}
+                        {faDate.format(new Date(s.observation.oldestAt))}
+                        {s.observation.newestAt !== s.observation.oldestAt &&
+                          ` تا ${faDate.format(new Date(s.observation.newestAt))}`}
+                        {s.observation.reusedRequestCount > 0 &&
+                          " · شامل پیشنهادهای بازیابی‌شده از بررسی مشترک"}
+                      </p>
+                    )}
                     <p>حالت ثبت‌شده: {s.mode === "full" ? "کامل" : "جزئی"}</p>
                   </details>
                 </div>

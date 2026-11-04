@@ -14,6 +14,7 @@ async function fixture(
     unsupported?: boolean;
     pushFailure?: boolean;
     scan?: boolean;
+    devEnabled?: boolean;
   } = {}
 ) {
   await page.addInitScript(
@@ -122,6 +123,7 @@ async function fixture(
         defaultLocationId: state.defaultLocationId,
         pushPublicKey: options.key === undefined ? publicKey : options.key,
         scheduleEnabled: false,
+        devScanEnabled: options.devEnabled ?? false,
       };
     } else if (url.pathname === "/api/wishlist/location") {
       state.defaultLocationId = route.request().postDataJSON().locationId;
@@ -219,6 +221,18 @@ async function fixture(
 async function pushState(page: Page) {
   return page.evaluate(() => Reflect.get(window, "__pushState"));
 }
+test("production builds hide manual development scans even if the API advertises them", async ({
+  page,
+}) => {
+  await fixture(page, { devEnabled: true });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "علاقه‌مندی‌ها", exact: true })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "اسکن آزمایشی علاقه‌مندی‌ها" })
+  ).toHaveCount(0);
+});
 
 test("wishlist CRUD, independent scan location, and disabled setup banner", async ({
   page,
@@ -262,6 +276,9 @@ test("wishlist CRUD, independent scan location, and disabled setup banner", asyn
   await expect(panel.getByText("هنوز عبارتی ثبت نکرده‌اید.")).toBeVisible();
   expect((await pushState(page)).requested).toBe(0);
   await panel.getByRole("button", { name: "بستن پنجره" }).click();
+  await page
+    .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
+    .click();
   await expect(
     page.getByRole("combobox", { name: "موقعیت تحویل" })
   ).toContainText("خانه");
@@ -293,11 +310,11 @@ test("scan deep link restores the scan location and source", async ({
   await fixture(page, { scan: true });
   await page.goto("/?scan=saved");
   await expect(
-    page.getByRole("combobox", { name: "موقعیت تحویل" })
-  ).toContainText("دفتر");
-  await expect(
     page.getByRole("heading", { name: "نتیجه تاریخی", exact: true })
   ).toBeVisible();
+  const details = page.locator(".scan-details");
+  await details.locator("summary").click();
+  await expect(details).toContainText("دفتر");
   await expect(page.getByText(/حداقل.*تخفیف · اکالا/)).toBeVisible();
 });
 test("push requests permission only on click and syncs/unsubscribes the exact endpoint", async ({

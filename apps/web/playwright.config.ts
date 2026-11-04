@@ -10,6 +10,7 @@ const executablePath =
 const port = process.env.PLAYWRIGHT_PORT ?? "3100";
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: ["**/wishlist-dev.spec.ts", "**/wishlist-live.spec.ts"],
   fullyParallel: false,
   use: {
     baseURL: `http://127.0.0.1:${port}`,

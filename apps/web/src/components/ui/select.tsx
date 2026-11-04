@@ -5,8 +5,11 @@ import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/utils";
 
-function Select(props: ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
+function Select({
+  dir = "rtl",
+  ...props
+}: ComponentProps<typeof SelectPrimitive.Root>) {
+  return <SelectPrimitive.Root data-slot="select" dir={dir} {...props} />;
 }
 
 function SelectValue(props: ComponentProps<typeof SelectPrimitive.Value>) {

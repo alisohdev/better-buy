@@ -56,6 +56,14 @@ export const locationRecordSchema = locationInputSchema.extend({
   coordinateRevision: count.positive().optional(),
 });
 export const scanRecordSchema = z.object({
+  observation: z
+    .object({
+      oldestAt: date,
+      newestAt: date,
+      reusedRequestCount: count,
+      totalRequestCount: count,
+    })
+    .optional(),
   execution: z
     .object({
       kind: z.literal("workflow"),
