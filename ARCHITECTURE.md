@@ -1,78 +1,45 @@
 # Better Buy architecture
 
-The current local Snapp guest implementation is the behavioral baseline. Active collection and scan workflows use exactly pinned `effect@4.0.1`; Hono, Better Auth, D1, Zod, and React retain their existing roles. The migration follows the [official v4 documentation](https://effect.website/docs/v4/) and the installed v4 types. No Effect companion or Node platform package is required.
+## Runtime
 
-The approved expansion is integrated locally on `codex/complete-expansion`. The sections below describe the original bounded collector where applicable; the following expansion boundaries supersede its execution, start-recovery and result-read limitations. See [the completion report](docs/better-buy-expansion-completion.md) for checks, flags, migrations and remaining production gates.
+The Go API in `apps/api` owns authentication, HTTP routes, provider collection, SQLite persistence, and background maintenance. The operating system starts one Go process. Inside it, the HTTP server, a single-consumer persistent scan queue, and bounded maintenance loops run together. Queued scans survive process restarts because their state is stored in SQLite.
 
-## Expansion boundaries
+The Next and React frontend in `apps/web` is built as a static export. `packages/shared` supplies TypeScript contracts and display helpers to the frontend. The `/sw.js` file runs only in a user's browser for Web Push; it does not run on the VPS.
 
-- `http/scans.ts` reserves an account-owned UUID intent and normalized request once. `durable/service.ts` dispatches/reconciles its deterministic Workflow identity or claims the bounded legacy job once when `SCAN_WORKFLOW_ENABLED=false`. The browser reconciles an uncertain start by that exact intent, and explicitly resends the same key/body; it never uses a new key to evade uncertainty.
-- `workflows/scan.ts` and `durable/runner.ts` own frozen unit execution. `durable/provider.ts` owns physical attempt reservations and at most three transient attempts, with Effect making one HTTP attempt. Guest tokens are ephemeral; the private scan-owned device UUID is persisted so resumed access retains identity. Engine control interruptions propagate without falsely failing the D1 job.
-- `durable/repository.ts` owns bounded page/chunk receipts, atomic cancellation and publication guards. Offers stage in existing deals with provenance; public reads hide unpublished staging. Publication requires terminal evidence for every admitted unit, all chunks committed, no prior cancellation and a ready saved-product projection. Failed/incomplete runs preserve previous results.
-- `saved-products.ts` materializes v2 summaries and separate expanded offers before durable publication. `http/products.ts` performs tenant/context-bound keyset pagination and normalized server search/ranking before slicing. `page=1` opts into the bounded envelope; legacy array/raw/group routes and Jet history remain compatible. Large legacy projections backfill through resumable bounded safe reads.
-- The UI remains one automatic discount feed. Query owns reads, polling and AbortSignal cancellation; retained saved-page windows are bounded and a failed next page preserves loaded rows. Search, sorting, pagination and store disclosure never trigger provider collection. There are no application effects or custom polling timers.
-- `entry.ts` exports the runtime Workflow class and scheduled reconciliation separately from the Hono test seam. Reconciliation continues for existing jobs after dispatch rollback. The legacy stale timer excludes workflow executions. Account quotas and global workflow concurrency are enforced in D1. Failure, cancellation, and stale recovery delete unpublished artifacts in the same atomic D1 batch as the terminal state change; scan status, execution, and start-intent records remain available. No recurring scan-artifact sweep runs. Scheduled workflow recovery and rate-limit expiry remain enabled.
+## Backend boundaries
 
-Default Snapp enrichment discovers nearby store codes, resolves numeric ownership and delivery from each home, and freezes supported ordinary campaign units. It retains two-collection and 40-physical-request limits, including authentication/retries. Rejected global campaigns and unverified category/store-category adapters remain gated. Durable production enablement remains off pending G05 account/runtime evidence; actual local Workflow/D1 fixtures are not production entitlement evidence.
+| Package                                  | Responsibility                                                                                                  |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `cmd/server`                             | Configuration, SQLite startup, HTTP listener, scan queue, maintenance goroutines, and graceful shutdown         |
+| `cmd/migrate`                            | Apply embedded SQLite application and scan-engine migrations                                                    |
+| `internal/api`                           | HTTP routes, JSON validation, CORS, authentication middleware, and response mapping                             |
+| `internal/auth`                          | Email and Google sign-in, sessions, password hashing, and cookie compatibility                                  |
+| `internal/scans`                         | Durable scan submission, idempotency, cancellation, restart recovery, retries, progress, and result persistence |
+| `internal/providers`                     | SnappMarket and Okala HTTP collection and offer normalization                                                   |
+| `internal/storage`                       | SQLite connection, WAL settings, and embedded migrations                                                        |
+| `internal/wishlist`                      | Wishlist reads/writes, scheduled scans, match notifications, push delivery, and bounded cleanup                 |
+| `internal/products` and `internal/carts` | Product grouping, scan reads, cart persistence, and recommendations                                             |
 
-## Responsibilities
+All user-owned reads and writes are scoped by authenticated user ID. Scan ownership, active-scan exclusivity, cancellation, and result publication are enforced in SQLite transactions. The queue processes one scan at a time and retries transient collection errors with bounded delays.
 
-| Boundary       | Files                                                      | Responsibility                                                                                                                                                                             |
-| -------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| HTTP           | `apps/worker/src/index.ts`, `http/`                        | Middleware, authenticated user context, Zod inputs, response/error mapping, route registration, and background Promise ownership.                                                          |
-| Application    | `application/scans.ts`, `application/provider-settings.ts` | Eligibility → access → atomic reservation → running → complete collection → persistence → success. Operations accept explicit inputs and capabilities, with no Hono context or D1 binding. |
-| Domain         | `domain/`, `packages/shared/src/`                          | Eligibility, typed failures, validation/contracts, exact temporal comparison, conservative v1 grouping, and provider-specific price display conventions. Ordinary typed functions.         |
-| Providers      | `providers/snapp/`, `providers/okala/`                     | Exact upstream request construction, guest/public access, Zod decoding, sequential complete collection, and pure normalization. No database writes.                                        |
-| Infrastructure | `infrastructure/`, `store.ts`                              | Native fetch policy, D1 SQL and atomic batches, encrypted provider settings, and Web Crypto. Database rows are typed at the SQL adapter boundary.                                          |
-| Composition    | `composition.ts`                                           | Constructs `ScanPersistence`, `ProviderAccess`, and `ProviderCollection` from bindings and an explicit authenticated user ID.                                                              |
+## Frontend boundaries
 
-`collector.ts` and `okala.ts` retain the established public imports as small re-export modules. The dormant `digikala.ts` collector remains retained under the existing product plan; active scan dispatch never calls it. New Jet scans/settings stay disabled, and historical Jet results remain readable. Historical migrations are unchanged.
+React components own interaction state. Query hooks own API reads, polling, and mutations. `packages/shared` provides the request and response schemas, UI types, grouping helpers, and money formatting used by the web app. The frontend talks to the Go API over HTTP.
 
-## Effect execution and service lifetimes
+Browser push uses the root-scoped `/sw.js` registration and same-origin notification links. The service worker has no fetch handler and does not cache authenticated responses.
 
-The scan route runs preparation with `Effect.runPromiseExit`, then gives one execution Promise to `c.executionCtx.waitUntil`. Collectors, access helpers, and application operations compose Effects without starting runtimes internally. The former Okala OTP, login, and token-submission routes are removed.
+## Run and verify
 
-Service keys are module-level declarations; their implementations are newly constructed per authenticated request. The background job retains that request's tenant-scoped persistence capability. There is no global runtime/layer containing a user, credential, or Store. A Snapp scan owns one ephemeral guest token and device ID; those are neither persisted nor returned to the browser. Okala uses no credentials and never reads provider settings. Legacy encrypted rows and shared encryption infrastructure remain untouched for compatibility with retained provider data; no migration is required.
+From the repository root:
 
-Expected failures are tagged `CollectorError`, `CredentialError`, `PersistenceError`, or `ScanValidationError`. Collector codes distinguish network, timeout, rate limit, upstream rejection, invalid JSON/schema, and incomplete pagination. HTTP returns domain validation/conflict codes with 404/422/409, and safe upstream/persistence failures with 502 during scan preparation. Scan execution records the specific failure code and safe Persian message. Unexpected defects record `UNKNOWN_ERROR`; raw causes, tokens, addresses, and upstream bodies are never logged. A failed terminal write remains visible to the execution boundary, with stale reconciliation as recovery.
+```sh
+pnpm dev
+pnpm build
+go -C apps/api run ./cmd/migrate
+```
 
-## Requests and scan integrity
+`pnpm dev` starts the Go server and Next development server. `pnpm build` builds the web app and compiles every Go package. The Go API reads configuration from process environment variables.
 
-- Reads get at most three attempts, with 1s/2s backoff. Valid `Retry-After` guidance raises the delay; guidance beyond 5s fails the request rather than retrying too early. Non-transient failures are not retried. Guest acquisition and database mutations are not blindly retried.
-- Each attempt has an 8s timeout covering both headers and body consumption. Effect interruption aborts the actual fetch signal; an owned AbortController stays alive until decoding completes. Retry applies to the individual read, never to the whole collection.
-- Snapp retains `/market-party/{latitude}/{longitude}`, 100 vendors per page, the 50-page ceiling, duplicate-page detection, complete vendor counts, exact vendor/product deduplication, threshold/stock rules, and unconverted upstream prices. Guest expiry is checked before each page, with one bounded 401 renewal of the same page/device.
-- Okala discovers eligible nearby stores first, then public HomePage carousels with the selected coordinates and repeated StoreIds, then every unique isMulti campaign through multi-store offers with the same StoreIds. All requests omit Authorization and Cookie. HTTP 401/403 maps to UPSTREAM_FORBIDDEN; application-level rejection, malformed JSON/schema, rate limit, timeout, and network failures stay distinct. Threshold/stock rules, store/product identity, and rial price fields remain unchanged.
-- Okala is a campaign-feed scan, not an exhaustive catalog crawl. The current client has no pagination parameters and live responses report totalPages=1 and hasNextPage=false despite totalCount exceeding returned products. No pagination contract is inferred from that count. Indicated additional pages fail with INCOMPLETE_PAGINATION rather than certify partial success. Valid empty store/campaign lists retain NO_STORES/NO_CAMPAIGNS failures; malformed or rejected envelopes are distinct. Feed disappearance records only absence from this feed.
-- Every progress write is awaited. SQL guards prevent late progress or terminal writes from changing a completed/reconciled scan. Reservation checks location ownership in SQL and retains the existing unique active-scan index as the authoritative concurrency guard.
-- Result inserts and terminal success share one atomic D1 batch, with tenant/active-state guards. Persistence failures roll back results; previous successful snapshots remain intact. Exact offer keys, price units, grouping version, and previous-success comparison rules are preserved.
+## Incomplete work
 
-## Worker execution limitation
-
-The running/collection phase has a 22s wall-clock budget, leaving headroom for result persistence and failure recording. D1 has no cancellation API: writes are awaited in an uninterruptible Effect region so a failure finalizer cannot race a commit whose outcome is unknown. A slow write can still outlive that headroom.
-
-Cloudflare [`waitUntil`](https://developers.cloudflare.com/workers/runtime-apis/context/#waituntil) allows up to 30s after the response or disconnect. Effects do not extend that lifetime or guarantee durability. CPU, subrequest, and D1 limits also still apply. Hard termination can bypass cleanup; the existing tenant-scoped reconciliation fails queued scans older than 2 minutes and running scans older than 15 minutes on a subsequent authenticated request. No queue/workflow infrastructure was added.
-
-## Frontend ownership
-
-`apps/web/src/app/page.tsx` gates the Google/Better Auth session. `QuerySession`, keyed by authenticated user ID, creates one private QueryClient per mount; accounts never share caches. `Dashboard` coordinates location, retailer, threshold, historical selection, and the location editor. `AppHeader`, `ScanControls`, `DealShelf`, and `HistoryPanel` provide a compact RTL application. Location/help/filter panels use existing Radix Dialog; the account menu uses DropdownMenu and nested deletion uses AlertDialog. There is one scan action and no permanent rail or retailer credential setup.
-
-Reads use pinned TanStack Query v5 and its AbortSignal. Keys include the selected scan and result context (location, provider, threshold); previous-context placeholder data is not used. Saved data remains usable in the same context during background failures. Shared read schemas validate envelopes' payloads before caching; malformed responses cannot become empty results. Historical disappeared rows may retain the prior scan ID under the existing comparison contract.
-
-`lib/api.ts` makes one fetch attempt, includes credentials, propagates signals through body reads, and distinguishes HTTP (status/code/Retry-After), unknown transport, invalid-response, and cancellation failures. It never diagnoses TLS/ISP/VPN from TypeError or exposes raw upstream bodies. Cancellation is never retried. `lib/queryPolicy.ts` allows at most two Query retries after the initial idempotent GET attempt, with 1s/2s backoff, raised by Retry-After up to 5s. Longer guidance declines automatic retries rather than retrying early. Authentication, permission, permanent 4xx, schema/JSON failures and cancellation do not retry. Reconnect refreshes stale/failed observed reads; window focus does not. Network mode is always so manual recovery works even when the browser's online hint is inaccurate. There are no fetch-level frontend retries.
-
-Mutation retries are disabled, including location writes and scan starts. A synchronous submit guard prevents duplicate clicks. Known accepted scan IDs are immediately cached in the account list even if the result context changed. A transport, cancellation, malformed acknowledgement, or ambiguous 5xx start failure enters an explicit uncertain state and reads authenticated scan history. New matching IDs are reconciled without another POST. If no scan is found, the outcome remains labelled unknown; only a successful fresh read with no account-wide active scan enables an explicit acknowledgement allowing a deliberate new attempt. This does not add server idempotency, prove the original request cannot finish later, or fabricate a failed scan. HTTP 409 refreshes account history and retains its known rejection message.
-
-Account-wide active scans have a separate observer independent of results navigation. Status polling uses Query intervals (1.5s normally, 15s after transient read failures), with each read's bounded retry policy and no timers. Permanent failures and long Retry-After stop automatic intervals until manual recovery/reconnect. Polling stops at terminal status and updates the scan list. Status-read errors retain the last server state; they never mark the scan failed. Saved-result loading/error/success are separate from server scan status. Result retry reloads the same saved scan, never POSTs to retailers. Query observers cancel obsolete result/search requests on context change/unmount, and keyed session caches isolate late responses.
-
-New scans default to 40%; active collectors do not use partial/full mode, so that UI choice is removed while stored history remains readable. Okala preparation normalizes its effective threshold once (minimum 30%) for reservation, ScanJob, collection, metadata and future comparisons. Existing historical snapshots are unchanged. `vendorCount` denotes distinct eligible stores whose returned entities were inspected, including empty entities; repeated campaign appearances count once. Final Okala count and progress use the same definition. No campaign count is exposed as store progress, denominator, percentage, or ETA.
-
-The frontend has no direct `useEffect`/`useLayoutEffect`, custom polling timers, or ad hoc external listener subscriptions. Local interaction state and derivations own selection; query hooks own reads/mutations. Theme preference is handled by the existing provider. Visual tokens and source revisions are in [DESIGN.md](./DESIGN.md). Playwright uses a production Next build/server to avoid counting development Strict Mode's deliberate cancelled/remounted read as an application retry; the Worker still uses a static export.
-
-## Modifying a collector
-
-1. Preserve the provider's documented feed, identifiers, pagination, access policy, and units. Keep Zod upstream decoding and pure normalization beside that provider; reuse domain eligibility only where semantics match.
-2. Compose reads through `requestJson`; keep auth mutations single-attempt, and add narrowly bounded provider renewal where required. Use sequential pagination and return failure when collection is incomplete.
-3. Return an Effect producing counts and normalized offers. Yield the supplied progress Effect before proceeding. Do not write D1 or run an internal runtime.
-4. Wire the provider at `composition.ts`; keep provider access scoped to the authenticated request. Adapt fake-service lifecycle tests and synthetic collector fixtures before changing production behavior.
-
-Run `pnpm typecheck`, `pnpm test`, `pnpm build`, `pnpm test:e2e`, and `pnpm --filter @better-buy/worker exec wrangler deploy --dry-run --outdir .data/effect-dry-run`. SQLite/D1-interface tests and mocked-session browser tests are deterministic local evidence; they do not prove deployed D1 behavior, external Google OAuth, live retailer availability, or production execution duration.
+Snapp store-campaign enrichment and Okala shared-offer caching are not in the Go collector. Compatibility with the existing production SQLite database, complete API/provider parity, real push delivery, and VPS idle memory remain unverified. Do not infer a Go memory reduction from language choice; measure RSS after a separately authorized rollout.

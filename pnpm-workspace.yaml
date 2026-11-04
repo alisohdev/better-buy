@@ -1,6 +1,6 @@
 packages:
-  - apps/*
-  - packages/*
+  - apps/web
+  - packages/shared
 onlyBuiltDependencies:
   - esbuild
   - sharp

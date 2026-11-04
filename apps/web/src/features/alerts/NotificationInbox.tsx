@@ -1,54 +1,47 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "../../components/ui/button";
 import { Panel, ReadNotice } from "../dashboard/Primitives";
 import { faDate, faNumber, money } from "../dashboard/format";
 import { safeOfferUrl } from "./contracts";
 import { useInbox } from "./useAlerts";
 
-export function NotificationInbox() {
+export function NotificationInbox({
+  open: controlledOpen,
+  onOpenChange,
+  trigger,
+}: {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: ReactNode;
+} = {}) {
   const { query, read } = useInbox();
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
+  const open = controlledOpen ?? localOpen;
   const unread = query.data?.filter((item) => item.readAt === null).length ?? 0;
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("inbox") === "1" || params.has("notification"))
-      setOpen(true);
-  }, []);
+    if (params.get("inbox") === "1" || params.has("notification")) {
+      setLocalOpen(true);
+      onOpenChange?.(true);
+    }
+  }, [onOpenChange]);
   return (
     <Panel
       title="صندوق اعلان‌ها"
       open={open}
-      onOpenChange={setOpen}
+      onOpenChange={(open) => {
+        setLocalOpen(open);
+        onOpenChange?.(open);
+      }}
       trigger={
-        <Button
-          variant="ghost"
-          className="header-icon-button"
-          aria-label={
-            unread > 0
-              ? "اعلان‌ها، " + faNumber.format(unread) + " خوانده‌نشده"
-              : "اعلان‌ها"
-          }
-          title="اعلان‌ها"
-        >
-          <svg
-            aria-hidden="true"
-            focusable="false"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
-            <path d="M10 21h4" />
-          </svg>
-          {unread > 0 && (
-            <span className="header-count-badge" aria-hidden="true">
-              {faNumber.format(unread)}
-            </span>
-          )}
-        </Button>
+        trigger === undefined ? (
+          <Button variant="ghost">
+            اعلان‌ها
+            {unread > 0 ? " (" + faNumber.format(unread) + " خوانده‌نشده)" : ""}
+          </Button>
+        ) : (
+          trigger
+        )
       }
     >
       <div className="alerts-content">

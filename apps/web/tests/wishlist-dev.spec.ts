@@ -32,7 +32,7 @@ async function fixture(page: Page, noMatches = false) {
     if (url.pathname === "/api/wishlist")
       data = {
         items: state.ready
-          ? [{ id: "wish", phrase: "چای", createdAt: date }]
+          ? [{ id: "wish", phrase: "چای", minDiscount: 15, createdAt: date }]
           : [],
         defaultLocationId: state.ready ? "home" : null,
         pushPublicKey: null,

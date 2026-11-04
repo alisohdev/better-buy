@@ -1,0 +1,152 @@
+- generic:
+    - alert
+    - main [aria-hidden]:
+        - generic:
+            - button:
+                - generic: ب
+                - generic:
+                    - strong: بهتر بخر
+            - generic:
+                - combobox
+                - button:
+                    - generic [aria-hidden]: ۰
+            - button
+        - generic:
+            - region:
+                - generic:
+                    - generic:
+                        - generic: موقعیت تحویل
+                        - combobox:
+                            - generic: خانه
+                    - group:
+                        - generic: فروشگاه‌ها
+                        - generic:
+                            - checkbox [checked]
+                            - generic: اسنپ‌مارکت
+                        - generic:
+                            - checkbox [checked]
+                            - generic: اکالا
+                    - button: به‌روزرسانی تخفیف‌ها
+                - generic:
+                    - generic:
+                        - generic:
+                            - text: حداقل تخفیف
+                            - status: ۴۰٪
+                        - slider: "40"
+                        - generic [aria-hidden]:
+                            - generic: ۱۵٪
+                            - generic: ۸۰٪
+                    - paragraph: فیلتر نتیجه‌های ذخیره‌شده؛ بدون اسکن دوباره
+            - region:
+                - generic:
+                    - generic:
+                        - heading [level=1]: پیشنهادها
+                        - paragraph: حداقل ۴۰٪ تخفیف · اسنپ‌مارکت و اکالا
+                    - group:
+                        - generic: جزئیات نتیجه
+                - generic:
+                    - generic:
+                        - text: جست‌وجو
+                        - searchbox
+                    - generic:
+                        - text: مرتب‌سازی
+                        - combobox:
+                            - generic: پیشنهادهای شخصی
+                - paragraph: اول علاقه‌مندی‌ها، سپس تعداد در سبد و درصد تخفیف
+                - status: ۲ محصول نمایش‌داده‌شده
+                - generic:
+                    - article:
+                        - button:
+                            - generic: تصویر در دسترس نیست
+                        - generic:
+                            - generic: اکالا
+                            - heading [level=2]:
+                                - button: چای ایرانی okala
+                            - paragraph:
+                                - generic:
+                                    - generic [aria-hidden]: ف
+                                - generic: فروشگاه نمونه
+                            - generic: در فهرست فعلی · چای
+                        - generic:
+                            - generic:
+                                - deletion: ۲۰٬۰۰۰ تومان
+                                - generic: ۶۰٪
+                            - strong: ۸٬۰۰۰ تومان
+                            - generic:
+                                - button
+                                - button
+                    - article:
+                        - button:
+                            - generic: تصویر در دسترس نیست
+                        - generic:
+                            - generic: اسنپ‌مارکت
+                            - heading [level=2]:
+                                - button: چای ایرانی snappmarket
+                            - paragraph:
+                                - generic:
+                                    - generic [aria-hidden]: ف
+                                - generic: فروشگاه نمونه
+                            - generic: در فهرست فعلی · چای
+                        - generic:
+                            - generic:
+                                - deletion: ۲۰۰٬۰۰۰ تومان
+                                - generic: ۶۰٪
+                            - strong: ۸۰٬۰۰۰ تومان
+                            - generic:
+                                - button
+                                - button
+                - paragraph: قیمت و موجودی، مشاهده زمان اسکن است. پیش از خرید در فروشگاه بررسی کنید.
+                - button: تازه‌سازی نتیجه
+        - navigation:
+            - button:
+                - generic: سبد خرید
+            - button:
+                - generic: علاقه‌مندی‌ها
+            - button:
+                - generic: اعلان‌ها
+            - button:
+                - generic: تاریخچه
+    - dialog [ref=f2e142]:
+        - banner [ref=f2e130]:
+            - heading "افزودن موقعیت تحویل" [level=2] [ref=f2e143]
+            - button "بستن پنجره مکان" [ref=f2e132] [cursor=pointer]: ×
+        - button "بازگشت به موقعیت‌ها" [ref=f2e144] [cursor=pointer]
+        - generic [ref=f2e145]:
+            - generic [ref=f2e146]:
+                - text: نام مکان
+                - textbox "نام مکان" [active] [ref=f2e147]:
+                    - /placeholder: مثلاً خانه یا محل کار
+            - search [ref=f2e148]:
+                - generic [ref=f2e149]: جست‌وجوی نشانی در تهران
+                - generic [ref=f2e150]:
+                    - textbox "جست‌وجوی نشانی در تهران" [ref=f2e151]:
+                        - /placeholder: مثلاً میدان ونک
+                    - button "جست‌وجو" [ref=f2e152] [cursor=pointer]
+            - group [ref=f2e153]:
+                - generic "انتخاب موقعیت روی نقشه" [ref=f2e154] [cursor=pointer]
+                - region "نقشه انتخاب موقعیت در تهران" [ref=f2e155]:
+                    - generic [ref=f2e156]:
+                        - generic:
+                            - generic:
+                                - img:
+                                    - generic [ref=f2e157] [cursor=pointer]
+                            - button "موقعیت انتخاب‌شده" [ref=f2e158] [cursor=pointer]
+                        - generic:
+                            - generic [ref=f2e160]:
+                                - button "Zoom in" [ref=f2e161] [cursor=pointer]: +
+                                - button "Zoom out" [ref=f2e162] [cursor=pointer]: −
+                            - generic [ref=f2e163]:
+                                - link "Leaflet" [ref=f2e164] [cursor=pointer]:
+                                    - /url: https://leafletjs.com
+                                - text: "| ©"
+                                - link "OpenStreetMap" [ref=f2e169] [cursor=pointer]:
+                                    - /url: https://www.openstreetmap.org/copyright
+                                - text: ©
+                                - link "CARTO" [ref=f2e170] [cursor=pointer]:
+                                    - /url: https://carto.com/attributions
+                    - status [ref=f2e171]: نقطه را بکشید یا روی نقشه کلیک کنید. محدوده پشتیبانی فعلاً تهران است.
+            - generic [ref=f2e172]:
+                - checkbox "مکان پیش‌فرض باشد" [ref=f2e173] [cursor=pointer]
+                - checkbox [aria-hidden]
+                - generic [ref=f2e174]: مکان پیش‌فرض باشد
+            - button "ذخیره مکان" [ref=f2e176] [cursor=pointer]

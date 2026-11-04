@@ -8,147 +8,176 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ProductSummary, ScanRecord } from "@better-buy/shared";
+import {
+  displayToman,
+  type CartSource,
+  type ScanRecord,
+} from "@better-buy/shared";
 import type { DealSource } from "../dashboard/types";
 import { faDate, faNumber, sourceLabel } from "../dashboard/format";
 import { ProductRow } from "./ProductRow";
 import type { useDealFilters } from "./useDealFilters";
 import type { useScanLedger } from "../scans/useScanLedger";
 import type { useProviderCart } from "../carts/useProviderCart";
+import { useWishlist } from "../alerts/useAlerts";
+import { ProviderMark } from "../dashboard/AppIcon";
+
+export type DealFeed = {
+  source: DealSource;
+  ledger: ReturnType<typeof useScanLedger>;
+  cart: ReturnType<typeof useProviderCart> | null;
+  latestAvailableScan: ScanRecord | null;
+};
+const normalized = (value: string) =>
+  value
+    .normalize("NFKC")
+    .replaceAll("ي", "ی")
+    .replaceAll("ك", "ک")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLocaleLowerCase();
+
 export function DealShelf({
   filters,
-  scan,
-  threshold,
-  source,
+  feeds,
+  minDiscount,
   busy,
-  results,
-  hasResults,
-  dealGroups,
   historical,
-  nextCursor,
-  onLoadMore,
-  hasPreviousPages,
-  onFirstPage,
-  latestAvailableScan,
-  cart,
+  onOpenCart,
 }: {
   filters: ReturnType<typeof useDealFilters>;
-  scan: ScanRecord | null;
-  threshold: number;
-  source: DealSource;
+  feeds: DealFeed[];
+  minDiscount: number;
   busy: boolean;
-  results: ReturnType<typeof useScanLedger>["results"];
-  hasResults: boolean;
-  dealGroups: ProductSummary[];
   historical: boolean;
-  nextCursor: string | null;
-  onLoadMore: () => void;
-  hasPreviousPages: boolean;
-  onFirstPage: () => void;
-  latestAvailableScan: ScanRecord | null;
-  cart: ReturnType<typeof useProviderCart>;
+  onOpenCart: (source: CartSource) => void;
 }) {
   const { query, setQuery, sort, setSort, reset } = filters;
-  const visible = dealGroups;
-  const canAddFromScan =
-    source !== "digikalajet" &&
-    !historical &&
-    !!scan &&
-    scan.status === "succeeded" &&
-    scan.id === latestAvailableScan?.id &&
-    hasResults;
+  const wishlist = useWishlist();
+  const savedItems = wishlist.query.data?.items ?? [];
+  const visible = feeds
+    .flatMap((feed) => {
+      const scan = feed.ledger.scan;
+      return scan
+        ? feed.ledger.dealGroups.map((group) => ({ group, feed, scan }))
+        : [];
+    })
+    .sort((a, b) => {
+      const priceA = displayToman(a.group.finalPriceRials, a.feed.source);
+      const priceB = displayToman(b.group.finalPriceRials, b.feed.source);
+      if (sort === "price")
+        return priceA - priceB || b.group.discountRatio - a.group.discountRatio;
+      if (sort === "wishlist") {
+        const personalized =
+          Number(b.group.wishlistMatch) - Number(a.group.wishlistMatch) ||
+          b.group.cartQuantity - a.group.cartQuantity;
+        if (personalized) return personalized;
+      }
+      return (
+        b.group.discountRatio - a.group.discountRatio ||
+        priceA - priceB ||
+        a.group.key.localeCompare(b.group.key)
+      );
+    });
+  const hasScan = feeds.some((feed) => !!feed.ledger.scan);
+  const hasResults = feeds.some((feed) => feed.ledger.hasResults);
+  const loading =
+    busy ||
+    feeds.some(
+      (feed) =>
+        !!feed.ledger.scan &&
+        !feed.ledger.hasResults &&
+        feed.ledger.results.isPending
+    );
+  const fetching = feeds.some((feed) => feed.ledger.results.isFetching);
   return (
     <section className="deal-section" aria-labelledby="offers-title">
       <header className="section-heading">
         <div>
           <h1 id="offers-title">{historical ? "نتیجه تاریخی" : "پیشنهادها"}</h1>
           <p>
-            {scan
-              ? `${scan.locationName} · ${sourceLabel(scan.source)} · حداقل ${faNumber.format(scan.threshold)}٪`
-              : `حداقل ${faNumber.format(threshold)}٪ تخفیف`}
+            حداقل {faNumber.format(minDiscount)}٪ تخفیف ·{" "}
+            {feeds.map((feed) => sourceLabel(feed.source)).join(" و ")}
           </p>
-          {scan && (
-            <p className="snapshot-time">
-              {scan.observation ? (
-                <>
-                  <time dateTime={scan.observation.oldestAt}>
-                    {faDate.format(new Date(scan.observation.oldestAt))}
-                  </time>
-                  {scan.observation.newestAt !== scan.observation.oldestAt && (
-                    <>
-                      {" · "}
-                      <time dateTime={scan.observation.newestAt}>
-                        {faDate.format(new Date(scan.observation.newestAt))}
-                      </time>
-                    </>
-                  )}
-                  {scan.observation.reusedRequestCount > 0 && (
-                    <strong>
-                      {" "}
-                      · بخشی از پیشنهادها از بررسی مشترک بازیابی شد
-                    </strong>
-                  )}
-                </>
-              ) : (
-                <time dateTime={scan.finishedAt ?? scan.createdAt}>
-                  {faDate.format(new Date(scan.finishedAt ?? scan.createdAt))}
-                </time>
-              )}
-              {results.error && hasResults && (
-                <strong> · نتیجه ذخیره‌شده؛ تازه‌سازی نشد</strong>
-              )}
-            </p>
-          )}
         </div>
         {hasResults && (
           <details className="scan-details">
             <summary>جزئیات نتیجه</summary>
-            <p>{faNumber.format(scan?.vendorCount ?? 0)} فروشگاه بررسی‌شده</p>
-            <p>
-              {faNumber.format(scan?.productCount ?? 0)} رکورد کالا ·{" "}
-              {faNumber.format(scan?.dealCount ?? 0)} پیشنهاد فروشگاهی
-            </p>
-            <p>نتیجه‌ها متعلق به زمان اسکن نمایش‌داده‌شده‌اند.</p>
-            {scan?.context == null && scan && (
-              <p>
-                موقعیت و پوشش تاریخی این نتیجه تأیید نشده؛ مقایسه زمانی انجام
-                نمی‌شود.
-              </p>
+            {feeds.map(
+              ({ source, ledger }) =>
+                ledger.scan && (
+                  <div key={source}>
+                    <strong>
+                      {sourceLabel(source)} · {ledger.scan.locationName}
+                    </strong>
+                    <p>
+                      <time
+                        dateTime={
+                          ledger.scan.finishedAt ?? ledger.scan.createdAt
+                        }
+                      >
+                        {faDate.format(
+                          new Date(
+                            ledger.scan.finishedAt ?? ledger.scan.createdAt
+                          )
+                        )}
+                      </time>
+                    </p>
+                    <p>
+                      {faNumber.format(ledger.scan.vendorCount)} فروشگاه
+                      بررسی‌شده · {faNumber.format(ledger.scan.productCount)}{" "}
+                      رکورد کالا
+                    </p>
+                    {ledger.scan.context == null && (
+                      <p>موقعیت و پوشش تاریخی این نتیجه تأیید نشده است.</p>
+                    )}
+                  </div>
+                )
             )}
           </details>
         )}
       </header>
-      {results.error && (
-        <div className="result-error" role="status">
-          <div>
-            <strong>
-              {hasResults
-                ? "تازه‌سازی نتیجه انجام نشد"
-                : "نتیجه اسکن دریافت نشد"}
-            </strong>
-            <p>
-              {hasResults
-                ? "نتیجه ذخیره‌شده با زمان اسکن نمایش‌داده‌شده قابل مشاهده است."
-                : "به‌روزرسانی انجام شد و نتیجه ذخیره شده است؛ برای دیدن پیشنهادها، نتیجه همین اسکن را دوباره دریافت کنید."}
+      {feeds.map(({ source, ledger }) => (
+        <div key={source} className="feed-read-state">
+          {ledger.results.error && (
+            <div className="result-error" role="status">
+              <div>
+                <span>{sourceLabel(source)}</span>
+                <strong>
+                  {ledger.hasResults
+                    ? "تازه‌سازی نتیجه انجام نشد"
+                    : "نتیجه اسکن دریافت نشد"}
+                </strong>
+                <p>
+                  {ledger.hasResults
+                    ? "نتیجه ذخیره‌شده با زمان خودش حفظ شده است."
+                    : "نتیجه همین اسکن را دوباره دریافت کنید."}
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                disabled={ledger.results.isFetching}
+                onClick={() => void ledger.results.refetch()}
+              >
+                دریافت دوباره نتیجه
+              </Button>
+            </div>
+          )}
+          {ledger.scan && ledger.requestedScan?.id !== ledger.scan.id && (
+            <p className="muted" role="status">
+              {sourceLabel(source)} · دریافت نتیجه تازه انجام نشد؛ نتیجه موفق
+              قبلی با زمان خودش نمایش داده می‌شود.
             </p>
-          </div>
-          <Button
-            variant="outline"
-            disabled={results.isFetching}
-            onClick={() => void results.refetch()}
-          >
-            {results.isFetching ? "در حال دریافت…" : "دریافت دوباره نتیجه"}
-          </Button>
+          )}
+          {!historical && !ledger.scan && !busy && hasScan && (
+            <p className="provider-empty-note">
+              <ProviderMark source={source} />
+              هنوز نتیجه‌ای برای {sourceLabel(source)} در این موقعیت ندارید.
+            </p>
+          )}
         </div>
-      )}
-      {scan && (
-        <p className="coverage-note">
-          {scan.context?.coverage === "incomplete"
-            ? "بعضی از فهرست‌ها کامل بررسی نشدند. پیشنهادهای تأییدشده نمایش داده می‌شوند؛ نبودن کالا در این نتیجه به معنی ناموجود بودن آن نیست."
-            : "نتیجه‌ها از فهرست‌های تخفیف پشتیبانی‌شده‌اند و تمام کالاهای فروشگاه‌ها را پوشش نمی‌دهند."}
-        </p>
-      )}
-      {scan && (
+      ))}
+      {hasScan && (
         <div className="results-toolbar">
           <Label className="search">
             جست‌وجو
@@ -156,7 +185,7 @@ export function DealShelf({
               type="search"
               aria-label="جست‌وجوی کالا یا فروشگاه"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(event) => setQuery(event.target.value)}
               placeholder="نام کالا یا فروشگاه"
             />
           </Label>
@@ -167,9 +196,9 @@ export function DealShelf({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="wishlist">اولویت علاقه‌مندی‌ها</SelectItem>
-                <SelectItem value="price">کمترین قیمت</SelectItem>
+                <SelectItem value="wishlist">پیشنهادهای شخصی</SelectItem>
                 <SelectItem value="discount">بیشترین تخفیف</SelectItem>
+                <SelectItem value="price">کمترین قیمت</SelectItem>
               </SelectContent>
             </Select>
           </Label>
@@ -180,92 +209,163 @@ export function DealShelf({
           )}
         </div>
       )}
-      {busy || (!!scan && !hasResults && results.isPending) ? (
+      {sort === "wishlist" && hasScan && (
+        <p className="personalized-note">
+          اول علاقه‌مندی‌ها، سپس تعداد در سبد و درصد تخفیف
+        </p>
+      )}
+      {wishlist.mutation.error && (
+        <p className="form-error" role="alert">
+          ذخیره علاقه‌مندی انجام نشد. {wishlist.mutation.error.message}
+        </p>
+      )}
+      {loading && (
         <div className="result-loading" role="status">
           <p>
-            {scan ? "در حال دریافت نتیجه ذخیره‌شده…" : "در حال دریافت اطلاعات…"}
+            {hasScan
+              ? "در حال دریافت نتیجه ذخیره‌شده…"
+              : "در حال دریافت اطلاعات…"}
           </p>
-          <div className="skeleton-row" />
-          <div className="skeleton-row" />
-          <div className="skeleton-row" />
+          {!visible.length && (
+            <>
+              <div className="skeleton-row" />
+              <div className="skeleton-row" />
+            </>
+          )}
         </div>
-      ) : !scan ? (
+      )}
+      {!loading && !hasScan ? (
         <div className="empty">
           <h2>هنوز نتیجه‌ای برای این انتخاب ندارید</h2>
           <p>با «پیدا کردن تخفیف‌ها» پیشنهادهای این موقعیت را دریافت کنید.</p>
         </div>
-      ) : !hasResults ? null : !dealGroups.length && !query ? (
-        <div className="empty">
-          <h2>پیشنهادی با این حداقل تخفیف پیدا نشد</h2>
-          <p>
-            نتیجه اسکن کامل دریافت شده است. می‌توانید حداقل تخفیف را برای اسکن
-            بعدی تغییر دهید.
-          </p>
-        </div>
       ) : (
-        <>
-          <p className="result-count" role="status">
-            {faNumber.format(visible.length)} محصول نمایش‌داده‌شده
-            {results.isFetching && " · در حال تازه‌سازی"}
-          </p>
-          {visible.length ? (
-            <div className="deal-list">
-              {visible.map((group) => (
-                <ProductRow
-                  key={`${scan.id}:${group.key}`}
-                  group={group}
-                  source={scan.source}
-                  scanId={scan.id}
-                  canAddToCart={
-                    canAddFromScan &&
+        hasResults && (
+          <>
+            <p className="result-count" role="status">
+              {faNumber.format(visible.length)} محصول نمایش‌داده‌شده
+              {fetching && " · در حال تازه‌سازی"}
+            </p>
+            {visible.length ? (
+              <div className="deal-list">
+                {visible.map(({ group, feed, scan }) => {
+                  const saved = savedItems.find(
+                    (item) =>
+                      normalized(item.phrase) === normalized(group.title)
+                  );
+                  const cart = feed.cart;
+                  const canAdd =
+                    !historical &&
+                    !!cart &&
+                    scan.status === "succeeded" &&
+                    scan.id === feed.latestAvailableScan?.id &&
+                    feed.ledger.hasResults &&
                     group.state !== "no_longer_present" &&
-                    !!group.bestCurrentOffer
-                  }
-                  inCart={cart.byKey.has(group.key)}
-                  addPending={
-                    cart.writePending && cart.writingKey === group.key
-                  }
-                  cartWritePending={cart.writePending}
-                  onAddToCart={cart.add}
-                />
+                    !!group.bestCurrentOffer;
+                  const favoritePending =
+                    wishlist.mutation.isPending &&
+                    (wishlist.mutation.variables?.kind === "add"
+                      ? wishlist.mutation.variables.phrase === group.title
+                      : wishlist.mutation.variables?.kind === "delete" &&
+                        wishlist.mutation.variables.id === saved?.id);
+                  return (
+                    <ProductRow
+                      key={`${scan.id}:${group.key}:${minDiscount}`}
+                      group={group}
+                      source={feed.source}
+                      scanId={scan.id}
+                      minDiscount={minDiscount}
+                      observedAt={scan.finishedAt ?? scan.createdAt}
+                      canAddToCart={canAdd}
+                      inCart={cart?.byKey.has(group.key)}
+                      addPending={
+                        cart?.writePending && cart.writingKey === group.key
+                      }
+                      cartWritePending={cart?.writePending}
+                      onAddToCart={(key) => cart?.add(key)}
+                      onOpenCart={() => {
+                        if (feed.source !== "digikalajet")
+                          onOpenCart(feed.source);
+                      }}
+                      inWishlist={!!saved}
+                      favoritePending={favoritePending}
+                      wishlistWritePending={wishlist.mutation.isPending}
+                      wishlistReady={wishlist.query.isSuccess}
+                      onFavorite={() => {
+                        if (saved)
+                          wishlist.mutation.mutate({
+                            kind: "delete",
+                            id: saved.id,
+                          });
+                        else
+                          wishlist.mutation.mutate({
+                            kind: "add",
+                            phrase: group.title,
+                            minDiscount: 15,
+                          });
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            ) : (
+              !loading && (
+                <div className="empty">
+                  <h2>
+                    {query
+                      ? "چیزی با این جست‌وجو پیدا نشد"
+                      : "پیشنهادی با این حداقل تخفیف پیدا نشد"}
+                  </h2>
+                  <p>
+                    {query
+                      ? "عبارت جست‌وجو را پاک کنید یا تغییر دهید."
+                      : "حداقل تخفیف را کم کنید؛ نتیجه‌ها بدون اسکن دوباره فیلتر می‌شوند."}
+                  </p>
+                  {query && (
+                    <Button variant="outline" onClick={reset}>
+                      پاک‌کردن جست‌وجو
+                    </Button>
+                  )}
+                </div>
+              )
+            )}
+            <div className="feed-pagination">
+              {feeds.map(({ source, ledger }) => (
+                <div key={source}>
+                  {ledger.nextCursor && (
+                    <Button
+                      variant="outline"
+                      disabled={ledger.results.isFetching}
+                      onClick={ledger.loadMore}
+                    >
+                      نمایش محصولات بیشتر · {sourceLabel(source)}
+                    </Button>
+                  )}
+                  {ledger.hasPreviousPages && (
+                    <Button variant="outline" onClick={ledger.firstPage}>
+                      بازگشت به صفحه نخست · {sourceLabel(source)}
+                    </Button>
+                  )}
+                </div>
               ))}
             </div>
-          ) : (
-            <div className="empty">
-              <h2>چیزی با این جست‌وجو پیدا نشد</h2>
-              <p>عبارت جست‌وجو را پاک کنید یا تغییر دهید.</p>
-              <Button variant="outline" onClick={reset}>
-                پاک‌کردن جست‌وجو
-              </Button>
-            </div>
-          )}
-          {nextCursor && (
+            <p className="observation-note">
+              قیمت و موجودی، مشاهده زمان اسکن است. پیش از خرید در فروشگاه بررسی
+              کنید.
+            </p>
             <Button
               variant="outline"
-              disabled={results.isFetching}
-              onClick={onLoadMore}
+              className="refresh-result"
+              disabled={fetching}
+              onClick={() => {
+                for (const feed of feeds)
+                  if (feed.ledger.scan) void feed.ledger.results.refetch();
+              }}
             >
-              نمایش محصولات بیشتر
+              تازه‌سازی نتیجه
             </Button>
-          )}
-          {hasPreviousPages && (
-            <Button variant="outline" onClick={onFirstPage}>
-              بازگشت به صفحه نخست
-            </Button>
-          )}
-          <p className="observation-note">
-            قیمت و موجودی، مشاهده زمان اسکن است. پیش از خرید در فروشگاه بررسی
-            کنید.
-          </p>
-          <Button
-            variant="outline"
-            className="refresh-result"
-            disabled={results.isFetching}
-            onClick={() => void results.refetch()}
-          >
-            تازه‌سازی نتیجه
-          </Button>
-        </>
+          </>
+        )
       )}
     </section>
   );

@@ -4,7 +4,6 @@ better-buy.ir {
 	@api path /api/* /healthz
 	handle @api {
 		reverse_proxy 127.0.0.1:8787 {
-			header_up CF-Connecting-IP {remote_host}
 			header_up X-Real-IP {remote_host}
 			header_up X-Forwarded-Proto {scheme}
 		}

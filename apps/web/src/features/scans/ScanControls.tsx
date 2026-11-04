@@ -7,39 +7,48 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { LocationRecord } from "@better-buy/shared";
-import type { DealSource } from "../dashboard/types";
-import { faNumber } from "../dashboard/format";
-import { Panel } from "../dashboard/Primitives";
+import type { CartSource, LocationRecord } from "@better-buy/shared";
+import { AppIcon, ProviderMark } from "../dashboard/AppIcon";
+import { faNumber, sourceLabel } from "../dashboard/format";
+
+const providers: CartSource[] = ["snappmarket", "okala"];
+
 export function ScanControls({
   locations,
   selected,
-  source,
-  threshold,
+  selectedProviders,
+  minDiscount,
   blocked,
   submitting,
   hasSnapshot,
+  historical,
   onLocation,
-  onSource,
-  onThreshold,
+  onToggleProvider,
+  onMinDiscount,
   onStart,
+  onLive,
 }: {
   locations: LocationRecord[];
   selected: string;
-  source: DealSource;
-  threshold: number;
+  selectedProviders: CartSource[];
+  minDiscount: number;
   blocked: boolean;
   submitting: boolean;
   hasSnapshot: boolean;
+  historical: boolean;
   onLocation: (id: string) => void;
-  onSource: (source: DealSource) => void;
-  onThreshold: (n: number) => void;
+  onToggleProvider: (source: CartSource) => void;
+  onMinDiscount: (value: number) => void;
   onStart: () => void;
+  onLive: () => void;
 }) {
   return (
-    <section className="scan-controls" aria-label="موقعیت و تخفیف‌ها">
-      <Label className="feed-location">
-        موقعیت تحویل
+    <section className="scan-controls" aria-label="تنظیم اسکن تخفیف‌ها">
+      <Label className="feed-location scan-location-control">
+        <span className="scan-control-label">
+          <AppIcon name="location" />
+          موقعیت تحویل
+        </span>
         <Select value={selected || undefined} onValueChange={onLocation}>
           <SelectTrigger id="selected-location" aria-label="موقعیت تحویل">
             <SelectValue placeholder="یک موقعیت اضافه کنید" />
@@ -53,82 +62,82 @@ export function ScanControls({
           </SelectContent>
         </Select>
       </Label>
-      <div className="feed-actions">
-        <Panel
-          title="تنظیمات تخفیف‌ها"
-          trigger={<Button variant="outline">تنظیمات</Button>}
-        >
-          {source === "digikalajet" ? (
-            <div className="historical-source">
-              <strong>دیجی‌کالا جت · فقط مشاهده</strong>
-              <Button variant="outline" onClick={() => onSource("snappmarket")}>
-                بازگشت به تخفیف‌ها
-              </Button>
-            </div>
-          ) : (
-            <>
-              <Label>
-                فروشگاه
-                <Select
-                  value={source}
-                  onValueChange={(value) =>
-                    onSource(value === "okala" ? "okala" : "snappmarket")
-                  }
-                >
-                  <SelectTrigger aria-label="فروشگاه">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="snappmarket">اسنپ‌مارکت</SelectItem>
-                    <SelectItem value="okala">اکالا</SelectItem>
-                  </SelectContent>
-                </Select>
-              </Label>
-              <Label>
-                حداقل درصد تخفیف
-                <Select
-                  value={String(threshold)}
-                  onValueChange={(value) => onThreshold(Number(value))}
-                >
-                  <SelectTrigger aria-label="حداقل درصد تخفیف">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[
-                      ...new Set([
-                        threshold,
-                        ...(source === "okala"
-                          ? [30, 35, 40, 45, 50]
-                          : [15, 20, 25, 30, 35, 40, 45, 50]),
-                      ]),
-                    ]
-                      .sort((a, b) => a - b)
-                      .map((n) => (
-                        <SelectItem key={n} value={String(n)}>
-                          {faNumber.format(n)}٪ به بالا
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </Label>
-              <p className="muted">
-                این تنظیمات در به‌روزرسانی بعدی استفاده می‌شوند.
-              </p>
-            </>
-          )}
-        </Panel>
+
+      <fieldset className="provider-checklist">
+        <legend>انتخاب فروشگاه‌ها</legend>
+        <div className="provider-card-grid">
+          {providers.map((source) => {
+            const checked = selectedProviders.includes(source);
+            return (
+              <label
+                className="provider-option"
+                key={source}
+                data-checked={checked}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={checked && selectedProviders.length === 1}
+                  onChange={() => onToggleProvider(source)}
+                />
+                <ProviderMark source={source} />
+                <span className="provider-copy">
+                  <strong>{sourceLabel(source)}</strong>
+                </span>
+                <span className="provider-checkmark" aria-hidden="true">
+                  <AppIcon name="check" />
+                </span>
+              </label>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <div className="discount-filter scan-discount-filter">
+        <div className="scan-discount-heading">
+          <span>محدوده تخفیف</span>
+          <output htmlFor="discount-filter">
+            {faNumber.format(minDiscount)}٪
+          </output>
+        </div>
+        <p>از {faNumber.format(minDiscount)}٪ به بالا</p>
+        <input
+          id="discount-filter"
+          type="range"
+          min={15}
+          max={80}
+          step={1}
+          value={minDiscount}
+          aria-valuetext={`${faNumber.format(minDiscount)} درصد و بیشتر`}
+          onChange={(event) => onMinDiscount(Number(event.target.value))}
+        />
+        <span className="range-limits" aria-hidden="true">
+          <span>۱۵٪</span>
+          <span>۸۰٪</span>
+        </span>
+        <small className="scan-filter-hint">
+          این فیلتر نتیجه‌ها را بدون اسکن دوباره به‌روز می‌کند.
+        </small>
+      </div>
+
+      <div className="scan-setup-actions">
         <Button
-          variant="default"
           className="primary scan-button"
-          disabled={blocked || source === "digikalajet"}
+          disabled={blocked}
           onClick={onStart}
         >
+          <AppIcon name="scan" />
           {submitting
             ? "در حال شروع…"
             : hasSnapshot
-              ? "به‌روزرسانی تخفیف‌ها"
-              : "پیدا کردن تخفیف‌ها"}
+              ? "اسکن دوباره"
+              : "شروع اسکن"}
         </Button>
+        {historical && (
+          <Button variant="outline" onClick={onLive}>
+            بازگشت به تازه‌ترین پیشنهادها
+          </Button>
+        )}
       </div>
     </section>
   );

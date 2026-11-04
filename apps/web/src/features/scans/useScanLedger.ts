@@ -11,10 +11,16 @@ export async function loadDealLedger(
   scanId: string,
   signal?: AbortSignal,
   query = "",
-  sort = "wishlist",
-  cursor: string | null = null
+  sort = "discount",
+  cursor: string | null = null,
+  minDiscount = 15
 ) {
-  const params = new URLSearchParams({ page: "1", q: query, sort });
+  const params = new URLSearchParams({
+    page: "1",
+    q: query,
+    sort,
+    minDiscount: String(minDiscount),
+  });
   if (cursor) params.set("cursor", cursor);
   const page = await api(
     `/api/scans/${scanId}/products?${params}`,
@@ -40,8 +46,10 @@ export function useScanLedger({
   selectedRunId,
   coordinateRevision,
   query = "",
-  sort = "wishlist",
+  sort = "discount",
   wishlistRevision = 0,
+  cartRevision = "",
+  minDiscount = 15,
 }: {
   busy: boolean;
   selected: string;
@@ -52,6 +60,8 @@ export function useScanLedger({
   query?: string;
   sort?: string;
   wishlistRevision?: number;
+  cartRevision?: string;
+  minDiscount?: number;
 }) {
   const client = useQueryClient();
   const contextual = scans
@@ -79,6 +89,8 @@ export function useScanLedger({
     query,
     sort,
     wishlistRevision,
+    cartRevision,
+    minDiscount,
   ];
   const contextKey = JSON.stringify(baseKey);
   const [paging, setPaging] = useState<{
@@ -87,8 +99,15 @@ export function useScanLedger({
   }>({ context: "", cursors: [null] });
   const cursors = paging.context === contextKey ? paging.cursors : [null];
   const cursor = cursors.at(-1) ?? null;
-  const ledger = useQuery({
+  const ledger = useQuery<ProductPage>({
     queryKey: [...baseKey, cursor],
+    placeholderData: (previous, previousQuery) => {
+      const key = previousQuery?.queryKey;
+      return key &&
+        [0, 1, 2, 3, 4, 5, 6, 9].every((index) => key[index] === baseKey[index])
+        ? previous
+        : undefined;
+    },
     gcTime: 600_000,
     staleTime: 600_000,
     enabled: !busy && requestedScan?.status === "succeeded",
@@ -98,7 +117,8 @@ export function useScanLedger({
         signal,
         query,
         sort,
-        cursor
+        cursor,
+        minDiscount
       );
       // Retain the loaded window until the next read succeeds. A failed read
       // must not discard any visible rows merely to make room for its page.
@@ -120,7 +140,7 @@ export function useScanLedger({
   // Preserve the previous matching cached snapshot with its own label if a new
   // successful scan has an independent result-read failure. No foreign context.
   const cachedPages = (id: string) => {
-    const key = [
+    const readKey = [
       "ledger",
       selected,
       coordinateRevision,
@@ -128,14 +148,36 @@ export function useScanLedger({
       id,
       query,
       sort,
-      wishlistRevision,
     ];
-    return (paging.context === JSON.stringify(key) ? paging.cursors : [null])
-      .map((value) => client.getQueryData<ProductPage>([...key, value]))
+    const cached = client
+      .getQueriesData<ProductPage>({ queryKey: readKey })
+      .filter(
+        ([key, page]) =>
+          !!page &&
+          key.length === baseKey.length + 1 &&
+          key[baseKey.length - 1] === minDiscount
+      )
+      .sort(
+        ([a], [b]) =>
+          (client.getQueryState(b)?.dataUpdatedAt ?? 0) -
+          (client.getQueryState(a)?.dataUpdatedAt ?? 0)
+      );
+    const newestKey = cached[0]?.[0].slice(0, -1);
+    if (!newestKey) return [];
+    return cached
+      .filter(([key]) =>
+        newestKey.every((value, index) => key[index] === value)
+      )
+      .map(([, page]) => page)
       .filter((page): page is ProductPage => !!page);
   };
+  const currentPages = pages.length
+    ? pages
+    : requestedScan
+      ? cachedPages(requestedScan.id)
+      : [];
   const prior =
-    !pages.length && !selectedRunId
+    !currentPages.length && !selectedRunId
       ? contextual.find(
           (run) =>
             run.status === "succeeded" &&
@@ -144,7 +186,7 @@ export function useScanLedger({
         )
       : undefined;
   const fallback = prior ? cachedPages(prior.id) : [];
-  const visiblePages = pages.length ? pages : fallback;
+  const visiblePages = currentPages.length ? currentPages : fallback;
   const groups = new Map(
     visiblePages
       .flatMap((page) => page.items)

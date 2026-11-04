@@ -14,14 +14,23 @@ export function useWishlist() {
   const mutation = useMutation({
     mutationFn: (
       action:
-        | { kind: "add"; phrase: string }
+        | { kind: "add"; phrase: string; minDiscount: number }
+        | { kind: "discount"; id: string; minDiscount: number }
         | { kind: "delete"; id: string }
         | { kind: "location"; locationId: string | null }
     ) => {
       if (action.kind === "add")
         return api("/api/wishlist", {
           method: "POST",
-          body: JSON.stringify({ phrase: action.phrase }),
+          body: JSON.stringify({
+            phrase: action.phrase,
+            minDiscount: action.minDiscount,
+          }),
+        });
+      if (action.kind === "discount")
+        return api("/api/wishlist/" + encodeURIComponent(action.id), {
+          method: "PATCH",
+          body: JSON.stringify({ minDiscount: action.minDiscount }),
         });
       if (action.kind === "delete")
         return api("/api/wishlist/" + encodeURIComponent(action.id), {

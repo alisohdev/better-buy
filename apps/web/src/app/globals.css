@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "leaflet/dist/leaflet.css";
+@import "maplibre-gl/dist/maplibre-gl.css";
 @import "./legacy.css" layer(components);
 
 @custom-variant dark (&:is(.dark *));

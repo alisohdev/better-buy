@@ -1,107 +1,53 @@
-# Production Readiness Plan
+# Go VPS production readiness
 
-Target: Cloudflare Worker + D1 + static Next.js assets. This checklist is a release contract, not a suggestion list.
+The target runtime is one Go server process with a persistent SQLite scan queue. The Next frontend is built as static files for the existing web host. This checklist records work that must pass before replacing the current VPS services. No rollout is authorized by this document.
 
-## Architecture and Cloudflare runtime
+## Runtime and queue
 
-- [ ] Measure real scan duration, upstream page counts, retry duration, D1 statement volume, and interruption rate.
-- [ ] Decide from evidence whether request `waitUntil` is sufficient; otherwise move scans to a durable job mechanism suitable for multi-step/retriable work.
-- [x] Make scan exclusivity atomic per user with a partial unique active-scan index and a stable conflict response. Rehearsal is still required.
-- [ ] Keep D1 access through the binding and generated Wrangler types.
-- [ ] Keep `compatibility_date` current through a scheduled review and test before advancing it.
-- [ ] Retain `nodejs_compat` and JSONC configuration.
-- [ ] Validate current Wrangler config against its bundled schema in CI.
-- [ ] Split the monolithic Worker route/store modules only along tested domain seams.
+- [ ] Build the Go binary for the VPS operating system and architecture.
+- [ ] Start the server under systemd with one process; confirm HTTP, queued scans, schedule, notifications, and cleanup run together.
+- [ ] Verify graceful shutdown requeues an active scan and startup recovers queued/running/waiting jobs.
+- [ ] Verify cancellation, bounded provider retries, idempotent starts, active-scan exclusivity, and recovery after forced termination.
+- [ ] Measure request duration, scan duration, provider retries, queue age, and failure codes with sanitized logs.
+- [ ] Measure Go idle and peak RSS on the actual VPS. Compare the same workload and accounting method against the recorded previous-process snapshot.
 
-## D1 schema and migrations
+## SQLite data and migrations
 
-- [x] Add tenant-safe composite joins and indexes for scan history and previous-scan lookup. Deal-volume indexing remains a measured follow-up.
-- [ ] Add grouping columns only after runtime projection is proven; keep them nullable/versioned for legacy scans.
-- [ ] Preserve raw vendor offers and raw `deal_count`; add grouped count explicitly.
-- [ ] Audit existing locations for out-of-Tehran rows and hidden magic default rows.
-- [ ] Write every migration as forward-only, rehearsed on a production-shaped copy, with a documented rollback/restore procedure.
-- [ ] Verify batching behavior with maximum realistic offers; chunk or redesign before platform limits become runtime failures.
-- [ ] Define data retention for scans, deals, sessions, provider credentials, and locations.
-- [ ] Establish automated D1 backup/export and test restoration.
+- [ ] Take a consistent backup of the existing database and restore it to an isolated copy.
+- [ ] Run the embedded Go migrations against that copy; verify users, sessions, locations, scans, deals, wishlist, carts, and notification counts.
+- [ ] Confirm indexes, foreign keys, WAL mode, synchronous mode, and single-process database ownership.
+- [ ] Exercise migration failure and rollback on a disposable copy.
+- [ ] Define retention for scan history, deals, sessions, rate-limit rows, maintenance ticks, and push deliveries.
+- [ ] Verify disk-space monitoring and backup rotation for the SQLite database and WAL files.
 
-## Authentication, credentials, and abuse protection
+## Authentication, security, and privacy
 
-SnappMarket uses ephemeral Worker-owned guest access; Okala uses credential-free public endpoints. Google/Better Auth and tenant isolation still apply to both. Shared encryption and BOX_KEY remain only for retained legacy provider data; active scans never decrypt Okala settings.
+- [ ] Verify email sign-in, Google OAuth, session cookies, sign-out, trusted origins, CORS, and existing-session behavior on staging.
+- [ ] Keep production `DEV_MODE=false`; verify the dev-only login and wishlist routes return 404.
+- [ ] Keep secrets in systemd environment configuration or a secrets manager, never in tracked files or logs.
+- [ ] Verify BOX_KEY compatibility with retained encrypted rows and keep it stable through rollout.
+- [ ] Verify VAPID key configuration, push endpoint host allowlisting, redirect rejection, and expired-subscription cleanup.
+- [ ] Review request size limits, per-user rate limits, security headers, and sanitized error responses.
+- [ ] Keep exact locations, credentials, OAuth tokens, push endpoints, and raw provider responses out of logs.
 
-- [ ] Review legacy encryption key strength before reactivating a provider that needs persisted credentials.
-- [ ] Add encryption version/key identifier and a credential rotation runbook.
-- [x] Ignore legacy Okala ciphertext in scans, including corrupt/expired rows.
-- [ ] Keep tokens, refresh tokens, OTPs, raw upstream responses, addresses, and coordinates out of logs/errors.
-- [x] Remove custom Okala OTP/login/token-submission routes; authenticated callers receive 404.
-- [ ] Add per-user scan quota/concurrency controls and clear `Retry-After`/Persian UX where appropriate.
-- [ ] Verify OAuth trusted origins, cookie settings, CORS origins, and production `DEV_MODE=false` during deployment.
-- [ ] Assert the dev-only test-login endpoint is unreachable in staging/production smoke tests.
-- [ ] Add a security-header/CSP policy covering only selected auth, image, map, and geocoder origins.
+## API and provider compatibility
 
-## API contracts and error handling
+- [ ] Compare all HTTP routes and JSON responses with the frontend contracts, including errors and pagination.
+- [ ] Verify Snapp guest access, pagination completeness, normalization, cancellation, and retry behavior using fixtures and a controlled staging run.
+- [ ] Verify Okala nearby-store and campaign collection, threshold/stock rules, incomplete-pagination handling, and safe failures.
+- [ ] Explicitly decide whether to port Snapp store-campaign enrichment and Okala shared-offer caching; both are absent from the current Go collector.
+- [ ] Verify previous successful scan results remain available after a later scan fails or is cancelled.
+- [ ] Verify wishlist schedules, notification deduplication, inbox reads, and real browser push delivery.
 
-- [x] Use stable machine codes and safe Persian messages for provider unavailable, outside Tehran, scan conflict, interrupted scan, and geocoder failure. Public Okala access rejection maps to UPSTREAM_FORBIDDEN; upstream rate limits remain distinct.
-- [ ] Add a top-level structured error boundary that logs sanitized context and returns a request ID.
-- [ ] Do not couple dashboard availability to non-active provider endpoints.
-- [ ] Add pagination/server-side filtering before grouped scans exceed measured memory/latency budgets.
-- [ ] Prevent stale/out-of-order frontend responses from changing current context.
-- [ ] Version grouping normalization behavior and API responses before materializing keys.
+## Web build and delivery
 
-## Testing and CI
+- [ ] Build the Next static export and verify API requests reach the Go server through the production reverse proxy.
+- [ ] Verify Caddy serves the static frontend and routes `/api/*` and `/healthz` to the Go listener.
+- [ ] Verify secure cookies and Google OAuth redirect URLs through the production domain.
+- [ ] Test service restart, process failure, disk-full behavior, and SQLite backup restoration on staging.
+- [ ] Record a rollback plan for the Go binary, static assets, environment configuration, and database migrations.
+- [ ] Roll out only after a separate explicit deployment authorization.
 
-Historical audit baseline: 13 Worker tests and no Playwright specs. The current suite includes shared-domain tests, Worker tests, an in-memory SQLite scan/migration regression suite, and desktop/mobile dashboard specs. SQLite tests use a D1 interface adapter and mocked sessions/upstream; actual Worker/D1 runtime and Google OAuth verification remain separate release gates.
+## Current status
 
-Required CI stages:
-
-1. Formatting/lint, including no-floating-promises.
-2. Typecheck and generated Wrangler binding drift check.
-3. Shared-domain unit tests: Tehran boundary, Persian normalization, grouping/state derivation.
-4. Worker unit tests: collectors, retries, credential-free access, error mapping.
-5. Worker/D1 runtime integration tests: auth isolation, location CRUD, scan conflict, scan/deal history, migrations.
-6. Web component tests: provider state machine, context switching, grouped filtering, map/search states, dialogs.
-7. Playwright desktop/mobile: login fixture, location, automatic Snapp scanning, public Okala scanning without setup, scan lifecycle, grouping, history, accessibility-critical keyboard flows.
-8. Production build with warnings treated as tracked failures.
-9. Staging deployment, migration dry run, authenticated smoke tests, and unauthenticated liveness check.
-
-Failure injection must cover upstream timeout, 401/403, 429, malformed JSON, interrupted scan, D1 failure, ignored legacy expired/corrupt Okala credentials, geocoder failure, tile failure, and rapid context switching.
-
-## Observability and alerts
-
-- [ ] Emit structured JSON events with request ID, anonymized user correlation, provider, state/error code, duration, and counts.
-- [ ] Never attach exact location or credential data.
-- [x] Add minimal public `/healthz` liveness and keep authenticated `/api/health` diagnostics.
-- [ ] Dashboard scan success rate/duration, auth expiry/rejection, upstream status classes, stale/interrupted scans, geocode latency/error, and outside-city rejection.
-- [ ] Alert on elevated scan failure, stuck scans, auth spikes, D1 errors, and provider/geocoder outage.
-- [ ] Set sampling intentionally by environment; 100% sampling must be a conscious cost/privacy decision.
-- [ ] Document how to temporarily disable one provider without redeploying unrelated behavior.
-
-## Maps, geocoding, and privacy
-
-- [ ] Define Tehran with a versioned boundary and provenance.
-- [ ] Select map/geocoder providers with written policy, SLA, rate, attribution, privacy, and cost review.
-- [ ] Keep provider endpoint configuration switchable.
-- [ ] Proxy geocoding through the Worker with cache and rate limit; timeout, Tehran filtering, and normalized results are implemented.
-- [ ] Do not implement public Nominatim autocomplete; comply with the provider’s current policy if used for explicit private-MVP search.
-- [ ] Show visible attribution and graceful tile/search fallback.
-- [ ] Document that exact saved location is sensitive data, why it is needed, which third parties receive area/search data, and how the user deletes it.
-
-## Delivery and rollback
-
-- [ ] Use separate development, staging, and production bindings/databases/secrets.
-- [ ] Require secret presence checks before deployment.
-- [ ] Back up D1 before schema changes and record migration version.
-- [ ] Use a staged provider rollout/capability flag for user-visible providers.
-- [ ] Smoke-test auth, one valid Tehran location, credential-free provider access, a scan, history, and static asset fallback after deploy.
-- [ ] Define rollback for Worker code, static assets, provider availability, and migrations.
-- [ ] Keep historical data readable across one prior API/UI version during migrations.
-
-## Definition of production-ready
-
-The release is ready only when:
-
-- Primary results are always context-correct.
-- Both Snapp and Okala start with a valid location and ordinary scan constraints, without customer credentials. Connectivity failure preserves successful history and offers retry.
-- Outside-Tehran locations cannot enter or use the system.
-- Grouping does not destroy vendor history or merge distinct products in the approved corpus.
-- CI and staging gates pass, monitoring is live, secrets are verified, D1 can be restored, and rollback has been rehearsed.
-- Known P0/P1 items in [BUGS.md](./BUGS.md) are closed or explicitly accepted with owner and expiry date.
+The Go implementation and frontend static export compile locally. Full API/provider parity, existing-production-database compatibility, systemd behavior, actual push delivery, and VPS memory remain unverified. Snapp store-campaign enrichment and Okala shared-offer caching are not implemented. Do not claim a memory reduction until the Go process is measured on the VPS.

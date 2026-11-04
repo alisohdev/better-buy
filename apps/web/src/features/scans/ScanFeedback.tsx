@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { LocationRecord, ScanRecord } from "@better-buy/shared";
+import { AppIcon, ProviderMark } from "../dashboard/AppIcon";
 import { ReadNotice } from "../dashboard/Primitives";
 import { faNumber, sourceLabel } from "../dashboard/format";
 import type { useScanPolling } from "./useScanPolling";
@@ -24,8 +25,12 @@ export function ScanFeedback({
     <>
       {active && (
         <Card asChild>
-          <section className="active-scan" role="status">
+          <section className="active-scan" role="status" aria-live="polite">
             <div>
+              <span className="scan-provider">
+                <ProviderMark source={active.source} />
+                {sourceLabel(active.source)}
+              </span>
               <strong>
                 {polling.error
                   ? "وضعیت اسکن تازه‌سازی نشد"
@@ -33,7 +38,7 @@ export function ScanFeedback({
                     ? "اسکن در انتظار بررسی است"
                     : "در حال پیدا کردن تخفیف‌ها…"}
               </strong>
-              <p>
+              <p className="scan-status-badges">
                 {active.locationName} · {sourceLabel(active.source)} · حداقل{" "}
                 {faNumber.format(active.threshold)}٪
               </p>
@@ -50,19 +55,54 @@ export function ScanFeedback({
                 </p>
               )}
               {active.execution && (
-                <details>
-                  <summary>جزئیات به‌روزرسانی</summary>
-                  <p>
-                    {faNumber.format(active.execution.completedPages)} صفحه
-                    دریافت‌شده ·{" "}
-                    {faNumber.format(active.execution.observedRows)} رکورد
-                    مشاهده‌شده
+                <div className="scan-progress-card">
+                  <div className="scan-sweep" aria-hidden="true" />
+                  <p className="scan-phase">
+                    {active.execution.cancelRequested
+                      ? "در حال توقف و حفظ نتیجه قبلی…"
+                      : active.execution.phase === "queued"
+                        ? "در انتظار شروع بررسی فروشگاه‌ها"
+                        : "در حال دریافت و مقایسه پیشنهادهای فروشگاه‌ها"}
                   </p>
-                  <p>
+                  <div
+                    className="scan-progress-track"
+                    role="progressbar"
+                    aria-label="پیشرفت اسکن"
+                    aria-valuemin={0}
+                    aria-valuemax={active.execution.totalUnits || undefined}
+                    aria-valuenow={
+                      active.execution.totalUnits
+                        ? active.execution.completedUnits
+                        : undefined
+                    }
+                  >
+                    <span
+                      style={{
+                        width: `${active.execution.totalUnits ? Math.min(100, (active.execution.completedUnits / active.execution.totalUnits) * 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="scan-progress-count">
                     {faNumber.format(active.execution.completedUnits)} از{" "}
-                    {faNumber.format(active.execution.totalUnits)} بخش تکمیل شده
+                    {faNumber.format(active.execution.totalUnits)} بخش ·{" "}
+                    {faNumber.format(active.execution.observedRows)} کالا
+                    بررسی‌شده
                   </p>
-                </details>
+                  <details>
+                    <summary>جزئیات به‌روزرسانی</summary>
+                    <p>
+                      {faNumber.format(active.execution.completedPages)} صفحه
+                      دریافت‌شده ·{" "}
+                      {faNumber.format(active.execution.observedRows)} رکورد
+                      مشاهده‌شده
+                    </p>
+                    <p>
+                      {faNumber.format(active.execution.completedUnits)} از{" "}
+                      {faNumber.format(active.execution.totalUnits)} بخش تکمیل
+                      شده
+                    </p>
+                  </details>
+                </div>
               )}
               {cancel.error && (
                 <p className="form-error">
@@ -88,8 +128,13 @@ export function ScanFeedback({
                   بررسی دوباره وضعیت
                 </Button>
               )}
-              <Button variant="outline" onClick={() => onOpenContext(active)}>
-                نمایش موقعیت اسکن
+              <Button
+                variant="outline"
+                size="icon-xs"
+                aria-label="نمایش موقعیت اسکن"
+                onClick={() => onOpenContext(active)}
+              >
+                <AppIcon name="location" />
               </Button>
             </div>
           </section>

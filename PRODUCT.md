@@ -20,12 +20,12 @@ The product turns a location-specific promotional feed into a durable, comparabl
 
 ## Operating Context
 
-The application uses a Cloudflare Worker (Hono, D1, Better Auth) and a static Next.js frontend, with the same Worker code used locally. Each Google-signed-in user owns private delivery locations and scan history and starts scans manually. A valid Tehran location is enough to start a SnappMarket scan: the Worker obtains public PWA guest access automatically. Okala uses public nearby-store and multi-store campaign feeds without customer credentials; Digikala Jet is disabled for new activity and keeps read-only history.
+The application uses a Go HTTP backend with SQLite and a static Next.js frontend. Each signed-in user owns private delivery locations and scan history and starts scans manually. A valid Tehran location is enough to start a SnappMarket scan: the API obtains public PWA guest access automatically. Okala uses public nearby-store and multi-store campaign feeds without customer credentials; Digikala Jet is disabled for new activity and keeps read-only history.
 
 ## Capabilities and Constraints
 
 - Persian RTL web interface.
-- Hono Worker API, static Next.js frontend, tenant-isolated D1 history, and location-specific wishlist scans scheduled for 09:00 and 18:00 Asia/Tehran.
+- Go API, static Next.js frontend, tenant-isolated SQLite history, and location-specific wishlist scans scheduled for 09:00 and 18:00 Asia/Tehran.
 - API collection only; DOM scraping and purchasing are excluded. Wishlist matches appear in an in-app inbox and, with explicit permission and configured VAPID keys, encrypted browser/PWA Web Push notifications.
 - SnappMarket price amounts are presented as the tomans supplied by the API, without a unit conversion.
 - Authentication material must stay out of browser-readable responses and logs.
@@ -43,7 +43,7 @@ The supplied market-party response establishes vendor-grouped products with disc
 - Make the best deal legible at a glance.
 - Treat location and scan time as essential context.
 - Preserve successful history even when upstream collection fails.
-- Okala scans ignore legacy credential rows and use no customer or guest tokens. Keep Snapp guest access ephemeral in the Worker, out of browser responses and logs.
+- Okala scans ignore legacy credential rows and use no customer or guest tokens. Keep Snapp guest access ephemeral in the Go server, out of browser responses and logs.
 - Promotional feed absence does not establish that a product is out of stock across Okala.
 - Prefer explicit operational states over silent failure.
 

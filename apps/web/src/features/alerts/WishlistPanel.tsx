@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import type { LocationRecord } from "@better-buy/shared";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
@@ -7,14 +7,22 @@ import { useWishlist } from "./useAlerts";
 import { PushSettings } from "./PushSettings";
 import { DevWishlistScan } from "./DevWishlistScan";
 import { useDevWishlistScan } from "./useDevWishlistScan";
+import type { WishlistItem } from "./contracts";
+import { faNumber } from "../dashboard/format";
 import "./alerts.css";
 
 export function WishlistPanel({
   locations,
   locationsReady,
+  open,
+  onOpenChange,
+  trigger = <Button variant="ghost">علاقه‌مندی‌ها</Button>,
 }: {
   locations: LocationRecord[];
   locationsReady: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  trigger?: ReactNode;
 }) {
   const { query, mutation } = useWishlist();
   const devEnabled =
@@ -22,6 +30,7 @@ export function WishlistPanel({
     query.data?.devScanEnabled === true;
   const devScan = useDevWishlistScan(devEnabled);
   const [phrase, setPhrase] = useState("");
+  const [minDiscount, setMinDiscount] = useState(15);
   const [notice, setNotice] = useState("");
   const savedLocation = query.data?.defaultLocationId;
   const missingLocation =
@@ -31,27 +40,9 @@ export function WishlistPanel({
   return (
     <Panel
       title="فهرست علاقه‌مندی‌ها"
-      trigger={
-        <Button
-          variant="ghost"
-          className="header-icon-button"
-          aria-label="علاقه‌مندی‌ها"
-          title="علاقه‌مندی‌ها"
-        >
-          <svg
-            aria-hidden="true"
-            focusable="false"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" />
-          </svg>
-        </Button>
-      }
+      trigger={trigger}
+      open={open}
+      onOpenChange={onOpenChange}
     >
       <div className="alerts-content">
         <p className="muted">
@@ -83,7 +74,7 @@ export function WishlistPanel({
                 if (!phrase.trim() || mutation.isPending) return;
                 setNotice("");
                 mutation.mutate(
-                  { kind: "add", phrase: phrase.trim() },
+                  { kind: "add", phrase: phrase.trim(), minDiscount },
                   {
                     onSuccess: () => {
                       setPhrase("");
@@ -109,29 +100,51 @@ export function WishlistPanel({
                   افزودن
                 </Button>
               </div>
+              <div className="wishlist-discount">
+                <label htmlFor="wishlist-min-discount">
+                  حداقل تخفیف برای اعلان: {faNumber.format(minDiscount)}٪
+                </label>
+                <Input
+                  id="wishlist-min-discount"
+                  type="range"
+                  min={15}
+                  max={80}
+                  step={1}
+                  value={minDiscount}
+                  onChange={(event) =>
+                    setMinDiscount(Number(event.target.value))
+                  }
+                  disabled={mutation.isPending}
+                />
+                <p className="muted">
+                  برای هر عبارت، تخفیف بین ۱۵ تا ۸۰ درصد را انتخاب کنید.
+                </p>
+              </div>
             </form>
             {query.data.items.length === 0 ? (
               <p className="muted">هنوز عبارتی ثبت نکرده‌اید.</p>
             ) : (
               <ul className="wishlist-items">
                 {query.data.items.map((item) => (
-                  <li key={item.id}>
-                    <span>{item.phrase}</span>
-                    <Button
-                      variant="outline"
-                      disabled={mutation.isPending}
-                      aria-label={"حذف " + item.phrase}
-                      onClick={() => {
-                        setNotice("");
-                        mutation.mutate(
-                          { kind: "delete", id: item.id },
-                          { onSuccess: () => setNotice("عبارت حذف شد.") }
-                        );
-                      }}
-                    >
-                      حذف
-                    </Button>
-                  </li>
+                  <WishlistRow
+                    key={item.id}
+                    item={item}
+                    busy={mutation.isPending}
+                    onDiscount={(minDiscount) => {
+                      setNotice("");
+                      mutation.mutate(
+                        { kind: "discount", id: item.id, minDiscount },
+                        { onSuccess: () => setNotice("حداقل تخفیف ذخیره شد.") }
+                      );
+                    }}
+                    onDelete={() => {
+                      setNotice("");
+                      mutation.mutate(
+                        { kind: "delete", id: item.id },
+                        { onSuccess: () => setNotice("عبارت حذف شد.") }
+                      );
+                    }}
+                  />
                 ))}
               </ul>
             )}
@@ -202,5 +215,66 @@ export function WishlistPanel({
         />
       </div>
     </Panel>
+  );
+}
+
+function WishlistRow({
+  item,
+  busy,
+  onDiscount,
+  onDelete,
+}: {
+  item: WishlistItem;
+  busy: boolean;
+  onDiscount: (minDiscount: number) => void;
+  onDelete: () => void;
+}) {
+  const [minDiscount, setMinDiscount] = useState(item.minDiscount);
+  useEffect(() => setMinDiscount(item.minDiscount), [item.minDiscount]);
+  return (
+    <li>
+      <form
+        className="wishlist-item-settings"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!busy && minDiscount !== item.minDiscount)
+            onDiscount(minDiscount);
+        }}
+      >
+        <strong>{item.phrase}</strong>
+        <label htmlFor={"wishlist-discount-" + item.id}>
+          حداقل تخفیف: {faNumber.format(minDiscount)}٪
+        </label>
+        <Input
+          id={"wishlist-discount-" + item.id}
+          type="range"
+          min={15}
+          max={80}
+          step={1}
+          value={minDiscount}
+          onChange={(event) => setMinDiscount(Number(event.target.value))}
+          disabled={busy}
+        />
+        <div className="alerts-actions">
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={busy || minDiscount === item.minDiscount}
+            aria-label={"ذخیره حداقل تخفیف " + item.phrase}
+          >
+            ذخیره تخفیف
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={busy}
+            aria-label={"حذف " + item.phrase}
+            onClick={onDelete}
+          >
+            حذف
+          </Button>
+        </div>
+      </form>
+    </li>
   );
 }

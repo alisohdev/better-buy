@@ -1,0 +1,8 @@
+- generic [active] [ref=e1]:
+    - button "Open Next.js Dev Tools" [ref=e12] [cursor=pointer]
+    - alert [ref=e16]
+    - main [ref=e17]:
+        - region [ref=e18]:
+            - heading "Local development" [level=1] [ref=e19]
+            - paragraph [ref=e20]: Use the local test account to develop without Google login.
+            - button "Continue as local test user" [ref=e21] [cursor=pointer]

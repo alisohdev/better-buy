@@ -1,31 +1,38 @@
 import { Button } from "@/components/ui/button";
-import { useState, type ReactNode } from "react";
-import { Dialog, DropdownMenu } from "radix-ui";
+import { useRef, useState, type ReactNode } from "react";
+import { DropdownMenu } from "radix-ui";
+import { useTheme } from "next-themes";
 import { authClient } from "../../app/auth-client";
-import { ThemeMenu } from "./ThemeMenu";
+import { Panel } from "./Primitives";
+import { AppIcon } from "./AppIcon";
 import { cleanupPushBeforeSignOut } from "../alerts/push";
 
 export function AppHeader({
   onLocations,
   onHistory,
   onHome,
+  onWishlist,
+  onNotifications,
+  onAdmin,
   view,
   actions,
   feedback,
-  alerts,
 }: {
   onLocations: () => void;
   onHistory: () => void;
   onHome: () => void;
-  view: "deals" | "history";
+  onWishlist: () => void;
+  onNotifications: () => void;
+  onAdmin?: () => void;
+  view: "deals" | "history" | "admin";
   actions?: ReactNode;
   feedback?: ReactNode;
-  alerts?: ReactNode;
 }) {
+  const { theme, setTheme } = useTheme();
   const [accountError, setAccountError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
   const [helpOpen, setHelpOpen] = useState(false);
-
+  const menuTrigger = useRef<HTMLButtonElement | null>(null);
   const signOut = () => {
     if (signingOut) return;
     setSigningOut(true);
@@ -37,8 +44,8 @@ export function AppHeader({
         );
       })
       .then(() => authClient.signOut())
-      .then((result) => {
-        if (result.error)
+      .then((response) => {
+        if (response.error)
           setAccountError("خروج از حساب انجام نشد؛ دوباره تلاش کنید.");
       })
       .catch((error: unknown) =>
@@ -50,7 +57,6 @@ export function AppHeader({
       )
       .finally(() => setSigningOut(false));
   };
-
   return (
     <>
       <header className="app-header">
@@ -59,7 +65,6 @@ export function AppHeader({
           className="brand"
           onClick={onHome}
           aria-label="بهتر بخر، پیشنهادها"
-          title="پیشنهادها"
         >
           <span className="brand-mark">ب</span>
           <span>
@@ -69,168 +74,123 @@ export function AppHeader({
             </small>
           </span>
         </Button>
-
-        <div className="app-header-controls">
-          <nav className="app-header-primary" aria-label="دسترسی سریع">
-            {alerts}
+        <nav className="desktop-primary-nav" aria-label="ناوبری اصلی">
+          <Button variant="ghost" onClick={onWishlist}>
+            <AppIcon name="heart" />
+            علاقه‌مندی‌ها
+          </Button>
+          <Button variant="ghost" onClick={onNotifications}>
+            <AppIcon name="bell" />
+            اعلان‌ها
+          </Button>
+          <Button
+            variant="ghost"
+            aria-current={view === "history" ? "page" : undefined}
+            onClick={onHistory}
+          >
+            <AppIcon name="history" />
+            تاریخچه
+          </Button>
+        </nav>
+        <div className="header-actions">{actions}</div>
+        <DropdownMenu.Root dir="rtl">
+          <DropdownMenu.Trigger asChild>
             <Button
+              ref={menuTrigger}
               variant="ghost"
-              className="header-icon-button"
-              onClick={onLocations}
-              aria-label="موقعیت‌ها"
-              title="موقعیت‌ها"
+              className="secondary-menu-trigger"
+              aria-label="منوی برنامه"
             >
-              <LocationIcon />
+              <AppIcon name="menu" />
             </Button>
-            <Button
-              variant="ghost"
-              className="header-icon-button"
-              onClick={onHistory}
-              aria-label="تاریخچه اسکن"
-              title="تاریخچه اسکن"
-              aria-current={view === "history" ? "page" : undefined}
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              className="account-menu secondary-menu"
+              align="end"
+              sideOffset={8}
             >
-              <HistoryIcon />
-            </Button>
-            {actions}
-          </nav>
-
-          <div className="app-header-menu">
-            <DropdownMenu.Root dir="rtl">
-              <DropdownMenu.Trigger asChild>
-                <Button
-                  variant="ghost"
-                  className="header-icon-button"
-                  aria-label="منوی بیشتر"
-                  title="منوی بیشتر"
-                >
-                  <MenuIcon />
-                </Button>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content
-                  className="account-menu app-header-menu-content"
-                  align="end"
-                  sideOffset={8}
-                  aria-label="منوی بیشتر"
-                >
-                  <DropdownMenu.Label>بیشتر</DropdownMenu.Label>
-                  <ThemeMenu />
-                  <DropdownMenu.Item onSelect={() => setHelpOpen(true)}>
-                    راهنما
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Separator />
-                  <DropdownMenu.Item disabled={signingOut} onSelect={signOut}>
-                    {signingOut ? "در حال خروج امن…" : "خروج از حساب"}
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
-          </div>
-        </div>
-
+              <DropdownMenu.Item onSelect={onHome}>پیشنهادها</DropdownMenu.Item>
+              <DropdownMenu.Item
+                onSelect={() => requestAnimationFrame(onLocations)}
+              >
+                مدیریت موقعیت‌ها
+              </DropdownMenu.Item>
+              <DropdownMenu.Item
+                onSelect={() => requestAnimationFrame(() => setHelpOpen(true))}
+              >
+                راهنمای بهتر بخر
+              </DropdownMenu.Item>
+              {onAdmin && (
+                <DropdownMenu.Item onSelect={onAdmin}>
+                  مدیریت و آمار
+                </DropdownMenu.Item>
+              )}
+              <DropdownMenu.Sub>
+                <DropdownMenu.SubTrigger>ظاهر برنامه</DropdownMenu.SubTrigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.SubContent
+                    className="account-menu"
+                    sideOffset={4}
+                  >
+                    <DropdownMenu.RadioGroup
+                      value={theme}
+                      onValueChange={setTheme}
+                    >
+                      <DropdownMenu.RadioItem value="light">
+                        روشن
+                      </DropdownMenu.RadioItem>
+                      <DropdownMenu.RadioItem value="dark">
+                        تیره
+                      </DropdownMenu.RadioItem>
+                      <DropdownMenu.RadioItem value="system">
+                        سیستم
+                      </DropdownMenu.RadioItem>
+                    </DropdownMenu.RadioGroup>
+                  </DropdownMenu.SubContent>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Sub>
+              <DropdownMenu.Separator className="menu-separator" />
+              <DropdownMenu.Item disabled={signingOut} onSelect={signOut}>
+                {signingOut ? "در حال خروج امن…" : "خروج از حساب"}
+              </DropdownMenu.Item>
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
         {feedback}
       </header>
-
+      <Panel
+        title="راهنمای بهتر بخر"
+        open={helpOpen}
+        onOpenChange={(open) => {
+          setHelpOpen(open);
+          if (!open) requestAnimationFrame(() => menuTrigger.current?.focus());
+        }}
+        trigger={<button type="button" hidden aria-label="راهنما" />}
+      >
+        <p>
+          موقعیت تحویل را ثبت کنید تا تخفیف‌ها پیدا شوند؛ سپس قیمت فروشگاه‌ها را
+          مقایسه کنید.
+        </p>
+        <p>
+          برای اسکن اسنپ‌مارکت و اکالا نیازی به ورود به فروشگاه نیست. ورود به
+          بهتر بخر برای نگهداری موقعیت‌ها و تاریخچه لازم است.
+        </p>
+        <p>
+          هر دو فروشگاه به‌صورت پیش‌فرض بررسی می‌شوند. حداقل تخفیف، نتیجه‌های
+          ذخیره‌شده را فیلتر می‌کند و با جابه‌جایی آن نیازی به اسکن دوباره نیست.
+        </p>
+        <p>قیمت و موجودی، مشاهده زمان اسکن است.</p>
+        <p>
+          اسکن تازه جت فعلاً غیرفعال است؛ نتیجه‌های قبلی در تاریخچه قابل
+          مشاهده‌اند.
+        </p>
+      </Panel>
       {accountError && (
         <p className="form-error" role="alert">
           {accountError}
         </p>
       )}
-
-      <Dialog.Root open={helpOpen} onOpenChange={setHelpOpen}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="sheet-backdrop" />
-          <Dialog.Content className="panel" aria-describedby={undefined}>
-            <header className="panel-heading">
-              <Dialog.Title>راهنمای بهتر بخر</Dialog.Title>
-              <Dialog.Close asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="icon-button"
-                  aria-label="بستن پنجره"
-                >
-                  ×
-                </Button>
-              </Dialog.Close>
-            </header>
-            <p>
-              موقعیت تحویل را ثبت کنید تا تخفیف‌ها پیدا شوند؛ سپس قیمت
-              فروشگاه‌ها را مقایسه کنید.
-            </p>
-            <p>
-              برای اسکن اسنپ‌مارکت و اکالا نیازی به ورود به فروشگاه نیست. ورود
-              به بهتر بخر برای نگهداری موقعیت‌ها و تاریخچه لازم است.
-            </p>
-            <p>
-              اکالا پیشنهادهای فهرست عمومی تبلیغاتی را بررسی می‌کند؛ این فهرست
-              تمام کالاهای اکالا را پوشش نمی‌دهد.
-            </p>
-            <p>
-              قیمت‌ها مشاهدات زمان اسکن هستند. نبودن پیشنهاد در فهرست تازه، به
-              معنی ناموجود بودن آن در همه فروشگاه‌ها نیست.
-            </p>
-            <p>
-              اسکن تازه جت فعلاً غیرفعال است؛ نتیجه‌های قبلی در تاریخچه قابل
-              مشاهده‌اند.
-            </p>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
     </>
-  );
-}
-
-function LocationIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" />
-      <circle cx="12" cy="10" r="2.5" />
-    </svg>
-  );
-}
-
-function HistoryIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M3 12a9 9 0 1 0 2.64-6.36L3 8" />
-      <path d="M3 3v5h5" />
-      <path d="M12 7v5l3 2" />
-    </svg>
-  );
-}
-
-function MenuIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      focusable="false"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-    >
-      <path d="M4 6h16M4 12h16M4 18h16" />
-    </svg>
   );
 }

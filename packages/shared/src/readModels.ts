@@ -182,7 +182,11 @@ export const productGroupSchema = dealGroupSchema.extend({
 export const productsReadSchema = z.array(productGroupSchema);
 export const productSummarySchema = productGroupSchema
   .omit({ vendors: true, conditionalOffers: true })
-  .extend({ conditionalOfferCount: count });
+  .extend({
+    conditionalOfferCount: count,
+    wishlistMatch: z.boolean().default(false),
+    cartQuantity: count.default(0),
+  });
 export const productPageSchema = z.object({
   items: z.array(productSummarySchema).max(100),
   nextCursor: z.string().min(1).max(8192).nullable(),

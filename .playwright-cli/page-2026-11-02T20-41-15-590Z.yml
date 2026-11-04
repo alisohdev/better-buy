@@ -1,0 +1,121 @@
+- generic:
+    - alert
+    - main [aria-hidden]:
+        - generic:
+            - button:
+                - generic: ب
+                - generic:
+                    - strong: بهتر بخر
+            - generic:
+                - combobox
+                - button:
+                    - generic [aria-hidden]: ۰
+            - button [active]
+        - generic:
+            - region:
+                - generic:
+                    - generic:
+                        - generic: موقعیت تحویل
+                        - combobox:
+                            - generic: خانه
+                    - group:
+                        - generic: فروشگاه‌ها
+                        - generic:
+                            - checkbox [checked]
+                            - generic: اسنپ‌مارکت
+                        - generic:
+                            - checkbox [checked]
+                            - generic: اکالا
+                    - button: به‌روزرسانی تخفیف‌ها
+                - generic:
+                    - generic:
+                        - generic:
+                            - text: حداقل تخفیف
+                            - status: ۴۰٪
+                        - slider: "40"
+                        - generic [aria-hidden]:
+                            - generic: ۱۵٪
+                            - generic: ۸۰٪
+                    - paragraph: فیلتر نتیجه‌های ذخیره‌شده؛ بدون اسکن دوباره
+            - region:
+                - generic:
+                    - generic:
+                        - heading [level=1]: پیشنهادها
+                        - paragraph: حداقل ۴۰٪ تخفیف · اسنپ‌مارکت و اکالا
+                    - group:
+                        - generic: جزئیات نتیجه
+                - generic:
+                    - generic:
+                        - text: جست‌وجو
+                        - searchbox
+                    - generic:
+                        - text: مرتب‌سازی
+                        - combobox:
+                            - generic: پیشنهادهای شخصی
+                - paragraph: اول علاقه‌مندی‌ها، سپس تعداد در سبد و درصد تخفیف
+                - status: ۲ محصول نمایش‌داده‌شده
+                - generic:
+                    - article:
+                        - button:
+                            - generic: تصویر در دسترس نیست
+                        - generic:
+                            - generic: اکالا
+                            - heading [level=2]:
+                                - button: چای ایرانی okala
+                            - paragraph:
+                                - generic:
+                                    - generic [aria-hidden]: ف
+                                - generic: فروشگاه نمونه
+                            - generic: در فهرست فعلی · چای
+                        - generic:
+                            - generic:
+                                - deletion: ۲۰٬۰۰۰ تومان
+                                - generic: ۶۰٪
+                            - strong: ۸٬۰۰۰ تومان
+                            - generic:
+                                - button
+                                - button
+                    - article:
+                        - button:
+                            - generic: تصویر در دسترس نیست
+                        - generic:
+                            - generic: اسنپ‌مارکت
+                            - heading [level=2]:
+                                - button: چای ایرانی snappmarket
+                            - paragraph:
+                                - generic:
+                                    - generic [aria-hidden]: ف
+                                - generic: فروشگاه نمونه
+                            - generic: در فهرست فعلی · چای
+                        - generic:
+                            - generic:
+                                - deletion: ۲۰۰٬۰۰۰ تومان
+                                - generic: ۶۰٪
+                            - strong: ۸۰٬۰۰۰ تومان
+                            - generic:
+                                - button
+                                - button
+                - paragraph: قیمت و موجودی، مشاهده زمان اسکن است. پیش از خرید در فروشگاه بررسی کنید.
+                - button: تازه‌سازی نتیجه
+        - navigation:
+            - button:
+                - generic: سبد خرید
+            - button:
+                - generic: علاقه‌مندی‌ها
+            - button:
+                - generic: اعلان‌ها
+            - button:
+                - generic: تاریخچه
+    - dialog [ref=f2e129]:
+        - banner [ref=f2e130]:
+            - heading "موقعیت‌های تحویل" [level=2] [ref=f2e131]
+            - button "بستن پنجره مکان" [ref=f2e132] [cursor=pointer]: ×
+        - paragraph [ref=f2e133]: موقعیت تحویل، پیشنهادهای قابل بررسی را مشخص می‌کند.
+        - generic [ref=f2e135]:
+            - generic [ref=f2e136]:
+                - strong [ref=f2e137]: خانه
+                - generic [ref=f2e138]:
+                    - generic [ref=f2e139]: 35.7000, 51.4000
+                    - text: · پیش‌فرض
+            - button "ویرایش خانه" [ref=f2e140] [cursor=pointer]: ویرایش
+        - button "افزودن موقعیت تحویل" [ref=f2e141] [cursor=pointer]

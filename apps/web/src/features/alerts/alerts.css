@@ -38,6 +38,26 @@
   padding-block: 10px;
   border-block-end: 1px solid var(--border);
 }
+.wishlist-discount {
+  margin-block-start: 16px;
+}
+.wishlist-item-settings {
+  display: grid;
+  gap: 8px;
+  inline-size: 100%;
+  min-inline-size: 0;
+}
+.wishlist-item-settings label {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+.wishlist-discount input,
+.wishlist-item-settings input {
+  padding-inline: 0;
+  accent-color: var(--primary);
+  box-shadow: none;
+}
 .wishlist-items span,
 .inbox-heading h3 {
   overflow-wrap: anywhere;

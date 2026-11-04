@@ -1,4 +1,9 @@
-export type WishlistItem = { id: string; phrase: string; createdAt: string };
+export type WishlistItem = {
+  id: string;
+  phrase: string;
+  minDiscount: number;
+  createdAt: string;
+};
 export type Wishlist = {
   items: WishlistItem[];
   defaultLocationId: string | null;
@@ -67,6 +72,12 @@ function number(value: unknown): number {
   if (typeof value !== "number" || !Number.isFinite(value))
     throw new Error("Invalid number");
   return value;
+}
+function discount(value: unknown): number {
+  const percent = number(value);
+  if (!Number.isInteger(percent) || percent < 15 || percent > 80)
+    throw new Error("Invalid minimum discount");
+  return percent;
 }
 function list<Value>(value: unknown, parse: (item: unknown) => Value): Value[] {
   if (!Array.isArray(value)) throw new Error("Invalid list");
@@ -147,6 +158,7 @@ export function parseWishlist(value: unknown): Wishlist {
       return {
         id: text(item.id),
         phrase: text(item.phrase),
+        minDiscount: discount(item.minDiscount),
         createdAt: text(item.createdAt),
       };
     }),

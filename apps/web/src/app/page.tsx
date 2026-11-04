@@ -6,7 +6,9 @@ import { authClient } from "./auth-client";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { AuthScreen } from "../features/auth/AuthScreen";
 import { DevSignIn } from "../features/auth/DevSignIn";
+import { useVisitAnalytics } from "../features/admin/useAnalytics";
 export default function Page() {
+  useVisitAnalytics();
   const { data: session, isPending, error, refetch } = authClient.useSession();
   if (isPending)
     return (

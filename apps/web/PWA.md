@@ -15,7 +15,6 @@ Run from the repository root:
 ```sh
 pnpm --filter @better-buy/web exec tsc --noEmit --incremental false
 pnpm --filter @better-buy/web test
-pnpm --filter @better-buy/web build:worker
 pnpm --filter @better-buy/web exec playwright test tests/alerts.spec.ts --config playwright.export.config.ts
 ```
 

@@ -1,50 +1,42 @@
-# VPS deployment
+# Go VPS runtime
 
-The VPS runs the existing Hono API on Bun with Bun's built-in SQLite driver, and serves the existing static React export through Caddy. A separate scan process uses a persistent SQLite queue. The scan worker must always run under the systemd unit in this directory so the kernel lock is held before recovery or dispatch.
+The VPS runs one Go API process. That process serves HTTP, drains the SQLite scan queue, runs wishlist scheduling, and performs maintenance. It replaces both `better-buy-http.service` and `better-buy-worker.service`; there is no separate scan-worker service. Caddy serves the static frontend and proxies API requests to `127.0.0.1:8787`.
 
-## Environment file
+## Build the Linux binaries
 
-Create `/etc/better-buy/better-buy.env` with mode `0640`, owned by `root:better-buy`. Copy the generated `BETTER_AUTH_SECRET` and `BOX_KEY` from the private local deployment file, then add the production Google OAuth pair:
+Build on Linux, or cross-compile from a compatible Go toolchain:
 
-```dotenv
-BETTER_AUTH_SECRET=<generated value>
-BOX_KEY=<64-character hex value>
-GOOGLE_CLIENT_ID=<production client id>
-GOOGLE_CLIENT_SECRET=<production client secret>
-BETTER_AUTH_URL=https://better-buy.ir
-APP_ORIGIN=https://better-buy.ir
-CORS_ORIGIN=https://better-buy.ir
-VPS_DATABASE_PATH=/var/lib/better-buy/better-buy.sqlite
-SNAPP_STORE_CAMPAIGNS_ENABLED=true
-OKALA_SHARED_OFFERS_ENABLED=false
-API_RATE_LIMITS_ENABLED=true
-WISHLIST_SCHEDULE_ENABLED=true
+```sh
+cd apps/api
+mkdir -p dist
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/better-buy-api ./cmd/server
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/better-buy-migrate ./cmd/migrate
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/better-buy-backup ./cmd/backup
 ```
 
-Keep provider secrets out of Git and logs. The VPS database is intentionally new and empty; do not import the old D1 export.
+Install the API and backup binaries as `/usr/local/bin/better-buy-api` and `/usr/local/bin/better-buy-backup`. The migration binary is run once before starting the API.
 
-## Files and runtime
+## Environment and files
 
-- Install Bun as root, then copy its executable to the system path used by the units:
+Create `/etc/better-buy/better-buy.env` with mode `0640`, owned by `root:better-buy`. Set the auth, Google OAuth, origin, and database values described in the root `.env.example`. On the VPS, set:
 
-  ```sh
-  curl -fsSL https://bun.sh/install | bash
-  install -m 0755 /root/.bun/bin/bun /usr/local/bin/bun
-  /usr/local/bin/bun --version
-  ```
+```dotenv
+VPS_HTTP_HOST=127.0.0.1
+VPS_HTTP_PORT=8787
+VPS_DATABASE_PATH=/var/lib/better-buy/better-buy.sqlite
+WISHLIST_SCHEDULE_ENABLED=true
+API_RATE_LIMITS_ENABLED=true
+SNAPP_STORE_CAMPAIGNS_ENABLED=true
+```
 
-- Install the repository's production dependencies with the existing pnpm workspace before starting the services.
-- Install `better-buy-http.service` and `better-buy-worker.service` into `/etc/systemd/system/`.
-- Install `Caddyfile` into the Caddy configuration and reload Caddy.
-- Install the backup service and timer. The timer writes daily, consistent SQLite backups under `/var/backups/better-buy` and retains 14 days.
-- Create `/var/lib/better-buy` and `/var/backups/better-buy`, owned by `better-buy:better-buy` with mode `0750`.
-- The worker lock is `/var/lib/better-buy/scan-worker.lock`. Keep that path stable; never unlink or replace it while the worker service may be alive.
-- Both Bun processes bind or proxy only to loopback. Caddy serves `apps/web/out` and proxies `/api/*` and `/healthz` to `127.0.0.1:8787`.
+Keep secrets out of Git and logs. Create `/var/lib/better-buy` and `/var/backups/better-buy`, owned by `better-buy:better-buy` with mode `0750`.
 
-Run `/usr/local/bin/bun run --no-env-file vps/migrate.ts` from `apps/worker` after the release and environment file are installed, before starting either application service. It applies the app migrations and the VPS engine schema to the empty SQLite file.
+Install `better-buy-api.service`, `better-buy-backup.service`, and `better-buy-backup.timer` into `/etc/systemd/system/`. Install `Caddyfile` in the Caddy configuration. The API unit can write only to `/var/lib/better-buy`; the backup unit can also write to `/var/backups/better-buy`.
 
-## DNS and rollback
+Run `better-buy-migrate` as the `better-buy` account with `VPS_DATABASE_PATH` set to the production database path before enabling the API unit. Enable `better-buy-api.service` and `better-buy-backup.timer`; the backup timer retains 14 daily SQLite backups by default.
 
-Before cutover, remove the apex custom-domain Worker binding and point the apex A record to the VPS. Use DNS-only mode so Caddy's client-IP header replacement receives the real client address. Caddy obtains HTTPS certificates automatically.
+After an authorized rollout, confirm only one `better-buy-api` process is running, then record its RSS after the server has been idle. Compare that single-process reading with the earlier two-process backend baseline; host-level used memory also includes Caddy, the kernel, and filesystem cache.
 
-Before the VPS accepts writes, DNS can return to the existing Worker. After VPS writes begin, the old D1 database does not contain them; switching back requires reconciling that new data first.
+## Cutover
+
+Install the new release and run the Go migration before switching services. Stop the old HTTP and scan-worker units together when performing an authorized rollout, then start the single Go API unit. Verify the health route, sign-in, a queued scan, and the Caddy-served frontend before considering the rollout complete. This repository change does not perform the rollout or write to the production database.

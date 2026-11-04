@@ -10,7 +10,9 @@ import {
 describe("wishlist response", () => {
   it("accepts nullable setup and the optional disabled schedule flag", () => {
     const data = {
-      items: [{ id: "tea", phrase: "چای", createdAt: "2026-10-26" }],
+      items: [
+        { id: "tea", phrase: "چای", minDiscount: 15, createdAt: "2026-10-26" },
+      ],
       defaultLocationId: null,
       pushPublicKey: null,
     };
@@ -27,6 +29,20 @@ describe("wishlist response", () => {
   ])("rejects malformed data %j", (value) => {
     expect(() => parseWishlist(value)).toThrow();
   });
+  it.each([14, 81, 15.5, "40", undefined])(
+    "rejects an invalid minimum discount %j",
+    (minDiscount) => {
+      expect(() =>
+        parseWishlist({
+          items: [
+            { id: "tea", phrase: "چای", minDiscount, createdAt: "2026-10-26" },
+          ],
+          defaultLocationId: null,
+          pushPublicKey: null,
+        })
+      ).toThrow();
+    }
+  );
 });
 describe("notification response", () => {
   const notification = {

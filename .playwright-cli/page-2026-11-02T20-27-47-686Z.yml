@@ -1,0 +1,62 @@
+- generic:
+    - button "Open Next.js Dev Tools" [ref=f1e7] [cursor=pointer]
+    - alert
+    - main [aria-hidden]:
+        - generic:
+            - button:
+                - generic: ب
+                - generic:
+                    - strong: بهتر بخر
+                    - generic: Better Buy
+            - navigation:
+                - button: علاقه‌مندی‌ها
+                - button: اعلان‌ها
+                - button: تاریخچه
+            - generic:
+                - combobox
+                - button:
+                    - generic: سبد
+                    - generic [aria-hidden]: ۰
+            - button [expanded]
+        - generic:
+            - region:
+                - generic:
+                    - generic:
+                        - generic: موقعیت تحویل
+                        - combobox:
+                            - generic: خانه
+                    - group:
+                        - generic: فروشگاه‌ها
+                        - generic:
+                            - checkbox [checked]
+                            - generic: اسنپ‌مارکت
+                        - generic:
+                            - checkbox [checked]
+                            - generic: اکالا
+                    - button: پیدا کردن تخفیف‌ها
+                - generic:
+                    - generic:
+                        - generic:
+                            - text: حداقل تخفیف
+                            - status: ۴۰٪
+                        - slider: "40"
+                        - generic [aria-hidden]:
+                            - generic: ۱۵٪
+                            - generic: ۸۰٪
+                    - paragraph: فیلتر نتیجه‌های ذخیره‌شده؛ بدون اسکن دوباره
+            - region:
+                - generic:
+                    - generic:
+                        - heading [level=1]: پیشنهادها
+                        - paragraph: حداقل ۴۰٪ تخفیف · اسنپ‌مارکت و اکالا
+                - generic:
+                    - heading [level=2]: هنوز نتیجه‌ای برای این انتخاب ندارید
+                    - paragraph: با «پیدا کردن تخفیف‌ها» پیشنهادهای این موقعیت را دریافت کنید.
+    - menu "منوی برنامه" [active] [ref=f1e66]:
+        - menuitem "پیشنهادها" [ref=f1e67] [cursor=pointer]
+        - menuitem "مدیریت موقعیت‌ها" [ref=f1e68] [cursor=pointer]
+        - menuitem "راهنمای بهتر بخر" [ref=f1e69] [cursor=pointer]
+        - menuitem "مدیریت و آمار" [ref=f1e70] [cursor=pointer]
+        - menuitem "ظاهر برنامه" [ref=f1e71] [cursor=pointer]
+        - separator [ref=f1e72]
+        - menuitem "خروج از حساب" [ref=f1e73] [cursor=pointer]

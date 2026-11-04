@@ -52,7 +52,13 @@ export function LocationManager({
           aria-describedby={undefined}
           onCloseAutoFocus={(event) => {
             event.preventDefault();
-            returnFocusTo?.focus();
+            const target =
+              returnFocusTo?.isConnected && returnFocusTo !== document.body
+                ? returnFocusTo
+                : document.querySelector<HTMLElement>(
+                    ".secondary-menu-trigger"
+                  );
+            target?.focus();
           }}
           onEscapeKeyDown={(event) => {
             if (view.kind !== "list") {

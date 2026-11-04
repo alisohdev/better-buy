@@ -1,0 +1,145 @@
+- generic:
+    - button "Open Next.js Dev Tools" [ref=e7] [cursor=pointer]
+    - alert: پیشنهادها
+    - main [aria-hidden]:
+        - generic:
+            - button:
+                - generic: ب
+                - generic:
+                    - strong: بهتر بخر
+            - generic:
+                - combobox
+                - button:
+                    - generic [aria-hidden]: ۰
+            - button
+        - generic:
+            - region:
+                - generic:
+                    - generic:
+                        - generic: موقعیت تحویل
+                        - combobox:
+                            - generic: خانه
+                    - group:
+                        - generic: فروشگاه‌ها
+                        - generic:
+                            - checkbox [checked]
+                            - generic: اسنپ‌مارکت
+                        - generic:
+                            - checkbox [checked]
+                            - generic: اکالا
+                    - button: به‌روزرسانی تخفیف‌ها
+                - generic:
+                    - generic:
+                        - generic:
+                            - text: حداقل تخفیف
+                            - status: ۴۰٪
+                        - slider: "40"
+                        - generic [aria-hidden]:
+                            - generic: ۱۵٪
+                            - generic: ۸۰٪
+                    - paragraph: فیلتر نتیجه‌های ذخیره‌شده؛ بدون اسکن دوباره
+            - region:
+                - generic:
+                    - generic:
+                        - heading [level=1]: پیشنهادها
+                        - paragraph: حداقل ۴۰٪ تخفیف · اسنپ‌مارکت و اکالا
+                    - group:
+                        - generic: جزئیات نتیجه
+                - generic:
+                    - generic:
+                        - text: جست‌وجو
+                        - searchbox
+                    - generic:
+                        - text: مرتب‌سازی
+                        - combobox:
+                            - generic: پیشنهادهای شخصی
+                - paragraph: اول علاقه‌مندی‌ها، سپس تعداد در سبد و درصد تخفیف
+                - status: ۲ محصول نمایش‌داده‌شده
+                - generic:
+                    - article:
+                        - button [expanded]:
+                            - generic: تصویر در دسترس نیست
+                        - generic:
+                            - generic: اکالا
+                            - heading [level=2]:
+                                - button [expanded]: چای ایرانی okala
+                            - paragraph:
+                                - generic:
+                                    - generic [aria-hidden]: ف
+                                - generic: فروشگاه نمونه
+                            - generic: در فهرست فعلی · چای
+                        - generic:
+                            - generic:
+                                - deletion: ۲۰٬۰۰۰ تومان
+                                - generic: ۶۰٪
+                            - strong: ۸٬۰۰۰ تومان
+                            - generic:
+                                - button
+                                - button
+                    - article:
+                        - button:
+                            - generic: تصویر در دسترس نیست
+                        - generic:
+                            - generic: اسنپ‌مارکت
+                            - heading [level=2]:
+                                - button: چای ایرانی snappmarket
+                            - paragraph:
+                                - generic:
+                                    - generic [aria-hidden]: ف
+                                - generic: فروشگاه نمونه
+                            - generic: در فهرست فعلی · چای
+                        - generic:
+                            - generic:
+                                - deletion: ۲۰۰٬۰۰۰ تومان
+                                - generic: ۶۰٪
+                            - strong: ۸۰٬۰۰۰ تومان
+                            - generic:
+                                - button
+                                - button
+                - paragraph: قیمت و موجودی، مشاهده زمان اسکن است. پیش از خرید در فروشگاه بررسی کنید.
+                - paragraph: پیشنهادهای اکالا از فهرست عمومی تبلیغاتی هستند و تمام موجودی فروشگاه‌ها را پوشش نمی‌دهند.
+                - button: تازه‌سازی نتیجه
+        - navigation:
+            - button:
+                - generic: سبد خرید
+            - button:
+                - generic: علاقه‌مندی‌ها
+            - button:
+                - generic: اعلان‌ها
+            - button:
+                - generic: تاریخچه
+    - dialog [ref=e132]:
+        - banner [ref=e133]:
+            - generic [ref=e134]: اکالا
+            - button "بستن جزئیات کالا" [active] [ref=e135] [cursor=pointer]
+        - generic [ref=e136]:
+            - generic [ref=e137]: تصویر در دسترس نیست
+            - generic [ref=e139]:
+                - heading "چای ایرانی okala" [level=2] [ref=e140]
+                - paragraph [ref=e141]: چای
+                - generic [ref=e142]:
+                    - generic [ref=e143]:
+                        - deletion [ref=e144]: ۲۰٬۰۰۰ تومان
+                        - generic [ref=e145]: ۶۰٪
+                    - strong [ref=e146]: ۸٬۰۰۰ تومان
+                - generic [ref=e147]:
+                    - button "افزودن چای ایرانی okala به سبد" [ref=e148] [cursor=pointer]: افزودن به سبد خرید
+                    - button "افزودن چای ایرانی okala به علاقه‌مندی‌ها" [ref=e149] [cursor=pointer]: افزودن نام به علاقه‌مندی‌ها
+                - paragraph [ref=e150]:
+                    - time [ref=e151]: ۱۱ آبان ۱۴۰۵، ۱۳:۳۰ ·
+                    - text: قیمت و موجودی مشاهده زمان اسکن است.
+                - link "باز کردن وب‌سایت اکالا" [ref=e152] [cursor=pointer]:
+                    - /url: https://www.okala.com
+        - region "قیمت فروشگاه‌ها" [ref=e155]:
+            - heading "قیمت فروشگاه‌ها" [level=3] [ref=e156]
+            - generic "پیشنهادهای چای ایرانی okala" [ref=e157]:
+                - generic [ref=e158]:
+                    - generic [ref=e159]:
+                        - generic [aria-hidden] [ref=e161]: ف
+                        - generic [ref=e162]:
+                            - strong [ref=e163]: فروشگاه نمونه
+                            - generic [ref=e164]: در فهرست فعلی · موجودی ثبت‌شده ۳
+                    - generic [ref=e165]:
+                        - deletion [ref=e166]: ۲۰٬۰۰۰ تومان
+                        - strong [ref=e167]: ۸٬۰۰۰ تومان
+                        - generic [ref=e168]: ۶۰٪ تخفیف

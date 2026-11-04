@@ -1,6 +1,6 @@
 # Better Buy Production Roadmap
 
-Status: implementation loop in progress, 2026-08-23. This folder turns the audit into phased, testable work. No item is considered production-shipped until its acceptance criteria and release gate pass.
+This roadmap describes the previous backend and is retained as project history. The current backend plan is [the Go VPS rewrite](./go-vps-backend-rewrite.md); the active release checklist is [Go VPS production readiness](./PRODUCTION_READINESS.md). No item is considered production-shipped until its acceptance criteria and release gate pass.
 
 ## Product direction
 
@@ -19,7 +19,7 @@ The execution order is driven by correctness first:
 - [FEATURES.md](./FEATURES.md): feature briefs, behavior, data contracts, and acceptance criteria.
 - [BUGS.md](./BUGS.md): verified defects and technical risks, prioritized by user impact.
 - [UI_UX.md](./UI_UX.md): scan, settings, deal-row, map, accessibility, and responsive UX direction.
-- [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md): Cloudflare, D1, security, testing, delivery, and operations checklist.
+- [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md): Go VPS, SQLite, security, testing, delivery, and operations checklist.
 
 ## Phase plan
 

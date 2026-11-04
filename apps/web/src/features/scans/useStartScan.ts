@@ -101,8 +101,7 @@ export function useStartScan(selection: ScanSelection) {
     if (locked.current || mutation.isPending || unresolved) return;
     const target = { ...selection, ...overrides };
     if (!target.locationId || target.source === "digikalajet") return;
-    if (target.source === "okala")
-      target.threshold = Math.max(30, target.threshold);
+    target.threshold = 15;
     locked.current = true;
     mutation.mutate({ target, key: crypto.randomUUID(), failedAt: Date.now() });
   };
