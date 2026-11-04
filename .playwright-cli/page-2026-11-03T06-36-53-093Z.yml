@@ -1,0 +1,62 @@
+- generic:
+    - button "Open Next.js Dev Tools" [ref=f1e8] [cursor=pointer]
+    - alert: اسکن تخفیف‌ها
+    - main [aria-hidden]:
+        - generic:
+            - button:
+                - generic: ب
+                - generic:
+                    - strong: بهتر بخر
+            - button [expanded]
+        - generic:
+            - navigation:
+                - button: پیشنهادها
+                - button: اسکن تخفیف‌ها
+            - region:
+                - generic:
+                    - generic:
+                        - paragraph: تخفیف‌های اطراف شما
+                        - heading [level=1]: اسکن تخفیف‌ها
+                        - paragraph: فروشگاه‌ها و حداقل تخفیف را انتخاب کنید؛ فهرست پیشنهادها پس از اسکن به‌روز می‌شود.
+                    - generic: آماده اسکن
+                - region:
+                    - generic:
+                        - generic:
+                            - generic: موقعیت تحویل
+                            - combobox:
+                                - generic: Test location
+                        - group:
+                            - generic: فروشگاه‌ها
+                            - generic:
+                                - checkbox [checked]
+                                - generic: اسنپ‌مارکت
+                            - generic:
+                                - checkbox [checked]
+                                - generic: اکالا
+                        - button: پیدا کردن تخفیف‌ها
+                    - generic:
+                        - generic:
+                            - generic:
+                                - text: حداقل تخفیف
+                                - status: ۴۰٪
+                            - slider: "40"
+                            - generic [aria-hidden]:
+                                - generic: ۱۵٪
+                                - generic: ۸۰٪
+                        - paragraph: فیلتر نتیجه‌های ذخیره‌شده؛ بدون اسکن دوباره
+        - navigation:
+            - button:
+                - generic: سبد خرید
+            - button:
+                - generic: علاقه‌مندی‌ها
+            - button:
+                - generic: اعلان‌ها
+            - button:
+                - generic: تاریخچه
+    - menu "منوی برنامه" [active] [ref=f1e106]:
+        - menuitem "پیشنهادها" [ref=f1e107] [cursor=pointer]
+        - menuitem "مدیریت موقعیت‌ها" [ref=f1e108] [cursor=pointer]
+        - menuitem "راهنمای بهتر بخر" [ref=f1e109] [cursor=pointer]
+        - menuitem "ظاهر برنامه" [ref=f1e110] [cursor=pointer]
+        - separator [ref=f1e111]
+        - menuitem "خروج از حساب" [ref=f1e112] [cursor=pointer]

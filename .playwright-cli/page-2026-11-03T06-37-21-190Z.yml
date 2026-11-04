@@ -1,0 +1,49 @@
+- generic [ref=f1e1]:
+    - button "Open Next.js Dev Tools" [ref=f1e8] [cursor=pointer]
+    - alert [ref=f1e12]: اسکن تخفیف‌ها
+    - main [ref=f1e13]:
+        - generic [ref=f1e14]:
+            - button "بهتر بخر، پیشنهادها" [ref=f1e15] [cursor=pointer]:
+                - generic [ref=f1e16]: ب
+                - strong [ref=f1e18]: بهتر بخر
+            - button "منوی برنامه" [active] [ref=f1e29] [cursor=pointer]
+        - generic [ref=f1e30]:
+            - navigation "بخش‌های خرید" [ref=f1e31]:
+                - button "پیشنهادها" [ref=f1e32] [cursor=pointer]
+                - button "اسکن تخفیف‌ها" [ref=f1e35] [cursor=pointer]
+            - region [ref=f1e47]:
+                - generic [ref=f1e48]:
+                    - generic [ref=f1e53]:
+                        - paragraph [ref=f1e54]: تخفیف‌های اطراف شما
+                        - heading "اسکن تخفیف‌ها" [level=1] [ref=f1e55]
+                        - paragraph [ref=f1e56]: فروشگاه‌ها و حداقل تخفیف را انتخاب کنید؛ فهرست پیشنهادها پس از اسکن به‌روز می‌شود.
+                    - generic [ref=f1e57]: آماده اسکن
+                - region "موقعیت و تخفیف‌ها" [ref=f1e59]:
+                    - generic [ref=f1e60]:
+                        - generic [ref=f1e61]:
+                            - generic [ref=f1e62]: موقعیت تحویل
+                            - combobox "موقعیت تحویل" [ref=f1e66] [cursor=pointer]:
+                                - generic: Test location
+                        - group "فروشگاه‌ها" [ref=f1e69]:
+                            - generic [ref=f1e71] [cursor=pointer]:
+                                - checkbox "اسنپ‌مارکت" [checked] [ref=f1e72]
+                                - generic [ref=f1e73]: اسنپ‌مارکت
+                            - generic [ref=f1e74] [cursor=pointer]:
+                                - checkbox "اکالا" [checked] [ref=f1e75]
+                                - generic [ref=f1e76]: اکالا
+                        - button "پیدا کردن تخفیف‌ها" [ref=f1e77] [cursor=pointer]
+                    - generic [ref=f1e78]:
+                        - generic [ref=f1e79]:
+                            - generic [ref=f1e80]:
+                                - text: حداقل تخفیف
+                                - status [ref=f1e81]: ۴۰٪
+                            - slider "حداقل تخفیف" [ref=f1e82] [cursor=pointer]: "40"
+                            - generic [aria-hidden] [ref=f1e83]:
+                                - generic [ref=f1e84]: ۱۵٪
+                                - generic [ref=f1e85]: ۸۰٪
+                        - paragraph [ref=f1e86]: فیلتر نتیجه‌های ذخیره‌شده؛ بدون اسکن دوباره
+        - navigation "دسترسی سریع" [ref=f1e87]:
+            - button "سبد خرید" [ref=f1e88] [cursor=pointer]
+            - button "علاقه‌مندی‌ها" [ref=f1e94] [cursor=pointer]
+            - button "اعلان‌ها" [ref=f1e98] [cursor=pointer]
+            - button "تاریخچه" [ref=f1e102] [cursor=pointer]

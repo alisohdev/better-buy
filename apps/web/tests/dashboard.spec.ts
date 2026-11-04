@@ -426,6 +426,47 @@ test("first visit creates a location from address search and maps the selected r
   await captureState(page, "first-automatic-update");
   expect(state.locations).toHaveLength(1);
 });
+test("address search lets users choose a result and refine the map location", async ({
+  page,
+}) => {
+  const state = await mock(page);
+  await page.route("https://nominatim.openstreetmap.org/search**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          display_name: "میدان ونک، تهران",
+          lat: "35.75",
+          lon: "51.41",
+        },
+        {
+          display_name: "میدان تجریش، تهران",
+          lat: "35.8",
+          lon: "51.43",
+        },
+      ],
+    })
+  );
+  await page.goto("/");
+  await openMenuItem(page, "مدیریت موقعیت‌ها");
+  await page.getByRole("button", { name: "ویرایش خانه" }).click();
+  const dialog = page.getByRole("dialog", { name: "ویرایش مکان", exact: true });
+  await dialog.getByLabel("جست‌وجوی نشانی در تهران").fill("میدان");
+  await dialog.getByRole("button", { name: "جست‌وجو", exact: true }).click();
+
+  const selectedResult = dialog.getByRole("button", {
+    name: "میدان تجریش، تهران",
+  });
+  await selectedResult.click();
+  await expect(selectedResult).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    dialog.getByRole("button", { name: "میدان ونک، تهران" })
+  ).toBeVisible();
+  await expect(dialog.locator(".maplibre-map")).toBeVisible();
+  await dialog.getByRole("button", { name: "ذخیره مکان" }).click();
+  await expect(dialog).toHaveCount(0);
+  expect(state.locations[0]?.latitude).toBe(35.8);
+  expect(state.locations[0]?.longitude).toBe(51.43);
+});
 test("location reads recover and out-of-area saved locations remain editable", async ({
   page,
 }) => {

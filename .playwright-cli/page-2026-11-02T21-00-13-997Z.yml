@@ -1,0 +1,20 @@
+- generic [active] [ref=e1]:
+    - alert [ref=e2]
+    - main [ref=e3]:
+        - region [ref=e4]:
+            - generic [ref=e5]: ب
+            - heading "بهتر بخر" [level=1] [ref=e6]
+            - paragraph [ref=e7]: پیشنهادهای اسنپ‌مارکت و اکالا را برای موقعیت تحویل خود پیدا کنید و قیمت فروشگاه‌ها را مقایسه کنید.
+            - group "ورود با ایمیل" [ref=e9]:
+                - generic [ref=e11]:
+                    - generic [ref=e12]: ایمیل
+                    - textbox "ایمیل" [ref=e13]
+                - generic [ref=e14]:
+                    - generic [ref=e15]: رمز عبور
+                    - textbox "رمز عبور" [ref=e16]
+                    - paragraph [ref=e17]: رمز عبور باید بین ۸ تا ۱۲۸ نویسه باشد.
+                - button "ورود با ایمیل" [ref=e18] [cursor=pointer]
+            - button "حساب ندارید؟ ثبت‌نام کنید" [ref=e19] [cursor=pointer]
+            - generic [ref=e20]: یا
+            - button "ادامه با گوگل" [ref=e24] [cursor=pointer]
+            - generic [ref=e25]: موقعیت‌ها و تاریخچه در حساب شما نگهداری می‌شوند. برای بررسی پیشنهادها، ورود به فروشگاه لازم نیست.
