@@ -11,6 +11,7 @@ import { Effect } from "effect";
 import { z } from "zod";
 import { CollectorError, type PersistenceError } from "../../domain/failures";
 import { requestJson } from "../../infrastructure/http";
+import { campaignExpiry, readOkalaOffers } from "./sharedOffers";
 
 const baseUrl = "https://apigateway.okala.com/api";
 const headers = {
@@ -68,6 +69,9 @@ export function collectOkala(input: {
   latitude: number;
   longitude: number;
   threshold: number;
+  db?: D1Database;
+  scanId?: string;
+  sharedOffersEnabled?: boolean;
   fetcher?: typeof fetch;
   onManifest?: (
     collectionIds: number[],
@@ -123,28 +127,75 @@ export function collectOkala(input: {
       yield* get("/carousel/v4/offers", campaignsQuery)
     );
     yield* checkPagination(campaigns);
-    const ids = new Set(
-      campaigns.carousels.flatMap((c) => (c.isMulti ? [c.id] : []))
+    const campaignExpiries = new Map(
+      campaigns.carousels.flatMap((campaign) =>
+        campaign.isMulti
+          ? [[campaign.id, campaignExpiry(campaign.endTime)] as const]
+          : []
+      )
     );
-    if (!ids.size)
+    const campaignIds = [...campaignExpiries.keys()].filter((id) => {
+      const expiry = campaignExpiries.get(id)!;
+      return expiry.kind !== "known" || Date.parse(expiry.endTime) > Date.now();
+    });
+    if (!campaignIds.length)
       return yield* Effect.fail(
         new CollectorError(
           "NO_CAMPAIGNS",
           "کمپین چندفروشگاهی فعالی در اکالا پیدا نشد"
         )
       );
-    if (input.onManifest) yield* input.onManifest([...ids], storeIds);
+    if (input.onManifest) yield* input.onManifest(campaignIds, storeIds);
     const rows = new Map<string, Omit<DealRecord, "scanId" | "state">>();
     const eligibleStores = new Set(storeIds);
     const inspectedStores = new Set<number>();
     let products = 0;
-    for (const carouselId of ids) {
+    for (const carouselId of campaignIds) {
       const query = new URLSearchParams({ carouselId: String(carouselId) });
       storeIds.forEach((id) => query.append("StoreIds", String(id)));
-      const payload = yield* decode(
-        offersResponse,
-        yield* get("/carousel/v4/offers/multi-store", query)
-      );
+      const load = (onPhysicalAttempt: () => void) =>
+        requestJson(
+          `${baseUrl}/carousel/v4/offers/multi-store?${query.toString()}`,
+          { headers },
+          {
+            fetcher: input.fetcher,
+            provider: "اکالا",
+            forbiddenCode: "UPSTREAM_FORBIDDEN",
+            unauthorizedCode: "UPSTREAM_FORBIDDEN",
+            invalidJsonCode: "UPSTREAM_INVALID_JSON",
+            onPhysicalAttempt,
+          }
+        ).pipe(Effect.map((response) => response.body));
+      const observation = input.db
+        ? yield* Effect.tryPromise({
+            try: () =>
+              readOkalaOffers({
+                db: input.db!,
+                enabled: input.sharedOffersEnabled === true,
+                scanId: input.scanId,
+                campaignId: carouselId,
+                storeIds,
+                campaignExpiry: campaignExpiries.get(carouselId)!,
+                load: (onAttempt) => Effect.runPromise(load(onAttempt)),
+              }),
+            catch: (error) =>
+              error instanceof CollectorError
+                ? error
+                : new CollectorError(
+                    "UPSTREAM_ERROR",
+                    "Okala offers could not be read"
+                  ),
+          })
+        : {
+            collection: yield* decode(
+              offersResponse,
+              yield* get("/carousel/v4/offers/multi-store", query)
+            ),
+            observedAt: new Date().toISOString(),
+            reusableUntil: new Date().toISOString(),
+            reused: false,
+          };
+      const payload = observation.collection;
       yield* checkPagination(payload);
       for (const entity of payload.entities) {
         const vendorLogoUrl = officialOkalaStoreLogo(entity);
@@ -161,10 +212,10 @@ export function collectOkala(input: {
               input.threshold
             )
           )
-            rows.set(
-              `${item.storeId}:${item.id}`,
-              normalizeOkalaOffer(item, vendorLogoUrl)
-            );
+            rows.set(`${item.storeId}:${item.id}`, {
+              ...normalizeOkalaOffer(item, vendorLogoUrl),
+              observedAt: observation.observedAt,
+            });
         }
       }
       if (input.onProgress)

@@ -59,7 +59,10 @@ export async function readDurableComparison(
   const partialUnits = new Set<string>();
   for (const page of pages.results) {
     const checkpoint = JSON.parse(page.metadata_json) as PageCheckpoint;
-    if (checkpoint.terminalEvidence === "bounded_partial_scope")
+    if (
+      checkpoint.terminalEvidence === "bounded_partial_scope" ||
+      checkpoint.terminalEvidence === "conflicting_campaign_rows"
+    )
       partialUnits.add(page.unit_id);
     const identities = facts.get(page.unit_id) ?? new Map();
     for (const [identity, fact] of Object.entries(checkpoint.eligibility ?? {}))

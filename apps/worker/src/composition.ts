@@ -16,7 +16,8 @@ export function scanServices(
   db: D1Database,
   userId: string,
   boxKey: string,
-  storeCampaignsEnabled = false
+  storeCampaignsEnabled = false,
+  sharedOkalaOffersEnabled = false
 ) {
   const store = new Store(db, userId, boxKey);
   const persisted = <A>(operation: string, run: () => Promise<A>) =>
@@ -99,6 +100,9 @@ export function scanServices(
       if (job.source === "okala")
         return collectOkala({
           ...input,
+          db,
+          scanId: job.id,
+          sharedOffersEnabled: sharedOkalaOffersEnabled,
           onManifest: (collectionIds, storeIds) =>
             persisted("manifest", () =>
               store.freezeOkalaManifest(job.id, collectionIds, storeIds)

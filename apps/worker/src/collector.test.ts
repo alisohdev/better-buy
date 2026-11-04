@@ -195,14 +195,14 @@ describe("SnappMarket automatic guest collector", () => {
     });
   });
 
-  it("honors the 50-page completeness limit", async () => {
+  it("collects all vendors beyond the former 50-page limit", async () => {
     const fetcher = fixtureFetcher((url) =>
       page([{ vendor_id: url.searchParams.get("page"), products: [] }], 51)
     );
-    await expect(collectDeals({ ...input, fetcher })).rejects.toMatchObject({
-      code: "INCOMPLETE_PAGINATION",
+    await expect(collectDeals({ ...input, fetcher })).resolves.toMatchObject({
+      vendorCount: 51,
     });
-    expect(fetcher).toHaveBeenCalledTimes(51); // guest plus 50 feed pages
+    expect(fetcher).toHaveBeenCalledTimes(52); // guest plus 51 feed pages
   });
 
   const failures: Array<[string, () => Response | Promise<Response>, string]> =

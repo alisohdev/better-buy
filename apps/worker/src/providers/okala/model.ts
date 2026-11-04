@@ -22,7 +22,11 @@ export const campaignsResponse = z.object({
   success: z.boolean(),
   carousels: z.array(
     z.discriminatedUnion("isMulti", [
-      z.object({ isMulti: z.literal(true), id: identifier }),
+      z.object({
+        isMulti: z.literal(true),
+        id: identifier,
+        endTime: z.string().optional(),
+      }),
       z.object({ isMulti: z.literal(false) }),
     ])
   ),

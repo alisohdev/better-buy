@@ -19,25 +19,34 @@
 }
 .cart-trigger {
   min-block-size: 44px;
+  inline-size: 44px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding-inline: 12px;
+  gap: 0;
+  padding: 0;
   border-color: var(--border) !important;
-  border-radius: 999px;
+  border-radius: 12px;
   background: var(--card) !important;
   color: var(--foreground);
-  white-space: nowrap;
+  position: relative;
 }
 .cart-trigger-count {
-  min-inline-size: 22px;
-  block-size: 22px;
+  position: absolute;
+  inset-block-start: -3px;
+  inset-inline-end: -4px;
+  min-inline-size: 18px;
+  block-size: 18px;
   display: grid;
   place-items: center;
+  padding-inline: 3px;
   border-radius: 999px;
-  background: var(--muted);
-  font-size: 12px;
+  border: 1px solid var(--background);
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 .cart-backdrop {
@@ -408,15 +417,10 @@
   .app-header:has(.cart-trigger) {
     align-items: center;
   }
-  .app-header:has(.cart-trigger) nav {
-    inline-size: 100%;
-    flex-wrap: wrap;
-    gap: 4px;
-  }
-  .app-header:has(.cart-trigger) nav > button {
-    min-block-size: 44px;
-    padding-inline: 9px;
-    font-size: 13px;
+  .app-header:has(.cart-trigger) .app-header-primary {
+    flex-wrap: nowrap;
+    gap: 2px;
+    overflow: visible;
   }
   .cart-trigger {
     min-block-size: 44px;
@@ -424,46 +428,20 @@
 }
 @media (max-width: 520px) {
   .app-header:has(.cart-trigger) {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "brand actions"
-      "nav nav"
-      "feedback feedback";
+    display: flex;
     align-items: center;
-    gap: 8px 12px;
+    flex-wrap: wrap;
+    gap: 8px;
   }
   .app-header:has(.cart-trigger) > .brand {
-    grid-area: brand;
     justify-self: start;
   }
-  .app-header:has(.cart-trigger) > .header-actions {
-    grid-area: actions;
+  .app-header:has(.cart-trigger) > .app-header-controls {
+    flex: 1;
     justify-self: end;
   }
-  .app-header:has(.cart-trigger) > nav {
-    grid-area: nav;
-    inline-size: 100%;
-    flex-wrap: nowrap;
-    justify-content: space-between;
-    gap: 0;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scrollbar-width: none;
-  }
-  .app-header:has(.cart-trigger) > nav::-webkit-scrollbar {
-    display: none;
-  }
-  .app-header:has(.cart-trigger) > nav > button {
-    flex: 0 0 auto;
-    min-inline-size: 44px;
-    min-block-size: 44px;
-    padding-inline: 6px;
-    font-size: 12px;
-    white-space: nowrap;
-  }
   .app-header:has(.cart-trigger) > .cart-write-notice {
-    grid-area: feedback;
+    flex: 0 1 100%;
     inline-size: 100%;
     max-inline-size: 100%;
     margin: 0;
@@ -484,24 +462,6 @@
   }
   .cart-write-notice {
     max-inline-size: none;
-  }
-  .cart-trigger {
-    inline-size: 44px;
-    padding-inline: 0;
-    gap: 0;
-    position: relative;
-  }
-  .cart-trigger > span:not(.cart-trigger-count) {
-    display: none;
-  }
-  .cart-trigger-count {
-    position: absolute;
-    inset-block-start: -5px;
-    inset-inline-end: -5px;
-    min-inline-size: 17px;
-    block-size: 17px;
-    border: 1px solid var(--background);
-    font-size: 10px;
   }
   .cart-store-copy h3 {
     font-size: 18px;

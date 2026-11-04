@@ -234,7 +234,7 @@ describe("location-scoped super-mall discovery", () => {
       (await fixture({ hint: { code: "branchA", title: null } }).run()).deals
     ).toHaveLength(2);
   });
-  it("keeps two ordinary campaign slots alongside the targeted branch supplement", async () => {
+  it("keeps all ordinary campaigns alongside the targeted branch supplement", async () => {
     const f = fixture({
       ordinaryCampaigns: true,
       stores: ["shop0", "shop1", "shop2"],
@@ -245,9 +245,10 @@ describe("location-scoped super-mall discovery", () => {
       "61:2",
       "90:1",
       "91:1",
+      "92:1",
     ]);
     expect("campaignResearch" in r && r.campaignResearch.reports).toHaveLength(
-      4
+      5
     );
     expect(f.calls.length).toBeLessThanOrEqual(40);
   });
@@ -264,7 +265,7 @@ describe("location-scoped super-mall discovery", () => {
       fixture({ categoryReportedCount: (page) => (page ? 3 : 2) }).run()
     ).rejects.toThrow("count drift");
   });
-  it("preserves a hint's title/source and diagnoses exhaustion before home resolution", async () => {
+  it("preserves a hint title and resolves its scopes regardless of the old budget", async () => {
     const f = fixture();
     const read: SnappRead = (url) =>
       Effect.promise(async () => {
@@ -272,9 +273,9 @@ describe("location-scoped super-mall discovery", () => {
         return { status: response.status, body: await response.json() };
       });
     const r = await Effect.runPromise(
-      planStoreCampaigns(read, { latitude: 35.7, longitude: 51.4 }, () => 5)
+      planStoreCampaigns(read, { latitude: 35.7, longitude: 51.4 })
     );
-    expect(r.plans).toEqual([]);
+    expect(r.plans.length).toBeGreaterThan(0);
     expect(r.discoveredCandidates).toEqual([
       {
         vendorCode: "branchA",
@@ -282,21 +283,27 @@ describe("location-scoped super-mall discovery", () => {
         hintTitle: "Hint title",
       },
     ]);
-    expect(r.omitted).toEqual(
+    expect(r.omitted).not.toEqual(
       expect.arrayContaining([
-        { vendorCode: "branchA", reason: "DISCOVERY_REQUEST_BUDGET" },
+        expect.objectContaining({ reason: "DISCOVERY_REQUEST_BUDGET" }),
       ])
     );
-    expect(f.calls).toHaveLength(1);
+    expect(f.calls.length).toBeGreaterThan(1);
   });
-  it("keeps observed offers but stops requests when the remaining budget cannot cover retries", async () => {
+  it("continues enumeration until the verified empty terminal", async () => {
     const f = fixture();
     let reads = 0;
     const r = await Effect.runPromise(
       enrichStoreCampaigns(
         () => {
           reads++;
-          return Effect.succeed({ status: 200, body: {} });
+          return Effect.succeed({
+            status: 200,
+            body: {
+              status: true,
+              data: { id: 81, type: "default", count: 1, finalResult: [] },
+            },
+          });
         },
         { latitude: 35.7, longitude: 51.4, threshold: 40 },
         [
@@ -308,7 +315,7 @@ describe("location-scoped super-mall discovery", () => {
             first: {
               id: 81,
               type: "default",
-              count: 2,
+              count: 1,
               finalResult: [{ type: "PRODUCT", data: f.product(1) }],
             },
           },
@@ -316,16 +323,15 @@ describe("location-scoped super-mall discovery", () => {
         { vendorCount: 0, productCount: 0, deals: [] },
         new Set(),
         new Set(),
-        [],
-        () => 2
+        []
       )
     );
-    expect(reads).toBe(0);
+    expect(reads).toBe(1);
     expect(r.deals).toHaveLength(1);
-    expect(r.coverage).toBe("incomplete");
+    expect(r.coverage).toBe("complete");
     expect(r.campaignResearch.reports[0]).toMatchObject({
-      terminal: false,
-      partialReason: "REQUEST_BUDGET",
+      terminal: true,
+      coverage: "complete",
     });
   });
   it("resolves a separate hint and merges campaign/category duplicates with provenance", async () => {
@@ -487,23 +493,22 @@ describe("location-scoped super-mall discovery", () => {
     ).toHaveLength(21);
     expect(f.calls.length).toBeLessThanOrEqual(40);
   });
-  it("reports partial coverage only when a hinted collection exhausts the shared scan budget", async () => {
+  it("completes a 5000-row hinted collection beyond the former shared request budget", async () => {
     const f = fixture({ campaignCount: 5000 });
     const r = await f.run();
     expect(r.deals.length).toBeGreaterThan(0);
-    expect("coverage" in r && r.coverage).toBe("incomplete");
+    expect("coverage" in r && r.coverage).toBe("complete");
     expect(
       "campaignResearch" in r && r.campaignResearch.reports[0]
     ).toMatchObject({
       reportedCount: 5000,
-      terminal: false,
-      coverage: "incomplete",
-      partialReason: "REQUEST_BUDGET",
+      terminal: true,
+      coverage: "complete",
     });
-    expect(f.calls.length).toBeLessThanOrEqual(40);
+    expect(f.calls.length).toBeGreaterThan(40);
     expect(
       f.calls.filter((u) => u.pathname.includes("/81/vendor/"))
-    ).toHaveLength(32);
+    ).toHaveLength(51);
   });
   it("rejects a discount-filter response containing undiscounted products", async () => {
     const f = fixture({

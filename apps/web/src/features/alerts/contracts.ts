@@ -4,6 +4,7 @@ export type Wishlist = {
   defaultLocationId: string | null;
   pushPublicKey: string | null;
   scheduleEnabled?: boolean;
+  devScanEnabled?: boolean;
 };
 export type InboxNotification = {
   id: string;
@@ -21,6 +22,33 @@ export type InboxNotification = {
   readAt: string | null;
   scanId: string;
   locationId: string;
+};
+export type DevScanNotification = Pick<
+  InboxNotification,
+  "id" | "title" | "body" | "matches"
+>;
+export type DevScanResult =
+  | { status: "queued" | "running" | "processing" }
+  | {
+      status: "failed" | "cancelled";
+      errorCode: string | null;
+      errorMessage: string | null;
+    }
+  | {
+      status: "succeeded";
+      notification: DevScanNotification | null;
+      push: string;
+    };
+export type DevWishlistRun = {
+  version: 1;
+  id: string;
+  userId: string;
+  steps: {
+    source: "snappmarket" | "okala";
+    key: string;
+    scanId: string | null;
+    result: DevScanResult | null;
+  }[];
 };
 
 function record(value: unknown): Record<string, unknown> {
@@ -44,6 +72,73 @@ function list<Value>(value: unknown, parse: (item: unknown) => Value): Value[] {
   if (!Array.isArray(value)) throw new Error("Invalid list");
   return value.map(parse);
 }
+function parseMatch(value: unknown): InboxNotification["matches"][number] {
+  const match = record(value);
+  return {
+    phrase: text(match.phrase),
+    title: text(match.title),
+    price: number(match.price),
+    discountPercent: number(match.discountPercent),
+    url: text(match.url),
+    source: text(match.source),
+  };
+}
+export function parseDevScanStart(value: unknown) {
+  return { scanId: text(record(value).scanId) };
+}
+export function parseDevScanResult(value: unknown): DevScanResult {
+  const data = record(value);
+  const status = data.status;
+  if (status === "queued" || status === "running" || status === "processing")
+    return { status };
+  if (status === "failed" || status === "cancelled")
+    return {
+      status,
+      errorCode: nullableText(data.errorCode ?? null),
+      errorMessage: nullableText(data.errorMessage ?? null),
+    };
+  if (status !== "succeeded") throw new Error("Invalid scan status");
+  const notification =
+    data.notification === null ? null : record(data.notification);
+  return {
+    status,
+    push: text(data.push),
+    notification: notification
+      ? {
+          id: text(notification.id),
+          title: text(notification.title),
+          body: text(notification.body),
+          matches: list(notification.matches, parseMatch),
+        }
+      : null,
+  };
+}
+export function parseDevWishlistRun(
+  value: unknown,
+  userId: string
+): DevWishlistRun {
+  const run = record(value);
+  if (run.version !== 1 || run.userId !== userId)
+    throw new Error("Invalid scan owner");
+  const steps = list(run.steps, (value): DevWishlistRun["steps"][number] => {
+    const step = record(value);
+    if (step.source !== "snappmarket" && step.source !== "okala")
+      throw new Error("Invalid source");
+    const scanId = nullableText(step.scanId);
+    const result =
+      step.result === null ? null : parseDevScanResult(step.result);
+    if (result && !scanId && result.status !== "failed")
+      throw new Error("Invalid scan state");
+    return { source: step.source, key: text(step.key), scanId, result };
+  });
+  if (
+    steps.length !== 2 ||
+    steps[0]?.source !== "snappmarket" ||
+    steps[1]?.source !== "okala"
+  )
+    throw new Error("Invalid scan order");
+  return { version: 1, id: text(run.id), userId, steps };
+}
 export function parseWishlist(value: unknown): Wishlist {
   const data = record(value);
   return {
@@ -60,6 +155,9 @@ export function parseWishlist(value: unknown): Wishlist {
     ...(typeof data.scheduleEnabled === "boolean"
       ? { scheduleEnabled: data.scheduleEnabled }
       : {}),
+    ...(typeof data.devScanEnabled === "boolean"
+      ? { devScanEnabled: data.devScanEnabled }
+      : {}),
   };
 }
 export function parseNotifications(value: unknown): InboxNotification[] {
@@ -73,17 +171,7 @@ export function parseNotifications(value: unknown): InboxNotification[] {
       readAt: nullableText(item.readAt),
       scanId: text(item.scanId),
       locationId: text(item.locationId),
-      matches: list(item.matches, (value) => {
-        const match = record(value);
-        return {
-          phrase: text(match.phrase),
-          title: text(match.title),
-          price: number(match.price),
-          discountPercent: number(match.discountPercent),
-          url: text(match.url),
-          source: text(match.source),
-        };
-      }),
+      matches: list(item.matches, parseMatch),
     };
   });
 }

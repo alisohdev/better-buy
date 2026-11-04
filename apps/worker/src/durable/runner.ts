@@ -2,7 +2,12 @@ import { DurableRepository } from "./repository";
 import { collectPage, planUnits } from "./adapters";
 import { providerReader } from "./provider";
 import { CollectorError } from "../domain/failures";
-import { DurableError, type Steps, type WorkflowParams } from "./types";
+import {
+  DurableError,
+  ScanEngineControl,
+  type Steps,
+  type WorkflowParams,
+} from "./types";
 
 export async function runDurableScan(
   params: WorkflowParams,
@@ -10,6 +15,7 @@ export async function runDurableScan(
     repository: DurableRepository;
     steps: Steps;
     fetcher?: typeof fetch;
+    sharedOkalaOffersEnabled?: boolean;
     materialize: (userId: string, scanId: string) => Promise<void>;
   }
 ) {
@@ -47,12 +53,23 @@ export async function runDurableScan(
       await repo.started(id);
       return { scanId: id };
     });
-    const read = providerReader(repo, id, steps, options.fetcher);
+    const read = providerReader(
+      repo,
+      id,
+      steps,
+      options.fetcher,
+      options.sharedOkalaOffersEnabled === true
+    );
     const units = await planUnits(repo, await repo.check(id), read);
     for (const unit of units) {
       let previous = await repo.pages(id, unit.id);
-      if (previous.at(-1)?.terminal) continue;
-      for (let page = previous.length; page < 100; page++) {
+      if (previous.at(-1)?.terminal) {
+        await steps.do(`promote:${unit.id}`, async () => ({
+          promoted: await repo.promoteCampaignContributions(id, unit),
+        }));
+        continue;
+      }
+      for (let page = previous.length; ; page++) {
         const old = await repo.checkpoint(id, unit.id, page);
         if (old) {
           previous.push(old);
@@ -102,12 +119,10 @@ export async function runDurableScan(
         });
         previous = await repo.pages(id, unit.id);
         if (data.terminal) break;
-        if (page === 99)
-          throw new DurableError(
-            "SCAN_BUDGET_EXCEEDED",
-            "Page cap reached without terminal evidence"
-          );
       }
+      await steps.do(`promote:${unit.id}`, async () => ({
+        promoted: await repo.promoteCampaignContributions(id, unit),
+      }));
     }
     await steps.do("materialize-products", async () => {
       const job = await repo.check(id);
@@ -127,6 +142,7 @@ export async function runDurableScan(
       coverage: (await repo.load(id))?.context.coverage,
     });
   } catch (error) {
+    if (error instanceof ScanEngineControl) throw error;
     // Engine pause/termination and unexpected defects belong to the Workflow
     // engine. Reconciliation handles terminal errors; never fail a paused job.
     if (
@@ -149,14 +165,81 @@ export async function runDurableScan(
             typeof error.code === "string"
           ? error.code
           : "PERSISTENCE_ERROR";
+    const failureMessage = error instanceof Error ? error.message : undefined;
+    let diagnostic: string | undefined;
+    if (initial.scan.source === "snappmarket" && failureMessage) {
+      for (const [prefix, category] of [
+        ["Snapp campaign contract changed: ", "campaign_contract"],
+        ["Snapp campaign coverage incomplete: ", "campaign_coverage"],
+      ] as const) {
+        if (!failureMessage.startsWith(prefix)) continue;
+        const check = failureMessage.slice(prefix.length);
+        if (check.startsWith("product: ")) {
+          const allowedProductFields = new Set([
+            "id",
+            "vendor_id",
+            "document_id",
+            "title",
+            "price",
+            "discount",
+            "discountRatio",
+            "stock",
+            "no_stock",
+            "is_out_of_stock",
+            "menu_category_title",
+            "images",
+            "images.main",
+          ]);
+          const fields = check
+            .slice("product: ".length)
+            .split(",")
+            .map((field) =>
+              field
+                .split(".")
+                .filter((part) => !/^\d+$/.test(part))
+                .join(".")
+            )
+            .filter((field) => allowedProductFields.has(field))
+            .slice(0, 5);
+          diagnostic = fields.length
+            ? `${category}.product_schema.${fields.join("_")}`
+            : `${category}.product_check`;
+        } else {
+          const normalized = check.replaceAll("[]", " list");
+          diagnostic = /^[A-Za-z0-9 _.\/()]{1,120}$/.test(normalized)
+            ? `${category}.${normalized}`
+            : `${category}.unclassified_check`;
+        }
+        break;
+      }
+      if (!diagnostic && code === "UPSTREAM_CHANGED") {
+        diagnostic =
+          failureMessage ===
+          "Market Party vendor_id is not a positive numeric identity"
+            ? "market_party.vendor_id_identity"
+            : failureMessage ===
+                "Market Party product.vendorId conflicts with vendor_id"
+              ? "market_party.product_vendor_mismatch"
+              : failureMessage.startsWith("ساختار پاسخ")
+                ? "response.schema"
+                : failureMessage.startsWith("پاسخ ") &&
+                    failureMessage.includes(" JSON معتبر نبود")
+                  ? "response.invalid_json"
+                  : "upstream_changed.unclassified";
+      }
+      if (!diagnostic && code === "INCOMPLETE_PAGINATION")
+        diagnostic = "pagination.incomplete_unclassified";
+    }
     await steps.do("record-failure", async () => {
       await repo.fail(id, code);
       return { scanId: id, code };
     });
-    console.info("Durable scan incomplete", {
+    console.info("[SCAN-FAILURE-DIAG]", {
       scanId: id,
       contractVersion: 1,
+      source: initial.scan.source,
       code,
+      ...(diagnostic ? { diagnostic } : {}),
       coverage: "incomplete",
     });
   }

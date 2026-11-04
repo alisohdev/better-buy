@@ -1,9 +1,13 @@
 import { Duration, Effect, Schedule } from "effect";
 import { CollectorError } from "../domain/failures";
 
+export type Fetcher = (
+  ...args: Parameters<typeof fetch>
+) => ReturnType<typeof fetch>;
+
 export interface RequestPolicy {
   provider: string;
-  fetcher?: typeof fetch;
+  fetcher?: Fetcher;
   timeoutMs?: number;
   attempts?: number;
   baseDelayMs?: number;
@@ -13,6 +17,7 @@ export interface RequestPolicy {
   forbiddenCode?: "AUTH_REJECTED" | "UPSTREAM_FORBIDDEN";
   unauthorizedCode?: "AUTH_REJECTED" | "UPSTREAM_FORBIDDEN";
   invalidJsonCode?: "UPSTREAM_CHANGED" | "UPSTREAM_INVALID_JSON";
+  onPhysicalAttempt?: () => void | Promise<void>;
 }
 
 // Reject malformed, negative or excessive guidance instead of silently retrying early.
@@ -42,11 +47,13 @@ export function requestJson(
       (controller) =>
         Effect.gen(function* () {
           const response = yield* Effect.tryPromise({
-            try: (signal) =>
-              (policy.fetcher ?? fetch)(url, {
+            try: async (signal) => {
+              await policy.onPhysicalAttempt?.();
+              return (policy.fetcher ?? fetch)(url, {
                 ...init,
                 signal: AbortSignal.any([controller.signal, signal]),
-              }),
+              });
+            },
             catch: () =>
               new CollectorError(
                 "NETWORK_ERROR",

@@ -2,6 +2,12 @@
 
 Backend structure, Effect v4 boundaries, service lifetimes, collector changes, and execution limits are documented in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
+## Provider carts
+
+Signed-in users can keep independent SnappMarket and Okala baskets from the compact header button. Its drawer groups editable items by recommended store, keeps unmatched items in a separate section, and holds the observed subtotal and continue-choosing action at the bottom. Add products from current successful provider results, set quantities from 1 to 99, or remove lines. Each provider basket is retained across delivery-location changes; its recommendation is recalculated from the latest successful scan compatible with the selected location's coordinates. The recommendation shows one observed store when it covers the full basket, or assigns available lines across observed stores and marks missing products. It reports when a bounded search could not prove the minimum store count. Prices and availability refer to supported promotional-feed observations; the cart does not place orders. Store logos are shown when provider metadata supplies a usable URL, with an initials fallback otherwise.
+
+Migration `0012_provider_carts.sql` adds tenant-scoped persistence for provider cart lines. Local `pnpm dev` applies pending migrations before starting the Worker; to apply migrations manually to local D1, use the command below. Apply pending migrations to the intended remote D1 database through the configured Wrangler environment before deploying the cart feature.
+
 ## Reliability and UX redesign — local validation, 2026-10-08
 
 The application now uses a compact Persian RTL header, visible location/retailer selectors, one primary scan action, and accessible secondary location/help/filter panels. Account controls live in a menu and history clearly identifies its location, provider, threshold, date and outcome, including read-only Jet snapshots. Local IRANSansX and the existing identity mark remain. Both system light/dark themes use coherent tokens; decorative scan animation, large summary tiles, repeated scan actions, connection settings and the unused partial/full choice are retired. Stored mode remains readable. The design source revisions and Before / After / Why audit are in [DESIGN.md](./DESIGN.md).
@@ -90,17 +96,21 @@ The Worker development script overrides the compatibility date to `2026-08-08`, 
 
 سپس [http://127.0.0.1:3000](http://127.0.0.1:3000) را باز کنید، با گوگل وارد شوید، یک موقعیت تحویل معتبر در تهران انتخاب کنید و اسکن اسنپ‌مارکت یا اکالا را شروع کنید. برای اسکن اکالا نیازی به ورود یا وارد کردن توکن نیست؛ شماره موبایل، کد پیامک و تنظیم اتصال فروشگاه لازم نیست. API روی `127.0.0.1:8787` با `wrangler dev` اجرا می‌شود و داده‌ها در D1 محلی نگهداری می‌شوند.
 
-برای اولین اجرا، migration های D1 را محلی اعمال کنید:
+`pnpm dev` and `pnpm cf:dev` now apply pending migrations to the local D1 database before starting the Worker. This also runs after pulling changes that add migrations; remote databases are unaffected. To apply local migrations manually:
 
 ```bash
-pnpm --filter @better-buy/worker exec wrangler d1 migrations apply better-buy --local
+pnpm --filter @better-buy/worker run db:migrate:local
 ```
 
 Migration `0005_remove_snapp_customer_credentials.sql` فقط اطلاعات اتصال قدیمی اسنپ‌مارکت را حذف می‌کند؛ اطلاعات اکالا و جت و تمام حساب‌ها، موقعیت‌ها و تاریخچه حفظ می‌شوند. اسکن اسنپ‌مارکت حتی پیش از اعمال این migration نیز اطلاعات قدیمی را نمی‌خواند.
 
+Migration `0012_provider_carts.sql` creates the per-user, per-provider basket table. It preserves existing account, location, scan and product data; no basket data existed before this feature.
+
 مقادیر محلی لازم (ورود گوگل و کلید نگه‌داری‌شده برای داده‌های قدیمی) را در `apps/worker/.dev.vars` بگذارید — نمونه در `apps/worker/.dev.vars.example`.
 
 ## ورود
+
+For `pnpm dev`, set `DEV_MODE=true` in `apps/worker/.dev.vars` and open `http://localhost:3000` or `http://127.0.0.1:3000`. The development sign-in page offers **Continue as local test user**, which uses the existing `/api/auth/test-login` helper and requires no Google credentials or OAuth setup. Next dev proxies `/api` to `DEV_API_ORIGIN` (default `http://127.0.0.1:8787`); leave `NEXT_PUBLIC_API_BASE` and `NEXT_PUBLIC_AUTH_BASE_URL` empty in `.env.development` so the browser keeps session cookies on its own hostname. Restart `pnpm dev` after changing environment files. Production builds keep the existing Google sign-in page, and the helper remains unavailable when Worker `DEV_MODE` is disabled.
 
 For local testing without Google OAuth, set `DEV_MODE=true` in the ignored Worker `.dev.vars`, build with `pnpm --filter @better-buy/worker build:web`, and run `pnpm cf:dev`. When serving both web and API at `http://127.0.0.1:8787`, use that origin for `APP_ORIGIN`, `BETTER_AUTH_URL` and `CORS_ORIGIN`. On that local page, run this in the browser console:
 

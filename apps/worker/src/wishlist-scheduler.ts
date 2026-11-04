@@ -1,11 +1,43 @@
 import { beginDurableScan } from "./durable/service";
+import { DurableError } from "./durable/types";
 import type { WorkerEnv } from "./http/types";
+import { scanEngineFor } from "./runtime/scan-engine";
 
 type Slot = { date: string; name: "morning" | "evening" };
 const BUDGET = 8;
 const FRESH_MS = 2 * 60 * 60_000;
 const SOURCES = ["snappmarket", "okala"] as const;
+export type WishlistSource = (typeof SOURCES)[number];
 const iso = (date: Date) => date.toISOString();
+
+export function beginWishlistScan(
+  env: WorkerEnv,
+  input: {
+    userId: string;
+    locationId: string;
+    source: WishlistSource;
+    key: string;
+  }
+) {
+  const engine = scanEngineFor(env);
+  if (!engine)
+    throw new DurableError(
+      "DURABLE_EXECUTION_UNAVAILABLE",
+      "Durable execution is unavailable",
+      502
+    );
+  return beginDurableScan(
+    { ...env, SCAN_ENGINE: engine },
+    input.userId,
+    {
+      locationId: input.locationId,
+      source: input.source,
+      threshold: input.source === "okala" ? 30 : 40,
+      mode: "full",
+    },
+    input.key
+  );
+}
 
 export function tehranSlot(at: Date): Slot | null {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -64,7 +96,8 @@ export async function runWishlistSchedule(
   env: WorkerEnv,
   scheduledTime: number | Date
 ) {
-  if (env.WISHLIST_SCHEDULE_ENABLED !== "true" || !env.SCAN_WORKFLOW) return;
+  const engine = scanEngineFor(env);
+  if (env.WISHLIST_SCHEDULE_ENABLED !== "true" || !engine) return;
   const at =
     scheduledTime instanceof Date ? scheduledTime : new Date(scheduledTime);
   if (!Number.isFinite(at.getTime())) return;
@@ -186,21 +219,19 @@ export async function runWishlistSchedule(
         await finish(db, job, "skipped", null, "default_location_changed");
         continue;
       }
-      const scan = await beginDurableScan(
-        { ...env, SCAN_WORKFLOW: env.SCAN_WORKFLOW },
-        job.user_id,
+      const scan = await beginWishlistScan(
+        { ...env, SCAN_ENGINE: engine },
         {
+          userId: job.user_id,
           locationId: job.location_id,
           source: job.source,
-          threshold: job.source === "okala" ? 30 : 40,
-          mode: "full",
-        },
-        await idempotencyKey(
-          job.user_id,
-          job.schedule_date,
-          job.schedule_slot,
-          job.source
-        )
+          key: await idempotencyKey(
+            job.user_id,
+            job.schedule_date,
+            job.schedule_slot,
+            job.source
+          ),
+        }
       );
       await finish(db, job, "done", scan.id, null);
     } catch (error) {

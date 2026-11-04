@@ -18,7 +18,7 @@ import { terminalScanArtifactStatements } from "./scan-artifacts";
 const now = () => new Date().toISOString();
 
 // Both scan reads use the same correlated execution projection.
-const executionProjection = `(SELECT json_object('kind','workflow','phase',e.phase,'completedUnits',(SELECT COUNT(*) FROM scan_units u WHERE u.scan_id=s.id AND u.terminal=1),'totalUnits',(SELECT COUNT(*) FROM scan_units u WHERE u.scan_id=s.id),'completedPages',(SELECT COUNT(*) FROM scan_pages p WHERE p.scan_id=s.id AND p.complete=1),'observedRows',s.product_count,'eligibleOffers',s.deal_count,'attemptCount',e.attempt_count,'heartbeatAt',e.heartbeat_at,'deadlineAt',e.deadline_at,'dispatchState',e.dispatch_state,'cancelRequested',json(CASE WHEN e.cancel_requested=1 THEN 'true' ELSE 'false' END)) FROM scan_execution e WHERE e.scan_id=s.id AND e.execution_kind='workflow') execution_json`;
+const executionProjection = `(SELECT json_object('kind','workflow','phase',e.phase,'completedUnits',(SELECT COUNT(*) FROM scan_units u WHERE u.scan_id=s.id AND u.terminal=1),'totalUnits',(SELECT COUNT(*) FROM scan_units u WHERE u.scan_id=s.id),'completedPages',(SELECT COUNT(*) FROM scan_pages p WHERE p.scan_id=s.id AND p.complete=1),'observedRows',s.product_count,'eligibleOffers',s.deal_count,'attemptCount',e.attempt_count,'heartbeatAt',e.heartbeat_at,'deadlineAt',NULL,'dispatchState',e.dispatch_state,'cancelRequested',json(CASE WHEN e.cancel_requested=1 THEN 'true' ELSE 'false' END)) FROM scan_execution e WHERE e.scan_id=s.id AND e.execution_kind='workflow') execution_json`;
 
 type LocationRow = {
   coordinate_revision: number;
@@ -31,6 +31,7 @@ type LocationRow = {
   updated_at: string;
 };
 type ScanRow = {
+  observation_json?: string | null;
   execution_json?: string | null;
   context_json: string | null;
   id: string;
@@ -225,11 +226,10 @@ export class Store {
   }
   async reconcileStale() {
     const queuedCutoff = new Date(Date.now() - 2 * 60_000).toISOString();
-    const runningCutoff = new Date(Date.now() - 15 * 60_000).toISOString();
-    const stale = `user_id=? AND status IN ('queued','running') AND ((status='queued' AND created_at < ?) OR (status='running' AND created_at < ?)) AND NOT EXISTS(SELECT 1 FROM scan_execution e WHERE e.scan_id=scans.id AND e.execution_kind='workflow')`;
+    const stale = `user_id=? AND status='queued' AND created_at < ? AND NOT EXISTS(SELECT 1 FROM scan_execution e WHERE e.scan_id=scans.id AND e.execution_kind='workflow')`;
     const { results } = await this.db
       .prepare(`SELECT id FROM scans WHERE ${stale}`)
-      .bind(this.userId, queuedCutoff, runningCutoff)
+      .bind(this.userId, queuedCutoff)
       .all<{ id: string }>();
     for (const { id } of results)
       await this.db.batch([
@@ -237,7 +237,7 @@ export class Store {
           .prepare(
             `UPDATE scans SET status='failed',finished_at=?,error_code='INTERRUPTED',error_message='اسکن با توقف برنامه متوقف شد' WHERE id=? AND ${stale}`
           )
-          .bind(now(), id, this.userId, queuedCutoff, runningCutoff),
+          .bind(now(), id, this.userId, queuedCutoff),
         ...terminalScanArtifactStatements(this.db, id, this.userId),
       ]);
   }
@@ -296,7 +296,7 @@ export class Store {
   async scan(id: string) {
     const r = await this.db
       .prepare(
-        `SELECT s.*,l.name location_name,${executionProjection} FROM scans s JOIN locations l ON l.id=s.location_id AND l.user_id=s.user_id WHERE s.user_id=? AND s.id=?`
+        `SELECT s.*,l.name location_name,${executionProjection},(SELECT json_object('oldestAt',MIN(observed_at),'newestAt',MAX(observed_at),'reusedRequestCount',SUM(reused),'totalRequestCount',COUNT(*)) FROM scan_offer_observations WHERE scan_id=s.id) observation_json FROM scans s JOIN locations l ON l.id=s.location_id AND l.user_id=s.user_id WHERE s.user_id=? AND s.id=?`
       )
       .bind(this.userId, id)
       .first<ScanRow>();
@@ -307,6 +307,10 @@ export class Store {
       ? scanContextSchema.parse(JSON.parse(r.context_json))
       : null;
     return {
+      ...(r.observation_json &&
+      JSON.parse(r.observation_json).totalRequestCount > 0
+        ? { observation: JSON.parse(r.observation_json) }
+        : {}),
       ...(r.execution_json ? { execution: JSON.parse(r.execution_json) } : {}),
       context,
       id: r.id,
@@ -355,7 +359,7 @@ export class Store {
     parameters.push(Math.min(101, Math.max(1, options.limit ?? 100)));
     const { results } = await this.db
       .prepare(
-        `SELECT s.*,l.name location_name,${executionProjection} FROM scans s JOIN locations l ON l.id=s.location_id AND l.user_id=s.user_id WHERE ${clauses.join(" AND ")} ORDER BY s.created_at DESC,s.id DESC LIMIT ?`
+        `SELECT s.*,l.name location_name,${executionProjection},(SELECT json_object('oldestAt',MIN(observed_at),'newestAt',MAX(observed_at),'reusedRequestCount',SUM(reused),'totalRequestCount',COUNT(*)) FROM scan_offer_observations WHERE scan_id=s.id) observation_json FROM scans s JOIN locations l ON l.id=s.location_id AND l.user_id=s.user_id WHERE ${clauses.join(" AND ")} ORDER BY s.created_at DESC,s.id DESC LIMIT ?`
       )
       .bind(...parameters)
       .all<ScanRow>();

@@ -115,7 +115,6 @@ export function ProviderCart({
             aria-label={`سبد ${sourceLabel(source)}، ${faNumber.format(count)} کالا`}
           >
             <CartIcon />
-            <span>سبد</span>
             <span className="cart-trigger-count" aria-hidden="true">
               {faNumber.format(count)}
             </span>

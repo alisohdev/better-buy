@@ -7,7 +7,7 @@ import { NonRetryableError } from "cloudflare:workflows";
 import { DurableRepository } from "../durable/repository";
 import { runDurableScan } from "../durable/runner";
 import { materializeProducts } from "../saved-products";
-import type { WorkflowParams, Steps } from "../durable/types";
+import type { JsonValue, WorkflowParams, Steps } from "../durable/types";
 import type { WorkerEnv } from "../http/types";
 import { DurableError } from "../durable/types";
 import { CollectorError } from "../domain/failures";
@@ -17,9 +17,17 @@ export class ScanWorkflow extends WorkflowEntrypoint<
   WorkflowParams
 > {
   async run(event: WorkflowEvent<WorkflowParams>, step: WorkflowStep) {
+    const cloudflareStepDo = step.do as unknown as (
+      name: string,
+      options: {
+        retries: { limit: 2; delay: "1 second"; backoff: "exponential" };
+        timeout: "1 minute";
+      },
+      action: () => Promise<JsonValue>
+    ) => Promise<JsonValue>;
     const steps: Steps = {
-      do: (name, action) =>
-        step.do(
+      do: <T extends JsonValue>(name: string, action: () => Promise<T>) =>
+        cloudflareStepDo(
           name,
           {
             retries: { limit: 2, delay: "1 second", backoff: "exponential" },
@@ -39,12 +47,13 @@ export class ScanWorkflow extends WorkflowEntrypoint<
               throw error;
             }
           }
-        ),
+        ) as Promise<T>,
       sleep: (name, duration) => step.sleep(name, duration),
     };
     return runDurableScan(event.payload, {
       repository: new DurableRepository(this.env.DB, this.env.BOX_KEY),
       steps,
+      sharedOkalaOffersEnabled: this.env.OKALA_SHARED_OFFERS_ENABLED === "true",
       materialize: (userId, scanId) =>
         materializeProducts(this.env.DB, userId, scanId),
     });

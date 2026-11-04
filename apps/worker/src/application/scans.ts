@@ -126,9 +126,7 @@ export const prepareScan = (input: ScanInput) =>
     return { ...storedInput, id, location, access } satisfies ScanJob;
   });
 
-export const COLLECT_BUDGET_MS = 22_000;
-
-export const executeScan = (job: ScanJob, budgetMs = COLLECT_BUDGET_MS) =>
+export const executeScan = (job: ScanJob) =>
   Effect.gen(function* () {
     const persistence = yield* ScanPersistence;
     const workflow = Effect.gen(function* () {
@@ -138,18 +136,7 @@ export const executeScan = (job: ScanJob, budgetMs = COLLECT_BUDGET_MS) =>
         return yield* collector.collect(job, (counts) =>
           persistence.progress(job.id, counts)
         );
-      }).pipe(
-        Effect.timeoutOrElse({
-          duration: budgetMs,
-          orElse: () =>
-            Effect.fail(
-              new CollectorError(
-                "REQUEST_TIMEOUT",
-                "زمان اجرای اسکن به پایان رسید؛ دوباره تلاش کنید."
-              )
-            ),
-        })
-      );
+      });
       // D1 has no cancellation API. Await the atomic batch even if interrupted so
       // a failure finalizer cannot race a success commit whose outcome is unknown.
       yield* persistence.succeed(job.id, result);
@@ -166,14 +153,58 @@ export const executeScan = (job: ScanJob, budgetMs = COLLECT_BUDGET_MS) =>
           (Cause.hasInterrupts(cause) ? "INTERRUPTED" : "UNKNOWN_ERROR");
         const message =
           failure?.message ?? "اسکن با خطای برنامه متوقف شد؛ دوباره تلاش کنید.";
-        // Never log a cause: it can contain upstream bodies or personal credentials.
+        const diagnostic = safeScanFailureDiagnostic(
+          job.source,
+          code,
+          failure?.message
+        );
         return Effect.gen(function* () {
-          if (!failure)
-            yield* Effect.sync(() =>
-              console.error("Scan execution defect", { scanId: job.id, code })
-            );
+          yield* Effect.sync(() =>
+            console.error(failure ? "Scan failed" : "Scan execution defect", {
+              scanId: job.id,
+              source: job.source,
+              code,
+              ...(diagnostic ? { diagnostic } : {}),
+            })
+          );
           yield* persistence.fail(job.id, code, message);
         });
       })
     );
   });
+
+function safeScanFailureDiagnostic(
+  source: ScanRecord["source"],
+  code: string,
+  message: string | undefined
+) {
+  if (source !== "snappmarket" || !message) return undefined;
+
+  for (const [prefix, category] of [
+    ["Snapp campaign contract changed: ", "campaign_contract"],
+    ["Snapp campaign coverage incomplete: ", "campaign_coverage"],
+  ] as const) {
+    if (!message.startsWith(prefix)) continue;
+    const check = message.slice(prefix.length);
+    if (check.startsWith("product: ")) return `${category}.product_check`;
+    const normalized = check.replaceAll("[]", " list");
+    return /^[A-Za-z0-9 _.\/()]{1,120}$/.test(normalized)
+      ? `${category}.${normalized}`
+      : `${category}.unclassified_check`;
+  }
+
+  if (code === "UPSTREAM_CHANGED") {
+    if (message === "Market Party vendor_id is not a positive numeric identity")
+      return "market_party.vendor_id_identity";
+    if (message === "Market Party product.vendorId conflicts with vendor_id")
+      return "market_party.product_vendor_mismatch";
+    if (message.startsWith("ساختار پاسخ")) return "response.schema";
+    if (message.startsWith("پاسخ ") && message.includes(" JSON معتبر نبود"))
+      return "response.invalid_json";
+    return "upstream_changed.unclassified";
+  }
+
+  return code === "INCOMPLETE_PAGINATION"
+    ? "pagination.incomplete_unclassified"
+    : undefined;
+}

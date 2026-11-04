@@ -14,6 +14,7 @@ export function terminalScanArtifactStatements(
       "scan_observations",
       "scan_discovery",
       "scan_attempts",
+      "scan_campaign_contributions",
       "scan_units",
     ].map((table) =>
       db

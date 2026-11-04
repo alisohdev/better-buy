@@ -69,9 +69,31 @@ export function DealShelf({
           </p>
           {scan && (
             <p className="snapshot-time">
-              <time dateTime={scan.finishedAt ?? scan.createdAt}>
-                {faDate.format(new Date(scan.finishedAt ?? scan.createdAt))}
-              </time>
+              {scan.observation ? (
+                <>
+                  <time dateTime={scan.observation.oldestAt}>
+                    {faDate.format(new Date(scan.observation.oldestAt))}
+                  </time>
+                  {scan.observation.newestAt !== scan.observation.oldestAt && (
+                    <>
+                      {" · "}
+                      <time dateTime={scan.observation.newestAt}>
+                        {faDate.format(new Date(scan.observation.newestAt))}
+                      </time>
+                    </>
+                  )}
+                  {scan.observation.reusedRequestCount > 0 && (
+                    <strong>
+                      {" "}
+                      · بخشی از پیشنهادها از بررسی مشترک بازیابی شد
+                    </strong>
+                  )}
+                </>
+              ) : (
+                <time dateTime={scan.finishedAt ?? scan.createdAt}>
+                  {faDate.format(new Date(scan.finishedAt ?? scan.createdAt))}
+                </time>
+              )}
               {results.error && hasResults && (
                 <strong> · نتیجه ذخیره‌شده؛ تازه‌سازی نشد</strong>
               )}
@@ -121,8 +143,9 @@ export function DealShelf({
       )}
       {scan && (
         <p className="coverage-note">
-          نتیجه‌ها از فهرست‌های تخفیف پشتیبانی‌شده‌اند و تمام کالاهای فروشگاه‌ها
-          را پوشش نمی‌دهند.
+          {scan.context?.coverage === "incomplete"
+            ? "بعضی از فهرست‌ها کامل بررسی نشدند. پیشنهادهای تأییدشده نمایش داده می‌شوند؛ نبودن کالا در این نتیجه به معنی ناموجود بودن آن نیست."
+            : "نتیجه‌ها از فهرست‌های تخفیف پشتیبانی‌شده‌اند و تمام کالاهای فروشگاه‌ها را پوشش نمی‌دهند."}
         </p>
       )}
       {scan && (
@@ -144,6 +167,7 @@ export function DealShelf({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="wishlist">اولویت علاقه‌مندی‌ها</SelectItem>
                 <SelectItem value="price">کمترین قیمت</SelectItem>
                 <SelectItem value="discount">بیشترین تخفیف</SelectItem>
               </SelectContent>

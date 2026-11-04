@@ -5,6 +5,8 @@ import { Input } from "../../components/ui/input";
 import { Panel, ReadNotice } from "../dashboard/Primitives";
 import { useWishlist } from "./useAlerts";
 import { PushSettings } from "./PushSettings";
+import { DevWishlistScan } from "./DevWishlistScan";
+import { useDevWishlistScan } from "./useDevWishlistScan";
 import "./alerts.css";
 
 export function WishlistPanel({
@@ -15,6 +17,10 @@ export function WishlistPanel({
   locationsReady: boolean;
 }) {
   const { query, mutation } = useWishlist();
+  const devEnabled =
+    process.env.NODE_ENV === "development" &&
+    query.data?.devScanEnabled === true;
+  const devScan = useDevWishlistScan(devEnabled);
   const [phrase, setPhrase] = useState("");
   const [notice, setNotice] = useState("");
   const savedLocation = query.data?.defaultLocationId;
@@ -25,7 +31,27 @@ export function WishlistPanel({
   return (
     <Panel
       title="فهرست علاقه‌مندی‌ها"
-      trigger={<Button variant="ghost">علاقه‌مندی‌ها</Button>}
+      trigger={
+        <Button
+          variant="ghost"
+          className="header-icon-button"
+          aria-label="علاقه‌مندی‌ها"
+          title="علاقه‌مندی‌ها"
+        >
+          <svg
+            aria-hidden="true"
+            focusable="false"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78Z" />
+          </svg>
+        </Button>
+      }
     >
       <div className="alerts-content">
         <p className="muted">
@@ -158,6 +184,18 @@ export function WishlistPanel({
           </p>
         )}
         <p role="status">{mutation.isPending ? "در حال ذخیره…" : notice}</p>
+        {devEnabled && (
+          <DevWishlistScan
+            scan={devScan}
+            canStart={
+              !!query.data?.items.length &&
+              !!savedLocation &&
+              !missingLocation &&
+              locationsReady &&
+              !mutation.isPending
+            }
+          />
+        )}
         <PushSettings
           publicKey={query.data?.pushPublicKey ?? null}
           loading={query.isPending}

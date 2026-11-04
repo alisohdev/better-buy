@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { Hono } from "hono";
 import type { Api, WorkerEnv } from "./http/types";
 import { registerWishlist } from "./http/wishlist";
+import { registerDevWishlist } from "./http/dev-wishlist";
 import { matchesWishlist, wishlistTokens } from "./wishlist-matching";
 import {
   processWishlistNotifications,
@@ -61,6 +62,7 @@ function fixture() {
     await next();
   });
   registerWishlist(app);
+  registerDevWishlist(app);
   const request = (
     path: string,
     method = "GET",
@@ -121,6 +123,35 @@ afterEach(() => {
 });
 
 describe("wishlist", () => {
+  it("returns a real per-scan notification to the development command", async () => {
+    const fixture = fixtureForTest();
+    const scanId = crypto.randomUUID();
+    fixture.item();
+    fixture.scan(scanId);
+    Object.assign(fixture.env, { SCAN_WORKFLOW: {} });
+    const response = await fixture.request("dev/wishlist/status", "POST", {
+      userId: "owner",
+      scanId,
+    });
+    expect(response.status).toBe(200);
+    const result = (await response.json()) as {
+      data: {
+        status: string;
+        notification: { id: string; matches: unknown[] };
+        push: string;
+      };
+    };
+    expect(result.data.status).toBe("succeeded");
+    expect(result.data.notification.id).toBe("wishlist:" + scanId);
+    expect(result.data.notification.matches).toHaveLength(1);
+    expect(result.data.push).toBe("unconfigured");
+    const repeated = await fixture.request("dev/wishlist/status", "POST", {
+      userId: "owner",
+      scanId,
+    });
+    expect(repeated.status).toBe(200);
+    expect(await readNotifications(fixture.db, "owner")).toHaveLength(1);
+  });
   it("normalizes Persian letters, half-spaces and numbers without matching missing words", () => {
     expect(matchesWishlist("پنير خامه‌ای ۵۰۰ گرمی", "پنیر خامه اي 500")).toBe(
       true
@@ -189,20 +220,46 @@ describe("wishlist", () => {
     const itemId = fixture.item();
     const page = await readProductPage(fixture.db, "owner", "scan", {
       limit: "1",
-      sort: "discount",
+      sort: "wishlist",
     });
     expect(page.items[0]!.title).toBe("پنیر خامه‌ای برند");
     expect(page.nextCursor).toBeTruthy();
     const next = await readProductPage(fixture.db, "owner", "scan", {
       limit: "1",
-      sort: "discount",
+      sort: "wishlist",
       cursor: page.nextCursor!,
     });
     expect(next.items[0]!.title).toBe("Other");
+    for (const sort of ["discount", "price"]) {
+      const sorted = await readProductPage(fixture.db, "owner", "scan", {
+        sort,
+      });
+      expect(sorted.items[0]!.title).toBe("Other");
+    }
+    const legacyDefault = await readProductPage(
+      fixture.db,
+      "owner",
+      "scan",
+      {}
+    );
+    expect(legacyDefault.items[0]!.title).toBe("Other");
+    await expect(
+      readProductPage(fixture.db, "owner", "scan", {
+        sort: "price",
+        cursor: page.nextCursor!,
+      })
+    ).rejects.toThrow("INVALID_CURSOR");
     fixture.sqlite.prepare("DELETE FROM wishlist_items WHERE id=?").run(itemId);
     await expect(
-      readProductPage(fixture.db, "owner", "scan", { cursor: page.nextCursor! })
+      readProductPage(fixture.db, "owner", "scan", {
+        sort: "wishlist",
+        cursor: page.nextCursor!,
+      })
     ).rejects.toThrow("INVALID_CURSOR");
+    const emptyWishlist = await readProductPage(fixture.db, "owner", "scan", {
+      sort: "wishlist",
+    });
+    expect(emptyWishlist.items[0]!.title).toBe("Other");
   });
   it("notifies once for a new match and again only when its observed price falls", async () => {
     const fixture = fixtureForTest();
@@ -324,7 +381,19 @@ describe("Web Push", () => {
       expect(JSON.stringify(init?.body)).not.toContain("پنیر");
       return new Response(null, { status: 201 });
     };
-    await drainPushDeliveries(fixture.env, Date.now(), sender);
+    await drainPushDeliveries(fixture.env, Date.now(), sender, {
+      userId: "other",
+      scanId: "scan",
+    });
+    await drainPushDeliveries(fixture.env, Date.now(), sender, {
+      userId: "owner",
+      scanId: "other-scan",
+    });
+    expect(calls).toBe(0);
+    await drainPushDeliveries(fixture.env, Date.now(), sender, {
+      userId: "owner",
+      scanId: "scan",
+    });
     expect(calls).toBe(1);
     await drainPushDeliveries(fixture.env, Date.now(), sender);
     expect(calls).toBe(1);

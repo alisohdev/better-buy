@@ -8,6 +8,11 @@
     "dev": "wrangler dev --compatibility-date 2026-08-08",
     "build:web": "pnpm --filter @better-buy/shared build && pnpm --filter @better-buy/web build:worker",
     "deploy": "pnpm run build:web && wrangler deploy",
+    "vps:migrate": "bun vps/migrate.ts",
+    "vps:backup": "bun vps/backup.ts",
+    "vps:http": "bun vps/http.ts",
+    "vps:worker": "bun vps/worker.ts",
+    "vps:typecheck": "tsc -p tsconfig.vps.json --noEmit",
     "pretest": "pnpm --filter @better-buy/shared build",
     "test": "vitest run",
     "typecheck": "wrangler types ./src/env.d.ts && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.test.json --noEmit"
@@ -22,6 +27,7 @@
   },
   "devDependencies": {
     "@better-auth/utils": "^0.4.2",
+    "@types/bun": "^1.4.4",
     "@types/node": "^22.17.2",
     "vitest": "^3.2.4",
     "wrangler": "^4.120.0"

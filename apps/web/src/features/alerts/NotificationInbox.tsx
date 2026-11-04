@@ -20,9 +20,34 @@ export function NotificationInbox() {
       open={open}
       onOpenChange={setOpen}
       trigger={
-        <Button variant="ghost">
-          اعلان‌ها
-          {unread > 0 ? " (" + faNumber.format(unread) + " خوانده‌نشده)" : ""}
+        <Button
+          variant="ghost"
+          className="header-icon-button"
+          aria-label={
+            unread > 0
+              ? "اعلان‌ها، " + faNumber.format(unread) + " خوانده‌نشده"
+              : "اعلان‌ها"
+          }
+          title="اعلان‌ها"
+        >
+          <svg
+            aria-hidden="true"
+            focusable="false"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+            <path d="M10 21h4" />
+          </svg>
+          {unread > 0 && (
+            <span className="header-count-badge" aria-hidden="true">
+              {faNumber.format(unread)}
+            </span>
+          )}
         </Button>
       }
     >

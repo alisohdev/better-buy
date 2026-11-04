@@ -262,6 +262,13 @@ describe("durable scan persistence", () => {
         );
         expect(requests).toBe(before);
       }
+      if (partial) {
+        expect(first.terminal).toBe(false);
+        await expect(repo.publish(scan.id)).rejects.toMatchObject({
+          code: "INCOMPLETE_PAGINATION",
+        });
+        return;
+      }
       await materializeProducts(db, "tenant", scan.id);
       await repo.publish(scan.id);
       expect(await store.scan(scan.id)).toMatchObject({
@@ -650,7 +657,7 @@ describe("durable scan persistence", () => {
           sectionType: "product-list",
           reason: "UNSUPPORTED_COLLECTION_TYPE",
         },
-        { vendorCode: "extra16", reason: "DISCOVERY_REQUEST_BUDGET" },
+        { vendorCode: "extra16", reason: "NO_SUPPORTED_ORDINARY_COLLECTION" },
       ]),
     });
     expect(JSON.stringify(audit)).not.toContain("fixture-secret");
@@ -841,6 +848,145 @@ describe("durable scan persistence", () => {
       conflictingOfferIdentities: ["1:2"],
     });
   });
+  it("quarantines a cross-page campaign conflict without replacing a valid baseline offer", async () => {
+    const { db } = database(),
+      store = new Store(db, "tenant", "key"),
+      repo = new DurableRepository(db, "key");
+    const location = await store.createLocation({
+      name: "Fixture",
+      latitude: 35.7,
+      longitude: 51.4,
+    });
+    const scan = await repo.reserve(
+      "tenant",
+      {
+        locationId: location!.id,
+        source: "snappmarket",
+        threshold: 40,
+        mode: "partial",
+      },
+      crypto.randomUUID(),
+      true
+    );
+    await repo.started(scan.id);
+    const baselineUnit: Unit = { id: "market-party", kind: "market_party" };
+    const campaignUnit: Unit = {
+      id: "campaign-1-2",
+      kind: "store_campaign",
+      vendorId: 1,
+      vendorCode: "shop",
+      collectionId: 2,
+      title: "Shop",
+    };
+    await repo.freeze(
+      scan.id,
+      [baselineUnit, campaignUnit],
+      scan.context!.manifest
+    );
+    const offer = {
+      key: "1:2",
+      productVariationId: "2",
+      vendorId: "1",
+      title: "Milk",
+      image: null,
+      vendorTitle: "Shop",
+      vendorCode: "shop",
+      categoryTitle: null,
+      priceRials: 100000,
+      discountRials: 40000,
+      finalPriceRials: 60000,
+      discountRatio: 40,
+      stock: 2,
+      observedAt: "2026-10-10T08:00:00.000Z",
+      provenance: ["snapp:market_party"],
+    };
+    await repo.stage(scan.id, baselineUnit, 0, {
+      offers: [offer],
+      products: ["1:2"],
+      vendors: ["1"],
+      identities: ["1:2"],
+      eligibility: { "1:2": { eligible: true, excludedReason: null } },
+      rowCount: 1,
+      reportedTotal: 1,
+      terminal: true,
+      terminalEvidence: "fixture_terminal",
+      fingerprint: "baseline",
+    });
+    const product = (productId: number, stock = 2) => ({
+      id: productId,
+      vendor_id: 1,
+      document_id: `${productId}-1`,
+      title: productId === 2 ? "Milk" : "Bread",
+      price: 100000,
+      discount: 40000,
+      discountRatio: 40,
+      stock,
+    });
+    const read = async (url: URL) => {
+      const page = Number(url.searchParams.get("page"));
+      const products =
+        page === 0
+          ? [product(2), product(3)]
+          : page === 1
+            ? [product(2, 3)]
+            : [];
+      return {
+        status: true,
+        data: {
+          id: 2,
+          type: "default",
+          count: 3,
+          finalResult: products.map((data) => ({ type: "PRODUCT", data })),
+        },
+      };
+    };
+    let previous = await repo.pages(scan.id, campaignUnit.id);
+    for (let page = 0; page <= 2; page++) {
+      const data = await collectPage(
+        await repo.check(scan.id),
+        campaignUnit,
+        page,
+        previous,
+        read
+      );
+      if (page === 0)
+        expect(data.offers.map((item) => item.key)).toEqual(["1:2", "1:3"]);
+      if (page === 1) {
+        expect(data.conflictingIdentities).toEqual(["1:2"]);
+        expect(data.offers).toEqual([]);
+      }
+      await repo.stage(scan.id, campaignUnit, page, data);
+      previous = await repo.pages(scan.id, campaignUnit.id);
+    }
+    await materializeProducts(db, "tenant", scan.id);
+    await repo.publish(scan.id);
+    expect(await store.scan(scan.id)).toMatchObject({
+      status: "succeeded",
+      context: { coverage: "incomplete" },
+    });
+    expect(await store.deals(scan.id)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          productVariationId: "3",
+          provenance: ["snapp:store_campaign:1:2"],
+        }),
+        expect.objectContaining({
+          productVariationId: "2",
+          priceRials: 100000,
+          provenance: ["snapp:market_party"],
+        }),
+      ])
+    );
+    expect(await readDurableComparison(db, "tenant", scan.id)).toMatchObject({
+      complete: false,
+      campaigns: [
+        {
+          coverage: "incomplete",
+          excluded: { CONFLICTING_DUPLICATE: 1 },
+        },
+      ],
+    });
+  });
   it("comparison measures incremental union contributions and requires publication for completeness", async () => {
     const { db } = database(),
       store = new Store(db, "tenant", "key"),
@@ -1006,7 +1152,7 @@ describe("durable scan persistence", () => {
     ).rejects.toMatchObject({ code: "IDEMPOTENCY_CONFLICT" });
   });
 
-  it("global durable admission and physical retry reservations remain bounded across tenants", async () => {
+  it("admits independent users and continues requests beyond the former scan budget", async () => {
     const { db, sqlite } = database(),
       repo = new DurableRepository(db, "key");
     const input = async (user: string) => {
@@ -1025,32 +1171,28 @@ describe("durable scan persistence", () => {
     const a = await input("a"),
       b = await input("b");
     const first = await repo.reserve("a", a, crypto.randomUUID(), false);
-    await expect(
-      repo.reserve("b", b, crypto.randomUUID(), false)
-    ).rejects.toMatchObject({ code: "SCAN_CAPACITY", status: 429 });
+    const second = await repo.reserve("b", b, crypto.randomUUID(), false);
+    expect(second.status).toBe("queued");
     expect(
       sqlite.prepare("SELECT COUNT(*) AS n FROM scans").get()
-    ).toMatchObject({ n: 1 });
+    ).toMatchObject({ n: 2 });
     await repo.reserveAttempt(first.id, "get-page");
     await repo.reserveAttempt(first.id, "get-page");
     await repo.reserveAttempt(first.id, "get-page");
     await expect(
       repo.reserveAttempt(first.id, "get-page")
-    ).rejects.toMatchObject({ code: "SCAN_BUDGET_EXCEEDED" });
+    ).rejects.toMatchObject({ code: "REQUEST_RETRIES_EXHAUSTED" });
     expect((await repo.load(first.id))!.runtime.attempt_count).toBe(3);
-    sqlite
-      .prepare("UPDATE scan_execution SET attempt_limit=3 WHERE scan_id=?")
-      .run(first.id);
-    await expect(
-      repo.reserveAttempt(first.id, "another-page")
-    ).rejects.toMatchObject({ code: "SCAN_BUDGET_EXCEEDED" });
+    for (let page = 0; page < 260; page++)
+      await repo.reserveAttempt(first.id, `page-${page}`);
+    expect((await repo.load(first.id))!.runtime.attempt_count).toBe(263);
     await repo.cancel(first.id, "a");
     await expect(
       repo.reserveAttempt(first.id, "another-page")
     ).rejects.toMatchObject({ code: "TERMINAL_SCAN" });
-    expect(
-      (await repo.reserve("b", b, crypto.randomUUID(), false)).status
-    ).toBe("queued");
+    await expect(
+      repo.reserve("b", b, crypto.randomUUID(), false)
+    ).rejects.toMatchObject({ code: "SCAN_IN_PROGRESS" });
   });
   it("replays staged pages without inflated counts, rejects conflicting content and never publishes unfinished units", async () => {
     const { db, sqlite } = database(),
@@ -1398,7 +1540,7 @@ describe("durable scan persistence", () => {
     expect(repeated.scan!.id).toBe(first.scan!.id);
     expect(repeated.job).toBeNull();
   });
-  it("campaign raw totals allow exact repeated identities while conflicts fail incomplete", async () => {
+  it("campaign raw totals allow exact repeats and quarantine conflicting identities", async () => {
     for (const conflict of [false, true]) {
       const { db, sqlite } = database(),
         store = new Store(db, "tenant", "key"),
@@ -1495,11 +1637,29 @@ describe("durable scan persistence", () => {
       );
       expect(await store.scan(scan.id)).toMatchObject(
         conflict
-          ? { status: "failed", errorCode: "INCOMPLETE_PAGINATION" }
+          ? {
+              status: "succeeded",
+              dealCount: 2,
+              context: { coverage: "incomplete" },
+            }
           : { status: "succeeded", productCount: 3, dealCount: 3 }
       );
-      if (conflict) expect(await store.deals(scan.id)).toEqual([]);
-      else {
+      if (conflict) {
+        expect(
+          (await store.deals(scan.id)).map((deal) => deal.productVariationId)
+        ).toEqual(["1", "3"]);
+        expect(
+          await readDurableComparison(db, "tenant", scan.id)
+        ).toMatchObject({
+          complete: false,
+          campaigns: [
+            {
+              coverage: "incomplete",
+              excluded: { CONFLICTING_DUPLICATE: 1 },
+            },
+          ],
+        });
+      } else {
         expect(
           await readDurableComparison(db, "tenant", scan.id)
         ).toMatchObject({
@@ -1574,6 +1734,17 @@ describe("durable scan persistence", () => {
                     price: 10000,
                     okPrice: 7000,
                     discountPercent: 30,
+                    hasQuantity: true,
+                    quantity: 1,
+                  },
+                  {
+                    id: 3,
+                    storeId: 5,
+                    name: "Surcharge item",
+                    storeName: "Store",
+                    price: 10000,
+                    okPrice: 10700,
+                    discountPercent: -7,
                     hasQuantity: true,
                     quantity: 1,
                   },

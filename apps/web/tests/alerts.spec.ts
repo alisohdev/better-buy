@@ -14,6 +14,7 @@ async function fixture(
     unsupported?: boolean;
     pushFailure?: boolean;
     scan?: boolean;
+    devEnabled?: boolean;
   } = {}
 ) {
   await page.addInitScript(
@@ -116,6 +117,7 @@ async function fixture(
         defaultLocationId: state.defaultLocationId,
         pushPublicKey: options.key === undefined ? publicKey : options.key,
         scheduleEnabled: false,
+        devScanEnabled: options.devEnabled ?? false,
       };
     } else if (url.pathname === "/api/wishlist/location") {
       state.defaultLocationId = route.request().postDataJSON().locationId;
@@ -200,6 +202,18 @@ async function fixture(
 async function pushState(page: Page) {
   return page.evaluate(() => Reflect.get(window, "__pushState"));
 }
+test("production builds hide manual development scans even if the API advertises them", async ({
+  page,
+}) => {
+  await fixture(page, { devEnabled: true });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "علاقه‌مندی‌ها", exact: true })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "اسکن آزمایشی علاقه‌مندی‌ها" })
+  ).toHaveCount(0);
+});
 
 test("wishlist CRUD, independent scan location, and disabled setup banner", async ({
   page,

@@ -15,6 +15,7 @@ import {
   reconcileDurableScan,
 } from "../durable/service";
 import { DurableError } from "../durable/repository";
+import { scanEngineFor } from "../runtime/scan-engine";
 import { readScanHistory, HistoryInputError } from "./history";
 import { Store } from "../store";
 import type { Api, WorkerEnv } from "./types";
@@ -81,9 +82,10 @@ export function registerScans(api: Api) {
     });
   });
   api.get("/api/scans/:id", async (c) => {
-    const v = c.env.SCAN_WORKFLOW
+    const engine = scanEngineFor(c.env);
+    const v = engine
       ? await reconcileDurableScan(
-          { ...c.env, SCAN_WORKFLOW: c.env.SCAN_WORKFLOW },
+          { ...c.env, SCAN_ENGINE: engine },
           c.get("userId"),
           c.req.param("id")
         )
@@ -97,11 +99,11 @@ export function registerScans(api: Api) {
       c.req.param("id")
     );
     if (!scan) return c.json({ error: "NOT_FOUND" }, 404);
-    if (!c.env.SCAN_WORKFLOW)
-      return c.json({ error: "CANCELLATION_UNAVAILABLE" }, 409);
+    const engine = scanEngineFor(c.env);
+    if (!engine) return c.json({ error: "CANCELLATION_UNAVAILABLE" }, 409);
     try {
       const record = await cancelDurableScan(
-        { ...c.env, SCAN_WORKFLOW: c.env.SCAN_WORKFLOW },
+        { ...c.env, SCAN_ENGINE: engine },
         c.get("userId"),
         scan.id
       );
@@ -173,11 +175,12 @@ export function registerScans(api: Api) {
     )
       return c.json({ error: "INVALID_IDEMPOTENCY_KEY" }, 400);
     if (c.env.SCAN_WORKFLOW_ENABLED === "true") {
-      if (!c.env.SCAN_WORKFLOW)
+      const engine = scanEngineFor(c.env);
+      if (!engine)
         return c.json({ error: "DURABLE_EXECUTION_UNAVAILABLE" }, 503);
       try {
         const record = await beginDurableScan(
-          { ...c.env, SCAN_WORKFLOW: c.env.SCAN_WORKFLOW },
+          { ...c.env, SCAN_ENGINE: engine },
           c.get("userId"),
           parsed.data,
           key
@@ -199,7 +202,8 @@ export function registerScans(api: Api) {
       c.env.DB,
       c.get("userId"),
       c.env.BOX_KEY,
-      c.env.SNAPP_STORE_CAMPAIGNS_ENABLED === "true"
+      c.env.SNAPP_STORE_CAMPAIGNS_ENABLED === "true",
+      c.env.OKALA_SHARED_OFFERS_ENABLED === "true"
     );
     let reserved: Awaited<ReturnType<typeof beginLegacyScan>>;
     try {

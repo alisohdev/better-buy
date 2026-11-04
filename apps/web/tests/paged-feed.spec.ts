@@ -138,7 +138,10 @@ test("saved pages, server search and store disclosure are read-only", async ({
     page.getByRole("heading", { name: "صفحه نخست", exact: true })
   ).toBeVisible();
   expect(state.reads[0]!.searchParams.get("page")).toBe("1");
-  expect(state.reads[0]!.searchParams.get("sort")).toBe("discount");
+  expect(state.reads[0]!.searchParams.get("sort")).toBe("wishlist");
+  await expect(page.getByRole("combobox", { name: "مرتب‌سازی" })).toContainText(
+    "اولویت علاقه‌مندی‌ها"
+  );
   await page
     .getByRole("button", { name: "نمایش محصولات بیشتر", exact: true })
     .click();
@@ -148,7 +151,8 @@ test("saved pages, server search and store disclosure are read-only", async ({
   await expect(
     page.getByRole("heading", { name: "صفحه نخست", exact: true })
   ).toBeVisible();
-  await page.getByRole("combobox", { name: "مرتب‌سازی" }).selectOption("price");
+  await page.getByRole("combobox", { name: "مرتب‌سازی" }).click();
+  await page.getByRole("option", { name: "کمترین قیمت" }).click();
   await expect
     .poll(() => state.reads.at(-1)?.searchParams.get("sort"))
     .toBe("price");

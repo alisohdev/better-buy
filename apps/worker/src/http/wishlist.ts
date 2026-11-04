@@ -9,6 +9,7 @@ import {
   subscriptionId,
 } from "../wishlist-push";
 import type { Api } from "./types";
+import { scanEngineFor } from "../runtime/scan-engine";
 
 const phraseSchema = z.object({ phrase: z.string().trim().min(2).max(120) });
 const locationSchema = z.object({
@@ -28,7 +29,9 @@ export function registerWishlist(api: Api) {
         pushPublicKey: pushConfigured(c.env) ? c.env.VAPID_PUBLIC_KEY! : null,
         scheduleEnabled:
           c.env.WISHLIST_SCHEDULE_ENABLED === "true" &&
-          Boolean(c.env.SCAN_WORKFLOW),
+          Boolean(scanEngineFor(c.env)),
+        devScanEnabled:
+          c.env.DEV_MODE === "true" && Boolean(scanEngineFor(c.env)),
       },
     });
   });

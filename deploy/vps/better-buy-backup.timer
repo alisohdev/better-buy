@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Better Buy SQLite backup
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=5m
+Unit=better-buy-backup.service
+
+[Install]
+WantedBy=timers.target

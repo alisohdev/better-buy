@@ -81,27 +81,33 @@ export async function savePushSubscription(
 export async function drainPushDeliveries(
   env: WorkerEnv,
   timestamp = Date.now(),
-  fetcher: typeof fetch = fetch
+  fetcher: typeof fetch = fetch,
+  scope?: { userId: string; scanId: string }
 ) {
   if (!pushConfigured(env)) return;
   const now = new Date(timestamp).toISOString();
+  const query = env.DB.prepare(
+    "SELECT d.notification_id,d.subscription_id,d.user_id,d.attempts,s.encrypted_subscription,n.title,n.body " +
+      "FROM wishlist_push_deliveries d JOIN push_subscriptions s ON s.id=d.subscription_id AND s.user_id=d.user_id " +
+      "JOIN wishlist_notifications n ON n.id=d.notification_id AND n.user_id=d.user_id " +
+      "WHERE d.delivered_at IS NULL AND d.attempts<5 AND d.next_attempt_at<=? AND (d.lease_until IS NULL OR d.lease_until<=?)" +
+      (scope ? " AND d.user_id=? AND n.scan_id=?" : "") +
+      " ORDER BY d.next_attempt_at LIMIT 5"
+  );
   const rows = (
-    await env.DB.prepare(
-      "SELECT d.notification_id,d.subscription_id,d.user_id,d.attempts,s.encrypted_subscription,n.title,n.body " +
-        "FROM wishlist_push_deliveries d JOIN push_subscriptions s ON s.id=d.subscription_id AND s.user_id=d.user_id " +
-        "JOIN wishlist_notifications n ON n.id=d.notification_id AND n.user_id=d.user_id " +
-        "WHERE d.delivered_at IS NULL AND d.attempts<5 AND d.next_attempt_at<=? AND (d.lease_until IS NULL OR d.lease_until<=?) ORDER BY d.next_attempt_at LIMIT 5"
-    )
-      .bind(now, now)
-      .all<{
-        notification_id: string;
-        subscription_id: string;
-        user_id: string;
-        attempts: number;
-        encrypted_subscription: string;
-        title: string;
-        body: string;
-      }>()
+    await (
+      scope
+        ? query.bind(now, now, scope.userId, scope.scanId)
+        : query.bind(now, now)
+    ).all<{
+      notification_id: string;
+      subscription_id: string;
+      user_id: string;
+      attempts: number;
+      encrypted_subscription: string;
+      title: string;
+      body: string;
+    }>()
   ).results;
   await Promise.all(
     rows.map(async (row) => {

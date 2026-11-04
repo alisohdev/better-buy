@@ -1,0 +1,34 @@
+- generic [active] [ref=f1e1]:
+    - button "Open Next.js Dev Tools" [ref=f1e7] [cursor=pointer]
+    - alert [ref=f1e11]
+    - main [ref=f1e12]:
+        - generic [ref=f1e13]:
+            - button "بهتر بخر، پیشنهادها" [ref=f1e14] [cursor=pointer]:
+                - generic [ref=f1e15]: ب
+                - generic [ref=f1e16]:
+                    - strong [ref=f1e17]: بهتر بخر
+                    - generic [ref=f1e18]: Better Buy
+            - generic [ref=f1e19]:
+                - navigation "دسترسی سریع" [ref=f1e20]:
+                    - button "علاقه‌مندی‌ها" [ref=f1e21] [cursor=pointer]
+                    - button "اعلان‌ها" [ref=f1e22] [cursor=pointer]
+                    - button "موقعیت‌ها" [ref=f1e23] [cursor=pointer]
+                    - button "تاریخچه اسکن" [ref=f1e24] [cursor=pointer]
+                    - button "سبد اسنپ‌مارکت، ۰ کالا" [ref=f1e25] [cursor=pointer]:
+                        - generic [aria-hidden] [ref=f1e26]: ۰
+                - button "منوی بیشتر" [ref=f1e28] [cursor=pointer]
+        - generic [ref=f1e29]:
+            - region "موقعیت و تخفیف‌ها" [ref=f1e30]:
+                - generic [ref=f1e31]:
+                    - text: موقعیت تحویل
+                    - combobox "موقعیت تحویل" [ref=f1e32] [cursor=pointer]:
+                        - generic: یک موقعیت اضافه کنید
+                - generic [ref=f1e35]:
+                    - button "تنظیمات" [ref=f1e36] [cursor=pointer]
+                    - button "پیدا کردن تخفیف‌ها" [disabled]
+            - region [ref=f1e37]:
+                - generic [ref=f1e39]:
+                    - heading "پیشنهادها" [level=1] [ref=f1e40]
+                    - paragraph [ref=f1e41]: حداقل ۴۰٪ تخفیف
+                - status [ref=f1e42]:
+                    - paragraph [ref=f1e43]: در حال دریافت اطلاعات…

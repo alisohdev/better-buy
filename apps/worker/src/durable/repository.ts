@@ -34,6 +34,51 @@ const retainedObservation = `(
       AND COALESCE(json_extract(deals.facts_json,'$.observationFeed'),'') <= COALESCE(json_extract(excluded.facts_json,'$.observationFeed'),''))
   ))
 )`;
+
+function upsertDealStatement(
+  db: D1Database,
+  scanId: string,
+  userId: string,
+  unit: Unit,
+  offer: Offer
+) {
+  const facts = JSON.stringify({
+    benefit: offer.benefit ?? {
+      kind: "standard_discount",
+      identity: "ordinary",
+      applicable: true,
+      terms: null,
+    },
+    observedAt: offer.observedAt ?? iso(),
+    provenance: offer.provenance ?? [unit.kind],
+    observationPriority: unit.kind === "market_party" ? 100 : 50,
+    observationFeed: unit.id,
+  });
+  return db
+    .prepare(
+      `INSERT INTO deals(id,scan_id,deal_key,product_variation_id,vendor_id,title,image,vendor_title,vendor_code,category_title,price_rials,discount_rials,final_price_rials,discount_ratio,stock,facts_json) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${active} ON CONFLICT(scan_id,deal_key) DO UPDATE SET title=CASE WHEN ${retainedObservation} THEN deals.title ELSE excluded.title END,image=CASE WHEN ${retainedObservation} THEN deals.image ELSE excluded.image END,vendor_title=CASE WHEN ${retainedObservation} THEN deals.vendor_title ELSE excluded.vendor_title END,vendor_code=CASE WHEN ${retainedObservation} THEN deals.vendor_code ELSE excluded.vendor_code END,category_title=CASE WHEN ${retainedObservation} THEN deals.category_title ELSE excluded.category_title END,price_rials=CASE WHEN ${retainedObservation} THEN deals.price_rials ELSE excluded.price_rials END,discount_rials=CASE WHEN ${retainedObservation} THEN deals.discount_rials ELSE excluded.discount_rials END,final_price_rials=CASE WHEN ${retainedObservation} THEN deals.final_price_rials ELSE excluded.final_price_rials END,discount_ratio=CASE WHEN ${retainedObservation} THEN deals.discount_ratio ELSE excluded.discount_ratio END,stock=CASE WHEN ${retainedObservation} THEN deals.stock ELSE excluded.stock END,facts_json=json_set(CASE WHEN ${retainedObservation} THEN deals.facts_json ELSE excluded.facts_json END,'$.provenance',json((SELECT json_group_array(value) FROM (SELECT value FROM json_each(deals.facts_json,'$.provenance') UNION SELECT value FROM json_each(excluded.facts_json,'$.provenance') ORDER BY value))),'$.conflictingPriceTuple',json(CASE WHEN COALESCE(json_extract(deals.facts_json,'$.conflictingPriceTuple'),0)=1 OR deals.price_rials<>excluded.price_rials OR deals.discount_rials<>excluded.discount_rials OR deals.final_price_rials<>excluded.final_price_rials OR deals.discount_ratio<>excluded.discount_ratio THEN 'true' ELSE 'false' END))`
+    )
+    .bind(
+      crypto.randomUUID(),
+      scanId,
+      offer.key,
+      offer.productVariationId,
+      offer.vendorId,
+      offer.title,
+      offer.image,
+      offer.vendorTitle,
+      offer.vendorCode,
+      offer.categoryTitle,
+      offer.priceRials,
+      offer.discountRials,
+      offer.finalPriceRials,
+      offer.discountRatio,
+      offer.stock,
+      facts,
+      scanId,
+      userId
+    );
+}
 export class DurableRepository {
   constructor(
     readonly db: D1Database,
@@ -44,8 +89,7 @@ export class DurableRepository {
     input: ScanInput,
     key: string | undefined,
     enrichment: boolean,
-    kind = "workflow",
-    concurrency = 1
+    kind = "workflow"
   ): Promise<ScanRecord> {
     if (
       key &&
@@ -120,7 +164,7 @@ export class DurableRepository {
     const statements = [
       this.db
         .prepare(
-          "INSERT INTO scans(id,user_id,location_id,threshold,source,mode,status,created_at,context_json) SELECT ?,?,?,?,?,?,'queued',?,? WHERE EXISTS(SELECT 1 FROM locations WHERE id=? AND user_id=? AND coordinate_revision=? AND latitude=? AND longitude=?) AND (?='legacy' OR (SELECT COUNT(*) FROM scan_execution e JOIN scans s ON s.id=e.scan_id WHERE e.execution_kind='workflow' AND s.status IN ('queued','running')) < ?)"
+          "INSERT INTO scans(id,user_id,location_id,threshold,source,mode,status,created_at,context_json) SELECT ?,?,?,?,?,?,'queued',?,? WHERE EXISTS(SELECT 1 FROM locations WHERE id=? AND user_id=? AND coordinate_revision=? AND latitude=? AND longitude=?)"
         )
         .bind(
           id,
@@ -135,13 +179,11 @@ export class DurableRepository {
           userId,
           location.coordinateRevision ?? 1,
           location.latitude,
-          location.longitude,
-          kind,
-          concurrency
+          location.longitude
         ),
       this.db
         .prepare(
-          "INSERT INTO scan_execution(scan_id,user_id,execution_kind,instance_id,device_id,enrichment_enabled,attempt_limit,deadline_at,queued_until,created_at) VALUES(?,?,?,?,?,?,?,?,?,?)"
+          "INSERT INTO scan_execution(scan_id,user_id,execution_kind,instance_id,device_id,enrichment_enabled,campaign_contribution_version,queued_until,created_at) VALUES(?,?,?,?,?,?,?,?,?)"
         )
         .bind(
           id,
@@ -150,8 +192,7 @@ export class DurableRepository {
           `scan-${id}`,
           crypto.randomUUID(),
           enrichment ? 1 : 0,
-          input.source === "snappmarket" && enrichment ? 40 : 250,
-          new Date(Date.now() + 15 * 60_000).toISOString(),
+          1,
           new Date(Date.now() + 10 * 60_000).toISOString(),
           at
         ),
@@ -178,20 +219,6 @@ export class DurableRepository {
           "An update is already active",
           409
         );
-      if (kind === "workflow") {
-        const n = await this.db
-          .prepare(
-            "SELECT COUNT(*) AS count FROM scan_execution e JOIN scans s ON s.id=e.scan_id WHERE e.execution_kind='workflow' AND s.status IN ('queued','running')"
-          )
-          .bind()
-          .first<{ count: number }>();
-        if ((n?.count ?? 0) >= concurrency)
-          throw new DurableError(
-            "SCAN_CAPACITY",
-            "Updates are at capacity; try again shortly",
-            429
-          );
-      }
       throw error;
     }
     const scan = await store.scan(id);
@@ -225,11 +252,6 @@ export class DurableRepository {
       throw new DurableError("TERMINAL_SCAN", "Update is already terminal");
     if (job.runtime.cancel_requested)
       throw new DurableError("CANCELLED", "Update was cancelled");
-    if (Date.now() > Date.parse(job.runtime.deadline_at))
-      throw new DurableError(
-        "SCAN_BUDGET_EXCEEDED",
-        "Update deadline exceeded"
-      );
     return job;
   }
   async started(id: string) {
@@ -262,7 +284,7 @@ export class DurableRepository {
     const result = await this.db.batch([
       this.db
         .prepare(
-          `UPDATE scan_execution SET attempt_count=attempt_count+1,heartbeat_at=? WHERE scan_id=? AND attempt_count=? AND attempt_count < attempt_limit AND (SELECT COUNT(*) FROM scan_attempts WHERE scan_id=? AND operation=?) < 3 AND ${active}`
+          `UPDATE scan_execution SET attempt_count=attempt_count+1,heartbeat_at=? WHERE scan_id=? AND attempt_count=? AND (SELECT COUNT(*) FROM scan_attempts WHERE scan_id=? AND operation=?) < 3 AND ${active}`
         )
         .bind(
           iso(),
@@ -279,11 +301,13 @@ export class DurableRepository {
         )
         .bind(id, operation, iso(), id, ordinal, id, job.runtime.user_id),
     ]);
-    if (!result[0]?.meta.changes)
+    if (!result[0]?.meta.changes) {
+      await this.check(id);
       throw new DurableError(
-        "SCAN_BUDGET_EXCEEDED",
-        "Outbound request budget exhausted"
+        "REQUEST_RETRIES_EXHAUSTED",
+        "Provider operation retry attempts exhausted"
       );
+    }
     console.info("Durable request reserved", {
       scanId: id,
       operation,
@@ -382,11 +406,6 @@ export class DurableRepository {
   ) {
     const job = await this.check(id);
     const value = JSON.stringify(body);
-    if (value.length > 1_500_000)
-      throw new DurableError(
-        "SCAN_BUDGET_EXCEEDED",
-        "Provider response exceeds bounded size"
-      );
     const r = await this.db
       .prepare(
         `INSERT INTO scan_discovery(scan_id,request_key,body_json,observed_at) SELECT ?,?,?,? WHERE ${active} ON CONFLICT(scan_id,request_key) DO NOTHING`
@@ -490,22 +509,29 @@ export class DurableRepository {
         "Committed page content changed"
       );
     if (existing?.complete) return;
-    const count = await this.db
-      .prepare("SELECT COUNT(*) AS count FROM scan_pages WHERE scan_id=?")
-      .bind(id)
-      .first<{ count: number }>();
-    if (!existing && (count?.count ?? 0) >= job.runtime.page_limit)
-      throw new DurableError("SCAN_BUDGET_EXCEEDED", "Page budget exhausted");
     const { offers, products, vendors, ...metadata } = data;
+    const stageCampaignContributions =
+      unit.kind === "store_campaign" &&
+      job.runtime.campaign_contribution_version >= 1;
     // Each bounded chunk commits observations and its ledger together. Empty pages have one empty chunk.
     const rows: { kind: string; identity: string; offer?: Offer }[] = [
-      ...offers.map((offer) => ({ kind: "offer", identity: offer.key, offer })),
+      ...offers.map((offer) => ({
+        kind: stageCampaignContributions ? "campaign_offer" : "offer",
+        identity: offer.key,
+        offer,
+      })),
       ...products.map((identity) => ({ kind: "product", identity })),
       ...vendors.map((identity) => ({ kind: "vendor", identity })),
       ...data.identities.map((identity) => ({
         kind: `unit:${unit.id}`,
         identity,
       })),
+      ...(stageCampaignContributions
+        ? (data.conflictingIdentities ?? []).map((identity) => ({
+            kind: "campaign_conflict",
+            identity,
+          }))
+        : []),
     ];
     const chunks = Math.max(1, Math.ceil(rows.length / 20));
     await this.db
@@ -534,46 +560,45 @@ export class DurableRepository {
       if (previous) continue;
       const statements: D1PreparedStatement[] = [];
       for (const row of rows.slice(chunk * 20, (chunk + 1) * 20)) {
-        if (row.offer) {
-          const o = row.offer;
-          const priority = unit.kind === "market_party" ? 100 : 50;
-          const facts = JSON.stringify({
-            benefit: o.benefit ?? {
-              kind: "standard_discount",
-              identity: "ordinary",
-              applicable: true,
-              terms: null,
-            },
-            observedAt: o.observedAt ?? iso(),
-            provenance: o.provenance ?? [unit.kind],
-            observationPriority: priority,
-            observationFeed: unit.id,
-          });
+        if (stageCampaignContributions && row.kind === "campaign_offer") {
           statements.push(
             this.db
               .prepare(
-                `INSERT INTO deals(id,scan_id,deal_key,product_variation_id,vendor_id,title,image,vendor_title,vendor_code,category_title,price_rials,discount_rials,final_price_rials,discount_ratio,stock,facts_json) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${active} ON CONFLICT(scan_id,deal_key) DO UPDATE SET title=CASE WHEN ${retainedObservation} THEN deals.title ELSE excluded.title END,image=CASE WHEN ${retainedObservation} THEN deals.image ELSE excluded.image END,vendor_title=CASE WHEN ${retainedObservation} THEN deals.vendor_title ELSE excluded.vendor_title END,vendor_code=CASE WHEN ${retainedObservation} THEN deals.vendor_code ELSE excluded.vendor_code END,category_title=CASE WHEN ${retainedObservation} THEN deals.category_title ELSE excluded.category_title END,price_rials=CASE WHEN ${retainedObservation} THEN deals.price_rials ELSE excluded.price_rials END,discount_rials=CASE WHEN ${retainedObservation} THEN deals.discount_rials ELSE excluded.discount_rials END,final_price_rials=CASE WHEN ${retainedObservation} THEN deals.final_price_rials ELSE excluded.final_price_rials END,discount_ratio=CASE WHEN ${retainedObservation} THEN deals.discount_ratio ELSE excluded.discount_ratio END,stock=CASE WHEN ${retainedObservation} THEN deals.stock ELSE excluded.stock END,facts_json=json_set(CASE WHEN ${retainedObservation} THEN deals.facts_json ELSE excluded.facts_json END,'$.provenance',json((SELECT json_group_array(value) FROM (SELECT value FROM json_each(deals.facts_json,'$.provenance') UNION SELECT value FROM json_each(excluded.facts_json,'$.provenance') ORDER BY value))),'$.conflictingPriceTuple',json(CASE WHEN COALESCE(json_extract(deals.facts_json,'$.conflictingPriceTuple'),0)=1 OR deals.price_rials<>excluded.price_rials OR deals.discount_rials<>excluded.discount_rials OR deals.final_price_rials<>excluded.final_price_rials OR deals.discount_ratio<>excluded.discount_ratio THEN 'true' ELSE 'false' END))`
+                "INSERT INTO scan_campaign_contributions(scan_id,unit_id,deal_key,state,offer_json) SELECT ?,?,?,'accepted',? WHERE " +
+                  active +
+                  " ON CONFLICT(scan_id,unit_id,deal_key) DO NOTHING"
               )
               .bind(
-                crypto.randomUUID(),
                 id,
-                o.key,
-                o.productVariationId,
-                o.vendorId,
-                o.title,
-                o.image,
-                o.vendorTitle,
-                o.vendorCode,
-                o.categoryTitle,
-                o.priceRials,
-                o.discountRials,
-                o.finalPriceRials,
-                o.discountRatio,
-                o.stock,
-                facts,
+                unit.id,
+                row.identity,
+                JSON.stringify(row.offer),
                 id,
                 job.runtime.user_id
               )
+          );
+        } else if (
+          stageCampaignContributions &&
+          row.kind === "campaign_conflict"
+        ) {
+          statements.push(
+            this.db
+              .prepare(
+                "INSERT INTO scan_campaign_contributions(scan_id,unit_id,deal_key,state,offer_json) SELECT ?,?,?,'quarantined',NULL WHERE " +
+                  active +
+                  " ON CONFLICT(scan_id,unit_id,deal_key) DO UPDATE SET state='quarantined',offer_json=NULL WHERE scan_campaign_contributions.state='accepted'"
+              )
+              .bind(id, unit.id, row.identity, id, job.runtime.user_id)
+          );
+        } else if (row.kind === "offer" && row.offer) {
+          statements.push(
+            upsertDealStatement(
+              this.db,
+              id,
+              job.runtime.user_id,
+              unit,
+              row.offer
+            )
           );
         } else
           statements.push(
@@ -595,15 +620,6 @@ export class DurableRepository {
       if (!result.at(-1)?.meta.changes)
         throw new DurableError("CANCELLED", "Chunk commit rejected");
     }
-    const eligible = await this.db
-      .prepare("SELECT COUNT(*) AS count FROM deals WHERE scan_id=?")
-      .bind(id)
-      .first<{ count: number }>();
-    if ((eligible?.count ?? 0) > job.runtime.offer_limit)
-      throw new DurableError(
-        "SCAN_BUDGET_EXCEEDED",
-        "Eligible offer budget exhausted"
-      );
     const result = await this.db.batch([
       this.db
         .prepare(
@@ -636,7 +652,59 @@ export class DurableRepository {
         "INCOMPLETE_PAGINATION",
         "Page chunks are not complete"
       );
+    if (data.terminal && stageCampaignContributions)
+      await this.promoteCampaignContributions(id, unit);
     await this.heartbeat(id, "collecting");
+  }
+  async promoteCampaignContributions(id: string, unit: Unit) {
+    const initial = await this.check(id);
+    if (
+      unit.kind !== "store_campaign" ||
+      initial.runtime.campaign_contribution_version < 1
+    )
+      return 0;
+    const terminal = await this.db
+      .prepare("SELECT terminal FROM scan_units WHERE scan_id=? AND unit_id=?")
+      .bind(id, unit.id)
+      .first<{ terminal: number }>();
+    if (terminal?.terminal !== 1)
+      throw new DurableError(
+        "INCOMPLETE_PAGINATION",
+        "Campaign contributions cannot publish before terminal coverage"
+      );
+    let cursor = "";
+    let promoted = 0;
+    while (true) {
+      const { results } = await this.db
+        .prepare(
+          "SELECT deal_key,offer_json FROM scan_campaign_contributions WHERE scan_id=? AND unit_id=? AND state='accepted' AND deal_key>? ORDER BY deal_key LIMIT 20"
+        )
+        .bind(id, unit.id, cursor)
+        .all<{ deal_key: string; offer_json: string }>();
+      if (results.length === 0) break;
+      await this.db.batch(
+        results.map(({ offer_json }) =>
+          upsertDealStatement(
+            this.db,
+            id,
+            initial.runtime.user_id,
+            unit,
+            JSON.parse(offer_json) as Offer
+          )
+        )
+      );
+      await this.check(id);
+      promoted += results.length;
+      cursor = results.at(-1)!.deal_key;
+    }
+    await this.db
+      .prepare(
+        `UPDATE scans SET deal_count=(SELECT COUNT(*) FROM deals WHERE scan_id=?) WHERE id=? AND user_id=? AND ${active}`
+      )
+      .bind(id, id, initial.runtime.user_id, id, initial.runtime.user_id)
+      .run();
+    await this.check(id);
+    return promoted;
   }
   async publish(id: string) {
     const job = await this.check(id);
@@ -644,7 +712,7 @@ export class DurableRepository {
     const result = await this.db.batch([
       this.db
         .prepare(
-          `UPDATE scans SET status='succeeded',finished_at=?,context_json=json_set(context_json,'$.coverage',CASE WHEN EXISTS(SELECT 1 FROM scan_pages WHERE scan_id=scans.id AND json_extract(metadata_json,'$.terminalEvidence')='bounded_partial_scope') THEN 'incomplete' ELSE 'complete' END) WHERE id=? AND user_id=? AND ${active} AND EXISTS(SELECT 1 FROM scan_execution WHERE scan_id=? AND manifest_frozen=1) AND NOT EXISTS(SELECT 1 FROM scan_units WHERE scan_id=? AND terminal=0) AND NOT EXISTS(SELECT 1 FROM scan_pages WHERE scan_id=? AND complete=0) AND EXISTS(SELECT 1 FROM product_projection_scans p WHERE p.user_id=scans.user_id AND p.scan_id=scans.id AND p.ready=1)`
+          `UPDATE scans SET status='succeeded',finished_at=?,context_json=json_set(context_json,'$.coverage',CASE WHEN EXISTS(SELECT 1 FROM scan_pages WHERE scan_id=scans.id AND json_extract(metadata_json,'$.terminalEvidence') IN ('bounded_partial_scope','conflicting_campaign_rows')) THEN 'incomplete' ELSE 'complete' END) WHERE id=? AND user_id=? AND ${active} AND EXISTS(SELECT 1 FROM scan_execution WHERE scan_id=? AND manifest_frozen=1) AND NOT EXISTS(SELECT 1 FROM scan_units WHERE scan_id=? AND terminal=0) AND NOT EXISTS(SELECT 1 FROM scan_pages WHERE scan_id=? AND complete=0) AND EXISTS(SELECT 1 FROM product_projection_scans p WHERE p.user_id=scans.user_id AND p.scan_id=scans.id AND p.ready=1)`
         )
         .bind(
           publishedAt,
@@ -685,6 +753,9 @@ export class DurableRepository {
           "UPDATE scan_execution SET phase='failed',heartbeat_at=? WHERE scan_id=? AND EXISTS(SELECT 1 FROM scans WHERE id=? AND status='failed')"
         )
         .bind(iso(), id, id),
+      this.db
+        .prepare("DELETE FROM scan_offer_coordination WHERE scan_id=?")
+        .bind(id),
       ...terminalScanArtifactStatements(this.db, id),
     ]);
   }
@@ -700,6 +771,9 @@ export class DurableRepository {
           "UPDATE scan_execution SET cancel_requested=1,phase='cancelled',heartbeat_at=? WHERE scan_id=? AND user_id=? AND EXISTS(SELECT 1 FROM scans WHERE id=? AND status='cancelled')"
         )
         .bind(iso(), id, userId, id),
+      this.db
+        .prepare("DELETE FROM scan_offer_coordination WHERE scan_id=?")
+        .bind(id),
       ...terminalScanArtifactStatements(this.db, id, userId),
     ]);
     return !!result[0]?.meta.changes;

@@ -131,7 +131,6 @@ describe("atomic terminal scan artifact deletion", () => {
     "workflow failure",
     "cancellation",
     "stale queued",
-    "stale running",
   ])(
     "deletes all partial artifacts for %s and retains successful results and control records",
     async (path) => {
@@ -153,7 +152,7 @@ describe("atomic terminal scan artifact deletion", () => {
           .prepare(
             "UPDATE scans SET status=?,created_at='2026-01-01' WHERE id=?"
           )
-          .run(path === "stale running" ? "running" : "queued", scan.id);
+          .run("queued", scan.id);
         await store.reconcileStale();
       }
       expectArtifacts(sqlite, scan.id, 0);
@@ -241,7 +240,7 @@ describe("atomic terminal scan artifact deletion", () => {
       return job;
     });
     await expect(repo.reserveAttempt(scan.id, "late")).rejects.toMatchObject({
-      code: "SCAN_BUDGET_EXCEEDED",
+      code: "TERMINAL_SCAN",
     });
     expectArtifacts(sqlite, scan.id, 0);
   });
@@ -283,6 +282,21 @@ describe("atomic terminal scan artifact deletion", () => {
     expect(prepare.mock.calls[0]?.[0]).toContain("FROM scan_execution");
     expectArtifacts(sqlite, healthy.id, 1);
   });
+  it("does not expire a running collector based on its age", async () => {
+    const { sqlite, store, reserve } = database();
+    const scan = await reserve();
+    seed(sqlite, scan.id);
+    sqlite
+      .prepare(
+        "UPDATE scans SET status='running',created_at='2000-01-01' WHERE id=?"
+      )
+      .run(scan.id);
+    await store.reconcileStale();
+    expectArtifacts(sqlite, scan.id, 1);
+    expect(
+      sqlite.prepare("SELECT status FROM scans WHERE id=?").get(scan.id)
+    ).toMatchObject({ status: "running" });
+  });
   it("uses existing indexes for terminal deletes and stale lookup", async () => {
     const { sqlite, db, store, reserve } = database();
     const scan = await reserve();
@@ -292,7 +306,7 @@ describe("atomic terminal scan artifact deletion", () => {
     for (const [sql] of prepare.mock.calls) {
       const bindings = sql.startsWith("DELETE")
         ? [scan.id, scan.id, "owner"]
-        : ["owner", new Date().toISOString(), new Date().toISOString()];
+        : ["owner", new Date().toISOString()];
       if (
         sql.startsWith("DELETE FROM saved_") ||
         sql.startsWith("DELETE FROM product_projection")

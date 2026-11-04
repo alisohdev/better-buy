@@ -1096,9 +1096,8 @@ test("one feed has optional search, sorting, accessible comparison and settings 
     .getByRole("button", { name: "پاک‌کردن جست‌وجو", exact: true })
     .click();
   await expect(page.locator(".deal-row")).toHaveCount(3);
-  await page
-    .getByRole("combobox", { name: "مرتب‌سازی", exact: true })
-    .selectOption("price");
+  await page.getByRole("combobox", { name: "مرتب‌سازی", exact: true }).click();
+  await page.getByRole("option", { name: "کمترین قیمت" }).click();
   await page.getByRole("button", { name: "تنظیمات", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "تنظیمات تخفیف‌ها" });
   await dialog.getByLabel("حداقل درصد تخفیف").selectOption("50");

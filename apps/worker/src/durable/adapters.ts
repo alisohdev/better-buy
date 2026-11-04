@@ -17,6 +17,10 @@ import {
   offersResponse,
   normalizeOkalaOffer,
 } from "../providers/okala/model";
+import {
+  campaignExpiry,
+  type OkalaOfferCollection,
+} from "../providers/okala/sharedOffers";
 import { isEligibleDeal } from "../domain/eligibility";
 import { CollectorError } from "../domain/failures";
 import {
@@ -31,6 +35,18 @@ import type { DurableRepository } from "./repository";
 
 type Read = ((url: URL, key: string) => Promise<unknown>) & {
   observedAt?: (key: string) => Promise<string | null>;
+  okalaOffers?: (input: {
+    url: URL;
+    key: string;
+    campaignId: number;
+    storeIds: number[];
+    campaignExpiry: ReturnType<typeof campaignExpiry>;
+  }) => Promise<{
+    collection: OkalaOfferCollection;
+    observedAt: string;
+    reusableUntil: string;
+    reused: boolean;
+  }>;
 };
 const invalid = () =>
   new DurableError(
@@ -57,7 +73,7 @@ export async function planUnits(repo: DurableRepository, job: Job, read: Read) {
     let scopes: CampaignScope[] = [];
     if (job.runtime.enrichment_enabled) {
       // Each actual discovery GET is its own persisted Workflow request checkpoint.
-      let remaining = job.runtime.attempt_limit - job.runtime.attempt_count;
+
       let omissions: CampaignDiagnostics["omitted"] = [];
       const plans = await effectValue(
         planStoreCampaigns(
@@ -66,9 +82,6 @@ export async function planUnits(repo: DurableRepository, job: Job, read: Read) {
               try: async () => {
                 const key = `plan-${await identityDigest(url.toString())}`;
                 const body = await read(url, key);
-                remaining =
-                  job.runtime.attempt_limit -
-                  (await repo.load(id))!.runtime.attempt_count;
                 return {
                   status: 200,
                   body,
@@ -84,7 +97,6 @@ export async function planUnits(repo: DurableRepository, job: Job, read: Read) {
                   : new CollectorError("UPSTREAM_CHANGED", "Discovery failed"),
             }),
           loc,
-          () => Math.max(0, remaining),
           (rows) => {
             omissions = rows;
           }
@@ -156,20 +168,27 @@ export async function planUnits(repo: DurableRepository, job: Job, read: Read) {
   );
   if (!campaigns.success || !campaigns.data.success) throw invalid();
   okalaTerminal(campaigns.data);
-  const ids = [
-    ...new Set(
-      campaigns.data.carousels.flatMap((c) => (c.isMulti ? [c.id] : []))
-    ),
-  ].sort((a, b) => a - b);
+  const campaignExpiries = new Map(
+    campaigns.data.carousels.flatMap((campaign) =>
+      campaign.isMulti
+        ? [[campaign.id, campaignExpiry(campaign.endTime)] as const]
+        : []
+    )
+  );
+  const ids = [...campaignExpiries.keys()]
+    .filter((id) => {
+      const expiry = campaignExpiries.get(id)!;
+      return expiry.kind !== "known" || Date.parse(expiry.endTime) > Date.now();
+    })
+    .sort((a, b) => a - b);
   if (!ids.length)
     throw new DurableError("NO_CAMPAIGNS", "No supported campaigns found");
-  if (ids.length > 100)
-    throw incomplete("Campaign manifest exceeds page budget");
   const units: Unit[] = ids.map((collectionId) => ({
     id: `okala-${collectionId}`,
     kind: "okala_campaign",
     collectionId,
     storeIds,
+    campaignExpiry: campaignExpiries.get(collectionId)!,
   }));
   await repo.freeze(id, units, {
     ...job.context.manifest,
@@ -305,9 +324,13 @@ export async function collectPage(
       {},
       ...previous.map((p) => p.signatures ?? {})
     ) as Record<string, string>;
+    const conflictingIdentities = new Set(
+      previous.flatMap((p) => p.conflictingIdentities ?? [])
+    );
     for (const entry of data.finalResult) {
       const p = entry.data,
         key = `${p.vendor_id}:${p.id}`;
+      if (conflictingIdentities.has(key)) continue;
       const signature = await identityDigest([
         p.price,
         p.discount,
@@ -326,22 +349,25 @@ export async function collectPage(
       if (
         (priorSignatures[key] && priorSignatures[key] !== signature) ||
         (signatures[key] && signatures[key] !== signature)
-      )
-        throw incomplete(
-          "Conflicting repeated campaign price/stock/benefit identity"
-        );
+      ) {
+        if (job.runtime.campaign_contribution_version < 1)
+          throw incomplete(
+            "Conflicting repeated campaign price/stock/benefit identity"
+          );
+        conflictingIdentities.add(key);
+      }
       signatures[key] = signature;
     }
+    const acceptedEntries = data.finalResult.filter(
+      ({ data: product }) =>
+        !conflictingIdentities.has(`${product.vendor_id}:${product.id}`)
+    );
     const emptyTerminal = data.finalResult.length === 0;
     if (emptyTerminal && raw !== data.count)
       throw incomplete(
         "Campaign terminal did not cover reported raw row count"
       );
-    const boundedTerminal =
-      unit.bounded === true && page + 1 >= (unit.maxPages ?? 8);
-    const terminal = emptyTerminal || boundedTerminal;
-    if (page + 1 >= (unit.maxPages ?? 8) && !terminal)
-      throw incomplete("Campaign cap reached without terminal evidence");
+    const terminal = emptyTerminal;
     // Reuse the shipped ownership/money/benefit normalizer with an in-memory
     // synthetic terminal; no extra provider call and no whole-collector step.
     const products = new Set<string>(),
@@ -349,7 +375,11 @@ export async function collectPage(
     const plan: Plan = {
       ...scope,
       title: unit.title!,
-      first: { ...data, count: data.finalResult.length },
+      first: {
+        ...data,
+        count: acceptedEntries.length,
+        finalResult: acceptedEntries,
+      },
       firstObservedAt:
         (await read.observedAt?.(
           page === 0 && unit.firstRequest
@@ -369,7 +399,7 @@ export async function collectPage(
               data: {
                 id: scope.collectionId,
                 type: "default",
-                count: data.finalResult.length,
+                count: acceptedEntries.length,
                 finalResult: [],
               },
             },
@@ -388,9 +418,16 @@ export async function collectPage(
       vendors: [String(scope.vendorId)],
       identities,
       signatures,
+      ...(conflictingIdentities.size
+        ? { conflictingIdentities: [...conflictingIdentities].sort() }
+        : {}),
       eligibility: Object.fromEntries(
         data.finalResult.map(({ data: p }) => {
-          const excludedReason = campaignExclusionReason(p, job.scan.threshold);
+          const excludedReason = conflictingIdentities.has(
+            `${p.vendor_id}:${p.id}`
+          )
+            ? "CONFLICTING_DUPLICATE"
+            : campaignExclusionReason(p, job.scan.threshold);
           return [
             `${p.vendor_id}:${p.id}`,
             { eligible: excludedReason === null, excludedReason },
@@ -401,22 +438,42 @@ export async function collectPage(
       rowCount: data.finalResult.length,
       terminal,
       terminalEvidence: emptyTerminal
-        ? "verified_empty_campaign_page"
-        : boundedTerminal
-          ? "bounded_partial_scope"
-          : null,
+        ? conflictingIdentities.size
+          ? "conflicting_campaign_rows"
+          : "verified_empty_campaign_page"
+        : null,
       fingerprint: await identityDigest([...identities].sort()),
     };
   }
   if (page !== 0) throw incomplete("Okala multi-page contract remains gated");
   const query = new URLSearchParams({ carouselId: String(unit.collectionId) });
   unit.storeIds!.forEach((v) => query.append("StoreIds", String(v)));
-  const payload = offersResponse.safeParse(
-    await read(
-      okalaUrl("/carousel/v4/offers/multi-store", query),
-      `${unit.id}-${page}`
-    )
-  );
+  const requestUrl = okalaUrl("/carousel/v4/offers/multi-store", query);
+  const requestKey = `${unit.id}-${page}`;
+  const offerResult = read.okalaOffers
+    ? await read.okalaOffers({
+        url: requestUrl,
+        key: requestKey,
+        campaignId: unit.collectionId!,
+        storeIds: unit.storeIds!,
+        campaignExpiry: unit.campaignExpiry ?? { kind: "unknown" },
+      })
+    : {
+        collection: await read(requestUrl, requestKey),
+        observedAt:
+          (await read.observedAt?.(requestKey)) ??
+          job.scan.startedAt ??
+          job.scan.createdAt,
+        reusableUntil: new Date(
+          Date.parse(
+            (await read.observedAt?.(requestKey)) ??
+              job.scan.startedAt ??
+              job.scan.createdAt
+          ) + 120_000
+        ).toISOString(),
+        reused: false,
+      };
+  const payload = offersResponse.safeParse(offerResult.collection);
   if (!payload.success || payload.data.success === false) throw invalid();
   okalaTerminal(payload.data);
   if (payload.data.carousel && payload.data.carousel.id !== unit.collectionId)
@@ -436,7 +493,6 @@ export async function collectPage(
         !Number.isSafeInteger(p.okPrice) ||
         p.price <= 0 ||
         p.okPrice < 0 ||
-        p.okPrice > p.price ||
         Math.abs(p.discountPercent - (100 * (p.price - p.okPrice)) / p.price) >
           1
       )
@@ -452,10 +508,7 @@ export async function collectPage(
       )
         offers.push({
           ...normalizeOkalaOffer(p),
-          observedAt:
-            (await read.observedAt?.(`${unit.id}-${page}`)) ??
-            job.scan.startedAt ??
-            job.scan.createdAt,
+          observedAt: offerResult.observedAt,
           provenance: [`okala:campaign:${unit.collectionId}`],
           observationPriority: 50,
         });
@@ -463,6 +516,13 @@ export async function collectPage(
   }
   return {
     offers,
+    observations: [
+      {
+        observedAt: offerResult.observedAt,
+        reusableUntil: offerResult.reusableUntil,
+        reused: offerResult.reused,
+      },
+    ],
     products,
     vendors,
     identities: products,

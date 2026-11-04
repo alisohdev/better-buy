@@ -11,7 +11,7 @@ export async function loadDealLedger(
   scanId: string,
   signal?: AbortSignal,
   query = "",
-  sort = "discount",
+  sort = "wishlist",
   cursor: string | null = null
 ) {
   const params = new URLSearchParams({ page: "1", q: query, sort });
@@ -40,7 +40,7 @@ export function useScanLedger({
   selectedRunId,
   coordinateRevision,
   query = "",
-  sort = "discount",
+  sort = "wishlist",
   wishlistRevision = 0,
 }: {
   busy: boolean;

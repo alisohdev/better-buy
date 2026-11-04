@@ -15,11 +15,7 @@ export type CampaignScope = NonNullable<
 >[number];
 type Offer = Omit<DealRecord, "scanId" | "state">;
 // Discovery is location scoped; no store, title or collection allowlist.
-export const SNAPP_SCAN_REQUEST_BUDGET = 40;
-const MAX_DISCOVERED_STORES = 20;
-const MAX_PLANNING_REQUESTS = 12;
-const MAX_COLLECTIONS = 2;
-const BASELINE_AND_RETRY_RESERVE = 8;
+const DISCOVERY_PAGE_SIZE = 20;
 const owner = z.number().int().positive().safe();
 const homeSchema = z.object({
   vendorInfo: z.object({
@@ -90,7 +86,7 @@ export type Plan = CampaignScope & {
 };
 export type CampaignReport = CampaignScope & {
   coverage: "complete" | "incomplete";
-  partialReason?: "PAGE_LIMIT" | "REQUEST_BUDGET";
+  partialReason?: "PAGE_LIMIT" | "REQUEST_BUDGET" | "CONFLICTING_DUPLICATES";
   reportedCount: number;
   rawCount: number;
   uniqueCount: number;
@@ -255,7 +251,6 @@ export function campaignExclusionReason(
 export function planStoreCampaigns(
   read: SnappRead,
   location: { latitude: number; longitude: number },
-  remainingRequests: () => number,
   onOmitted?: (omitted: CampaignDiagnostics["omitted"]) => void
 ) {
   const omitted: CampaignDiagnostics["omitted"] = [];
@@ -269,7 +264,7 @@ export function planStoreCampaigns(
       long: String(location.longitude),
       sort: "lowest_delivery_price",
       page: "0",
-      page_size: String(MAX_DISCOVERED_STORES),
+      page_size: String(DISCOVERY_PAGE_SIZE),
       is_home: "false",
       page_type: "vendor_list",
       "extra-filter[vendor_collection]": "-1",
@@ -289,12 +284,30 @@ export function planStoreCampaigns(
         changed("nearby data.count / data.finalResult")
       );
     }
+    const entries = [...nearby.data.data.finalResult];
+    let discovered = entries.filter((entry) => entry.type === "VENDOR").length;
+    const fingerprints = new Set([JSON.stringify(entries)]);
+    for (let page = 1; discovered < nearby.data.data.count; page++) {
+      nearbyUrl.searchParams.set("page", String(page));
+      const next = nearbySchema.safeParse((yield* read(nearbyUrl)).body);
+      if (!next.success || next.data.data.count !== nearby.data.data.count)
+        return yield* Effect.fail(incomplete("nearby count drift"));
+      const rows = next.data.data.finalResult;
+      const fingerprint = JSON.stringify(rows);
+      if (!rows.length || fingerprints.has(fingerprint))
+        return yield* Effect.fail(
+          incomplete("nearby pagination did not advance")
+        );
+      fingerprints.add(fingerprint);
+      entries.push(...rows);
+      discovered += rows.filter((entry) => entry.type === "VENDOR").length;
+    }
     const codes = new Set<string>();
     const discoveredCandidates = new Map<
       string,
       { vendorCode: string; sources: string[]; hintTitle?: string }
     >();
-    // Prioritize the separate hint before applying the existing store/page cap.
+    // Resolve the separate hint as well as the ordinary nearby stores.
     // It often isn't present in finalResult and has no numeric identity yet.
     const hint = nearbyStoreSchema.safeParse(
       nearby.data.data.single_super_mall
@@ -310,8 +323,7 @@ export function planStoreCampaigns(
       });
     } else if (nearby.data.data.single_super_mall != null)
       omitted.push({ vendorCode: "", reason: "INVALID_SUPER_MALL_HINT" });
-    let ordinaryCount = 0;
-    for (const entry of nearby.data.data.finalResult) {
+    for (const entry of entries) {
       if (entry.type !== "VENDOR") {
         omitted.push({
           vendorCode: "",
@@ -333,28 +345,12 @@ export function planStoreCampaigns(
       if (!candidate.sources.includes("finalResult"))
         candidate.sources.push("finalResult");
       discoveredCandidates.set(store.data.code, candidate);
-      ordinaryCount++;
     }
-    if (
-      nearby.data.data.count > ordinaryCount ||
-      codes.size > MAX_DISCOVERED_STORES
-    )
-      omitted.push({
-        vendorCode: "",
-        reason: "NEARBY_DISCOVERY_PAGE_LIMIT: first 20 returned stores only",
-      });
-    for (const vendorCode of [...codes].slice(MAX_DISCOVERED_STORES))
-      omitted.push({ vendorCode, reason: "NEARBY_CANDIDATE_LIMIT" });
-    const planningStart = remainingRequests();
     const resolvedOwners = new Map<number, string>();
     const stores: {
       info: z.infer<typeof homeSchema>["vendorInfo"];
       candidates: Set<number>;
     }[] = [];
-    let reservedPages = 0;
-    const canProbe = (hinted = false) =>
-      (hinted || planningStart - remainingRequests() < MAX_PLANNING_REQUESTS) &&
-      remainingRequests() > reservedPages + BASELINE_AND_RETRY_RESERVE;
     const isHint = (code: string) => hint.success && hint.data.code === code;
     const planScopes = (
       info: z.infer<typeof homeSchema>["vendorInfo"],
@@ -373,73 +369,47 @@ export function planStoreCampaigns(
         // Only the corroborated super-mall gets category supplements. Campaigns
         // precede categories so ordinary catalog traversal cannot hide campaigns.
         if (hinted) {
-          if (!canProbe(true))
+          const url = new URL(
+            "https://svc.snapp.market/mobile/search/categories"
+          );
+          Object.entries({
+            vendorCode,
+            lat: String(location.latitude),
+            long: String(location.longitude),
+          }).forEach(([k, v]) => url.searchParams.set(k, v));
+          const response = yield* read(url).pipe(
+            Effect.catch((error) =>
+              [
+                "UPSTREAM_CHANGED",
+                "UPSTREAM_INVALID_JSON",
+                "UPSTREAM_ERROR",
+              ].includes(error.code)
+                ? Effect.succeed({ status: 0, body: null })
+                : Effect.fail(error)
+            )
+          );
+          const categories = categorySchema.safeParse(response.body);
+          if (!categories.success)
             omitted.push({
               vendorCode,
-              reason: "CATEGORY_DISCOVERY_REQUEST_BUDGET",
+              reason: "CATEGORY_DISCOVERY_UNKNOWN",
             });
           else {
-            const url = new URL(
-              "https://svc.snapp.market/mobile/search/categories"
-            );
-            Object.entries({
-              vendorCode,
-              lat: String(location.latitude),
-              long: String(location.longitude),
-            }).forEach(([k, v]) => url.searchParams.set(k, v));
-            const response = yield* read(url).pipe(
-              Effect.catch((error) =>
-                [
-                  "UPSTREAM_CHANGED",
-                  "UPSTREAM_INVALID_JSON",
-                  "UPSTREAM_ERROR",
-                ].includes(error.code)
-                  ? Effect.succeed({ status: 0, body: null })
-                  : Effect.fail(error)
-              )
-            );
-            const categories = categorySchema.safeParse(response.body);
-            if (!categories.success)
-              omitted.push({
+            const categoryScopes: CampaignScope[] = [
+              ...new Set(categories.data.items.map((item) => item.id)),
+            ]
+              .sort((a, b) => a - b)
+              .map((collectionId) => ({
+                vendorId: info.id,
                 vendorCode,
-                reason: "CATEGORY_DISCOVERY_UNKNOWN",
-              });
-            else {
-              const categoryScopes: CampaignScope[] = [
-                ...new Set(categories.data.items.map((item) => item.id)),
-              ]
-                .sort((a, b) => a - b)
-                .map((collectionId) => ({
-                  vendorId: info.id,
-                  vendorCode,
-                  collectionId,
-                  source: "discounted_category",
-                }));
-              scopes.push(...categoryScopes);
-            }
+                collectionId,
+                source: "discounted_category",
+              }));
+            scopes.push(...categoryScopes);
           }
         }
         for (const scope of scopes) {
           const { collectionId } = scope;
-          const ordinaryPlans = plans.filter(
-            (plan) => !hint.success || plan.vendorCode !== hint.data.code
-          ).length;
-          if (!hinted && ordinaryPlans >= MAX_COLLECTIONS) {
-            omitted.push({
-              vendorCode,
-              collectionId,
-              reason: "SUPPLEMENTARY_COLLECTION_LIMIT",
-            });
-            continue;
-          }
-          if (!canProbe(hinted)) {
-            omitted.push({
-              vendorCode,
-              collectionId,
-              reason: "PLANNING_REQUEST_BUDGET",
-            });
-            continue;
-          }
           // Count is absent from home. Cache one planning page, then freeze all
           // admitted units before baseline collection and remaining enumeration.
           const probe = yield* read(collectionUrl(scope, 0, location)).pipe(
@@ -499,32 +469,10 @@ export function planStoreCampaigns(
             scope.source === "discounted_category"
               ? first.finalResult.length || 100
               : 100;
-          const fullPages =
-            first.count === 0
-              ? 1
-              : Math.ceil(first.count / expectedPageSize) + 1;
-          const maxPages = Math.min(
-            fullPages,
-            hinted ? SNAPP_SCAN_REQUEST_BUDGET : 8,
-            hinted
-              ? SNAPP_SCAN_REQUEST_BUDGET
-              : Math.max(
-                  1,
-                  remainingRequests() -
-                    reservedPages -
-                    BASELINE_AND_RETRY_RESERVE +
-                    1
-                )
-          );
-          const additionalPages = maxPages - 1;
-          if (!hinted) reservedPages += additionalPages;
           plans.push({
             ...scope,
             ...(scope.source === "discounted_category"
               ? { expectedPageSize }
-              : {}),
-            ...(hinted || maxPages < fullPages
-              ? { maxPages, bounded: true }
               : {}),
             title: info.title,
             first,
@@ -532,11 +480,7 @@ export function planStoreCampaigns(
           });
         }
       });
-    for (const vendorCode of [...codes].slice(0, MAX_DISCOVERED_STORES)) {
-      if (!canProbe()) {
-        omitted.push({ vendorCode, reason: "DISCOVERY_REQUEST_BUDGET" });
-        continue;
-      }
+    for (const vendorCode of codes) {
       const homeUrl = new URL(
         `https://svc.snapp.market/express-home/vendor/${vendorCode}`
       );
@@ -631,8 +575,7 @@ export function planStoreCampaigns(
       if (isHint(vendorCode)) stores.push({ info, candidates });
       else yield* planScopes(info, candidates);
     }
-    // The hint has no separate scope/planning cap; use the remaining shared
-    // budget after retaining the existing ordinary store collection work.
+    // Resolve all campaign and category scopes after store discovery.
     for (const { info, candidates } of stores)
       yield* planScopes(info, candidates);
     return {
@@ -653,8 +596,7 @@ export function enrichStoreCampaigns(
   baseline: { vendorCount: number; productCount: number; deals: Offer[] },
   baselineProductKeys: Set<string>,
   baselineVendorIds: Set<string>,
-  omitted: CampaignDiagnostics["omitted"],
-  remainingRequests?: () => number
+  omitted: CampaignDiagnostics["omitted"]
 ) {
   return Effect.gen(function* () {
     const offers = new Map<string, Offer>(
@@ -695,15 +637,12 @@ export function enrichStoreCampaigns(
       };
       const rows = new Map<
         string,
-        { signature: string; offer: Offer | null }
+        | { state: "accepted"; signature: string; offer: Offer | null }
+        | { state: "quarantined" }
       >();
+      const conflictingIdentities = new Set<string>();
       const fingerprints = new Set<string>();
-      const maxPages = plan.maxPages ?? 8;
-      for (let page = 0; page < maxPages; page++) {
-        if (page > 0 && remainingRequests && remainingRequests() < 3) {
-          report.partialReason = "REQUEST_BUDGET";
-          break;
-        }
+      for (let page = 0; ; page++) {
         let observedAt = plan.firstObservedAt ?? new Date().toISOString();
         const data =
           page === 0
@@ -729,7 +668,7 @@ export function enrichStoreCampaigns(
               incomplete("empty terminal before reported count")
             );
           report.terminal = true;
-          report.coverage = "complete";
+          if (conflictingIdentities.size === 0) report.coverage = "complete";
           break;
         }
         if (count > 100)
@@ -769,16 +708,14 @@ export function enrichStoreCampaigns(
             ...parsed.data,
             discountRatio: parsed.data.discountRatio ?? 0,
           };
-          if (
-            p.vendor_id !== plan.vendorId ||
-            p.document_id !== `${p.id}-${plan.vendorId}` ||
-            (p.vendor_code !== undefined &&
-              p.vendor_code !== plan.vendorCode) ||
-            (p.vendorCode !== undefined && p.vendorCode !== plan.vendorCode)
-          )
-            return yield* Effect.fail(
-              changed("vendor_id / document_id ownership")
-            );
+          if (p.vendor_id !== plan.vendorId)
+            return yield* Effect.fail(changed("vendor_id ownership"));
+          if (p.document_id !== `${p.id}-${plan.vendorId}`)
+            return yield* Effect.fail(changed("document_id ownership"));
+          if (p.vendor_code !== undefined && p.vendor_code !== plan.vendorCode)
+            return yield* Effect.fail(changed("vendor_code ownership"));
+          if (p.vendorCode !== undefined && p.vendorCode !== plan.vendorCode)
+            return yield* Effect.fail(changed("vendorCode ownership"));
           // If a future response also carries nested ownership, never trust two
           // conflicting identities just because the route was store-specific.
           const nested = p.vendor as
@@ -826,10 +763,16 @@ export function enrichStoreCampaigns(
           ]);
           const prior = rows.get(key);
           if (prior) {
-            if (prior.signature !== signature)
-              return yield* Effect.fail(
-                incomplete("conflicting repeated price/stock/identity")
-              );
+            if (prior.state === "quarantined") continue;
+            if (prior.signature !== signature) {
+              rows.set(key, { state: "quarantined" });
+              conflictingIdentities.add(key);
+              report.coverage = "incomplete";
+              report.partialReason = "CONFLICTING_DUPLICATES";
+              report.excluded.CONFLICTING_DUPLICATE =
+                conflictingIdentities.size;
+              continue;
+            }
             report.duplicateCount++;
             continue;
           }
@@ -864,18 +807,15 @@ export function enrichStoreCampaigns(
               };
           if (reason)
             report.excluded[reason] = (report.excluded[reason] ?? 0) + 1;
-          rows.set(key, { signature, offer });
+          rows.set(key, { state: "accepted", signature, offer });
           productKeys.add(key);
         }
       }
-      if (!report.terminal && !plan.bounded && !report.partialReason)
-        return yield* Effect.fail(
-          incomplete("eight-page cap without empty terminal")
-        );
-      if (!report.terminal) report.partialReason ??= "PAGE_LIMIT";
       report.uniqueCount = rows.size;
       const baselineKeys = new Set(baseline.deals.map((offer) => offer.key));
-      for (const [key, { offer }] of rows) {
+      for (const [key, row] of rows) {
+        if (row.state !== "accepted") continue;
+        const { offer } = row;
         if (!offer) continue;
         report.qualifying++;
         if (baselineKeys.has(key)) report.overlap++;

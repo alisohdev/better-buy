@@ -319,6 +319,8 @@ describe("store-specific campaign enrichment", () => {
       [
         { vendorId: 700, vendorCode: "newshop", collectionId: 800 },
         { vendorId: 700, vendorCode: "newshop", collectionId: 801 },
+        { vendorId: 701, vendorCode: "othershop", collectionId: 800 },
+        { vendorId: 701, vendorCode: "othershop", collectionId: 801 },
       ],
     ]);
     expect(
@@ -329,7 +331,7 @@ describe("store-specific campaign enrichment", () => {
       "/express-home/vendor/newshop",
       "/express-home/vendor/othershop",
     ]);
-    expect(result.deals).toHaveLength(1);
+    expect(result.deals).toHaveLength(2);
     expect(result.deals[0]?.vendorId).toBe("700");
     expect(result.deals[0]?.provenance).toEqual([
       "snapp:store_campaign:700:800",
@@ -341,13 +343,10 @@ describe("store-specific campaign enrichment", () => {
       reports: [
         { qualifying: 1, additional: 1 },
         { qualifying: 1, additional: 0 },
+        { qualifying: 1, additional: 1 },
+        { qualifying: 1, additional: 0 },
       ],
-      omitted: expect.arrayContaining([
-        expect.objectContaining({
-          vendorCode: "othershop",
-          reason: "SUPPLEMENTARY_COLLECTION_LIMIT",
-        }),
-      ]),
+      omitted: [],
     });
   });
   it("merges offers from two dynamically resolved stores with the same product ID as separate store offers", async () => {
@@ -462,7 +461,7 @@ describe("store-specific campaign enrichment", () => {
       ]),
     });
   });
-  it("bounds many dynamically discovered stores and collections before admission", async () => {
+  it("visits all 100 discovered stores and their collections without admission caps", async () => {
     const f = dynamicFixture({
       stores: Array.from({ length: 100 }, (_, index) => `store${index}`),
       allOversized: true,
@@ -474,14 +473,20 @@ describe("store-specific campaign enrichment", () => {
       })),
     });
     const result = await f.run();
-    expect(f.calls.length).toBeLessThanOrEqual(16);
+    expect(
+      f.calls.filter((u) => u.pathname.startsWith("/express-home/"))
+    ).toHaveLength(100);
+    expect(
+      f.calls.filter((u) => u.pathname.includes("/product-list/"))
+    ).toHaveLength(2000);
     expect(result.deals).toEqual([]);
     expect(
       "campaignResearch" in result && result.campaignResearch
     ).toMatchObject({
       omitted: expect.arrayContaining([
-        expect.objectContaining({ reason: "DISCOVERY_REQUEST_BUDGET" }),
-        expect.objectContaining({ reason: "PLANNING_REQUEST_BUDGET" }),
+        expect.objectContaining({
+          reason: expect.stringContaining("PAGINATION"),
+        }),
       ]),
     });
   });
@@ -645,10 +650,26 @@ describe("store-specific campaign enrichment", () => {
       ],
     });
   });
-  it("fails conflicting repeated stock instead of certifying complete coverage", async () => {
-    await expect(
-      fixture({ rows: [product(2), product(2, { stock: 3 })] }).run()
-    ).rejects.toThrow("conflicting repeated");
+  it("quarantines a conflicting product and preserves the rest of the scan", async () => {
+    const result = await fixture({
+      rows: [product(2), product(2, { stock: 3 }), product(2), product(4)],
+    }).run();
+    const productIds = result.deals.map((deal) => deal.productVariationId);
+    expect(productIds).toContain("1");
+    expect(productIds).toContain("3");
+    expect(productIds).toContain("4");
+    expect(productIds).not.toContain("2");
+    expect("coverage" in result && result.coverage).toBe("incomplete");
+    expect(
+      "campaignResearch" in result && result.campaignResearch.reports
+    ).toMatchObject([
+      {
+        coverage: "incomplete",
+        terminal: true,
+        partialReason: "CONFLICTING_DUPLICATES",
+        excluded: { CONFLICTING_DUPLICATE: 1 },
+      },
+    ]);
   });
   it("fails replayed pages", async () => {
     const rows = Array.from({ length: 100 }, (_, i) => product(i + 10));
@@ -674,18 +695,24 @@ describe("store-specific campaign enrichment", () => {
       }).run()
     ).rejects.toThrow("empty terminal before");
   });
-  it("fails the eight-page cap without a terminal instead of publishing partial offers", async () => {
-    const first = Array.from({ length: 100 }, (_, i) => product(i + 10));
+  it("collects beyond 100 pages until the verified empty terminal", async () => {
     const f = fixture({
       page: (page) => ({
-        count: 700,
-        rows: page ? [product(1000 + page)] : first,
+        count: 10100,
+        rows:
+          page < 101
+            ? Array.from({ length: 100 }, (_, i) =>
+                product(page * 100 + i + 10)
+              )
+            : [],
       }),
     });
-    await expect(f.run()).rejects.toThrow("eight-page cap");
+    const result = await f.run();
+    expect(result.deals.length).toBeGreaterThan(10000);
+    expect("coverage" in result && result.coverage).toBe("complete");
     expect(
-      f.calls.filter((url) => url.pathname.includes("/product-list/"))
-    ).toHaveLength(8);
+      f.calls.filter((u) => u.pathname.includes("/product-list/"))
+    ).toHaveLength(102);
   });
   it("omits pagination that only returns ten rows despite page_size=100", async () => {
     const rows = Array.from({ length: 10 }, (_, i) => product(i + 10));
@@ -719,7 +746,7 @@ describe("store-specific campaign enrichment", () => {
       });
     }
   );
-  it("caps physical attempts including guest access instead of running an unbounded manifest", async () => {
+  it("collects all Market Party vendors beyond the old request and page caps", async () => {
     const f = fixture({
       party: (page) => ({
         status: true,
@@ -729,7 +756,8 @@ describe("store-specific campaign enrichment", () => {
         },
       }),
     });
-    await expect(f.run()).rejects.toThrow("40-request budget");
-    expect(f.calls).toHaveLength(40);
+    const result = await f.run();
+    expect(result.vendorCount).toBe(101);
+    expect(f.calls.length).toBeGreaterThan(100);
   });
 });

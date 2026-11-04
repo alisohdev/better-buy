@@ -189,28 +189,21 @@ describe("scan ownership and failure boundary", () => {
       "personal-token"
     );
   });
-  it("interrupts collection at the overall budget and finalizes failure", async () => {
+  it("allows collection to finish beyond the former overall time budget", async () => {
     vi.useFakeTimers();
     const fixture = services();
-    const interrupted = vi.fn();
     const context = fixture.context.pipe(
       Context.add(ProviderCollection, {
-        collect: () =>
-          Effect.never.pipe(Effect.ensuring(Effect.sync(interrupted))),
+        collect: () => Effect.sleep(25_000).pipe(Effect.map(() => result)),
       })
     );
     const running = Effect.runPromise(
-      executeScan(job, 50).pipe(Effect.provide(context))
+      executeScan(job).pipe(Effect.provide(context))
     );
-    await vi.advanceTimersByTimeAsync(50);
+    await vi.advanceTimersByTimeAsync(25_000);
     await running;
-    expect(interrupted).toHaveBeenCalledTimes(1);
-    expect(fixture.fail).toHaveBeenCalledWith(
-      job.id,
-      "REQUEST_TIMEOUT",
-      expect.any(String)
-    );
-    expect(fixture.succeed).not.toHaveBeenCalled();
+    expect(fixture.fail).not.toHaveBeenCalled();
+    expect(fixture.succeed).toHaveBeenCalledWith(job.id, result);
   });
   it("leaves finalization failures visible to the execution boundary", async () => {
     const fixture = services();

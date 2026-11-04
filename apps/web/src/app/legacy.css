@@ -127,7 +127,7 @@ details > p {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 24px;
+  gap: 16px;
   border-block-end: 1px solid var(--border);
   padding-block: 16px;
 }
@@ -162,21 +162,76 @@ details > p {
   line-height: 1.4;
   color: var(--muted-foreground);
 }
-.app-header nav {
+.app-header-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
-.app-header nav > button {
-  border-color: transparent;
+.app-header-primary {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.app-header .header-icon-button,
+.app-header .cart-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 44px;
+  block-size: 44px;
+  min-inline-size: 44px;
+  min-block-size: 44px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 12px;
   background: transparent;
+  color: var(--muted-foreground);
+}
+.app-header .header-icon-button:hover,
+.app-header .cart-trigger:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.app-header .header-icon-button[aria-current="page"] {
+  background: var(--muted);
+  color: var(--primary);
+}
+.app-header .header-icon-button svg,
+.app-header .cart-trigger svg {
+  inline-size: 20px;
+  block-size: 20px;
+}
+.app-header .header-count-badge {
+  position: absolute;
+  inset-block-start: -3px;
+  inset-inline-end: -4px;
+  display: grid;
+  place-items: center;
+  min-inline-size: 18px;
+  block-size: 18px;
+  padding-inline: 3px;
+  border: 1px solid var(--background);
+  border-radius: 999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.app-header-menu {
+  display: flex;
+  align-items: center;
+  padding-inline-start: 8px;
+  border-inline-start: 1px solid var(--border);
 }
 .app-header button[aria-current] {
   background: var(--muted);
 }
-.app-header .account-button {
-  border-color: var(--border);
-  background: var(--card);
+.app-header-menu-content [role="separator"] {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--border);
 }
 .workspace {
   max-inline-size: 1120px;
@@ -770,16 +825,12 @@ details > p {
     padding-inline: 16px;
   }
   .app-header {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 12px;
     padding-block: 12px;
   }
-  .app-header nav {
-    gap: 4px;
-  }
-  .app-header nav > button {
-    padding-inline: 10px;
-    font-size: 12px;
+  .app-header-primary {
+    gap: 2px;
   }
   .workspace {
     padding-block-start: 16px;
@@ -830,31 +881,38 @@ details > p {
     flex: 1;
   }
   .app-header {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 8px;
   }
-  .app-header nav {
-    inline-size: auto;
-    gap: 0;
+  .app-header-controls {
+    flex: 1;
+    justify-content: flex-end;
+    gap: 4px;
+    min-inline-size: 0;
   }
-  .app-header nav > button {
-    padding-inline: 5px;
-    font-size: 11px;
+  .app-header-primary {
+    gap: 2px;
+  }
+  .app-header .header-icon-button,
+  .app-header .cart-trigger {
+    inline-size: 40px;
+    block-size: 40px;
+    min-inline-size: 40px;
+    min-block-size: 40px;
+  }
+  .app-header-menu {
+    padding-inline-start: 4px;
   }
   .brand {
-    gap: 6px;
+    gap: 0;
+  }
+  .brand > span:not(.brand-mark) {
+    display: none;
   }
   .brand-mark {
-    inline-size: 32px;
-    block-size: 32px;
-    font-size: 21px;
-  }
-  .brand strong {
-    font-size: 13px;
-    white-space: nowrap;
-  }
-  .brand small {
-    display: none;
+    inline-size: 36px;
+    block-size: 36px;
+    font-size: 20px;
   }
   .scan-controls {
     flex-direction: column;
@@ -965,6 +1023,33 @@ details > p {
   }
   .auth-card h1 {
     font-size: 24px;
+  }
+}
+
+@media (max-width: 360px) {
+  .app-shell {
+    padding-inline: 12px;
+  }
+  .app-header-controls {
+    gap: 2px;
+  }
+  .app-header-primary {
+    gap: 0;
+  }
+  .app-header .header-icon-button,
+  .app-header .cart-trigger {
+    inline-size: 36px;
+    block-size: 36px;
+    min-inline-size: 36px;
+    min-block-size: 36px;
+  }
+  .app-header-menu {
+    padding-inline-start: 2px;
+  }
+  .brand-mark {
+    inline-size: 32px;
+    block-size: 32px;
+    font-size: 18px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

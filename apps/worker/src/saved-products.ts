@@ -315,6 +315,13 @@ export async function projectionReady(
   return !!(await projection(db, userId, scanId))?.ready;
 }
 const sortColumns = {
+  wishlist: [
+    "presence",
+    "rank_ratio",
+    "rank_discount",
+    "rank_price",
+    "group_key",
+  ],
   discount: [
     "presence",
     "rank_ratio",
@@ -330,7 +337,7 @@ const sortColumns = {
 const querySchema = z.object({
   q: z.string().max(200).default(""),
   sort: z
-    .enum(["discount", "price", "price_asc", "price_desc", "title"])
+    .enum(["wishlist", "discount", "price", "price_asc", "price_desc", "title"])
     .default("discount"),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   cursor: z.string().max(2000).optional(),
@@ -429,9 +436,10 @@ export async function readProductPage(
   };
   const position = cursor ? decodeCursor(cursor, context) : null;
   const { scan, p } = await publishedProjection(db, userId, scanId);
-  const columns = wishlist.length
-    ? ["wishlist_rank", ...sortColumns[sort]]
-    : [...sortColumns[sort]];
+  const columns =
+    sort === "wishlist" && wishlist.length
+      ? ["wishlist_rank", ...sortColumns[sort]]
+      : [...sortColumns[sort]];
   if (
     position &&
     (position.length !== columns.length ||

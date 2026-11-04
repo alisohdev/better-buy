@@ -1,0 +1,21 @@
+[Unit]
+Description=Better Buy SQLite backup
+After=better-buy-http.service better-buy-worker.service
+
+[Service]
+Type=oneshot
+User=better-buy
+Group=better-buy
+WorkingDirectory=/srv/better-buy/current/apps/worker
+EnvironmentFile=/etc/better-buy/better-buy.env
+Environment=VPS_BACKUP_DIR=/var/backups/better-buy
+Environment=VPS_BACKUP_RETENTION_DAYS=14
+Environment=HOME=/var/lib/better-buy
+Environment=NODE_ENV=production
+ExecStart=/usr/local/bin/bun run --no-env-file vps/backup.ts
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/better-buy /var/backups/better-buy
+UMask=0077

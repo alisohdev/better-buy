@@ -2,7 +2,8 @@ import type { ScanRecord } from "@better-buy/shared";
 import { Store } from "../store";
 import type { ScanInput, ScanJob } from "../application/scans";
 import { DurableRepository } from "./repository";
-import { DurableError, type DurableEnv } from "./types";
+import { DurableError, type DurableEnv, type ScanEngineState } from "./types";
+import { scanEngineFor } from "../runtime/scan-engine";
 
 type LocalEnv = Pick<
   DurableEnv,
@@ -83,15 +84,19 @@ export async function beginDurableScan(
   input: ScanInput,
   key: string | undefined
 ) {
+  if (!scanEngineFor(env))
+    throw new DurableError(
+      "DURABLE_EXECUTION_UNAVAILABLE",
+      "Durable execution is unavailable",
+      502
+    );
   const repo = new DurableRepository(env.DB, env.BOX_KEY);
-  const limit = Number(env.SCAN_WORKFLOW_CONCURRENCY ?? 1);
   const scan = await repo.reserve(
     userId,
     input,
     key,
     env.SNAPP_STORE_CAMPAIGNS_ENABLED === "true",
-    "workflow",
-    Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 10) : 1
+    "workflow"
   );
   await reconcileDurableScan(env, userId, scan.id);
   return (await new Store(env.DB, userId, env.BOX_KEY).scan(scan.id))!;
@@ -101,84 +106,57 @@ export async function reconcileDurableScan(
   userId: string,
   scanId: string
 ) {
+  const engine = scanEngineFor(env);
   const repo = new DurableRepository(env.DB, env.BOX_KEY),
     job = await repo.load(scanId, userId);
   if (!job) return new Store(env.DB, userId, env.BOX_KEY).scan(scanId);
   if (
+    !engine ||
     job.runtime.execution_kind !== "workflow" ||
     (job.scan.status !== "queued" && job.scan.status !== "running")
   )
     return job.scan;
-  let instance: WorkflowInstance | undefined;
-  let confirmedMissing = false;
+  let state: ScanEngineState;
   try {
-    instance = await env.SCAN_WORKFLOW.get(job.runtime.instance_id);
-    await instance.status();
+    state = await engine.inspect(job.runtime.instance_id);
   } catch (error) {
-    confirmedMissing =
-      typeof error === "object" &&
-      error !== null &&
-      (("status" in error && error.status === 404) ||
-        ("code" in error && error.code === "WORKFLOW_NOT_FOUND"));
-    instance = undefined;
+    console.warn("Durable scan engine status is unavailable", {
+      scanId,
+      error,
+    });
+    return job.scan;
   }
-  if (!instance && job.runtime.dispatch_state === "dispatch_pending") {
+  const dispatchExpired = Date.now() > Date.parse(job.runtime.queued_until);
+  if (state.kind === "missing" && !dispatchExpired) {
     try {
-      instance = await env.SCAN_WORKFLOW.create({
-        id: job.runtime.instance_id,
-        params: { scanId, contractVersion: 1 },
+      await engine.ensure(job.runtime.instance_id, {
+        scanId,
+        contractVersion: 1,
       });
       await repo.dispatchState(scanId, "dispatched");
-    } catch {
-      try {
-        instance = await env.SCAN_WORKFLOW.get(job.runtime.instance_id);
-        await instance.status();
-        await repo.dispatchState(scanId, "dispatched");
-      } catch {
-        /* Keep the dispatch intent; retry only this deterministic instance ID. */
-      }
+      state = await engine.inspect(job.runtime.instance_id);
+    } catch (error) {
+      console.warn("Durable scan dispatch will be retried", { scanId, error });
     }
   }
-  if (instance) {
-    try {
-      const state = await instance.status();
-      if (
-        state.status === "errored" ||
-        state.status === "terminated" ||
-        state.status === "complete"
-      ) {
-        const current = await repo.load(scanId, userId);
-        if (
-          current?.scan.status === "queued" ||
-          current?.scan.status === "running"
-        )
-          await repo.fail(scanId, "ENGINE_TERMINAL");
-      } else if (
-        state.status === "queued" &&
-        Date.now() > Date.parse(job.runtime.queued_until)
-      ) {
-        await repo.fail(scanId, "DISPATCH_TIMEOUT");
-        try {
-          await instance.terminate();
-        } catch {
-          /* D1 owns terminal state. */
-        }
-      } else if (Date.now() > Date.parse(job.runtime.deadline_at)) {
-        await repo.fail(scanId, "SCAN_BUDGET_EXCEEDED");
-        try {
-          await instance.terminate();
-        } catch {
-          /* D1 owns terminal state. */
-        }
-      }
-    } catch {
-      /* Engine status is uncertain; never fail a healthy scan based on a read error. */
-    }
-  } else if (
-    confirmedMissing &&
-    Date.now() > Date.parse(job.runtime.queued_until)
+  if (
+    state.kind === "stopped" ||
+    (state.kind === "queued" && dispatchExpired) ||
+    (state.kind === "missing" && dispatchExpired)
   ) {
-    await repo.fail(scanId, "DISPATCH_TIMEOUT");
+    const current = await repo.load(scanId, userId);
+    if (current?.scan.status === "queued" || current?.scan.status === "running")
+      await repo.fail(
+        scanId,
+        state.kind === "stopped" ? "ENGINE_TERMINAL" : "DISPATCH_TIMEOUT"
+      );
+    if (state.kind === "queued") {
+      try {
+        await engine.terminate(job.runtime.instance_id);
+      } catch {
+        /* The durable repository owns the user-visible terminal state. */
+      }
+    }
   }
   return new Store(env.DB, userId, env.BOX_KEY).scan(scanId);
 }
@@ -187,10 +165,11 @@ export async function cancelDurableScan(
   userId: string,
   scanId: string
 ) {
+  const engine = scanEngineFor(env);
   const repo = new DurableRepository(env.DB, env.BOX_KEY),
     job = await repo.load(scanId, userId);
   if (!job) return null;
-  if (job.runtime.execution_kind !== "workflow")
+  if (job.runtime.execution_kind !== "workflow" || !engine)
     throw new DurableError(
       "CANCEL_UNAVAILABLE",
       "Cancellation is unavailable for this update",
@@ -199,7 +178,7 @@ export async function cancelDurableScan(
   const changed = await repo.cancel(scanId, userId);
   if (changed) {
     try {
-      await (await env.SCAN_WORKFLOW.get(job.runtime.instance_id)).terminate();
+      await engine.terminate(job.runtime.instance_id);
     } catch {
       /* Cooperative writes already reject work. */
     }
@@ -207,11 +186,18 @@ export async function cancelDurableScan(
   return new Store(env.DB, userId, env.BOX_KEY).scan(scanId);
 }
 export async function reconcileDurableOperations(env: DurableEnv) {
-  const { results } = await env.DB.prepare(
-    "SELECT e.scan_id,e.user_id FROM scan_execution e JOIN scans s ON s.id=e.scan_id WHERE e.execution_kind='workflow' AND s.status IN ('queued','running') ORDER BY COALESCE(e.heartbeat_at,e.created_at) LIMIT 20"
-  )
-    .bind()
-    .all<{ scan_id: string; user_id: string }>();
-  for (const row of results)
-    await reconcileDurableScan(env, row.user_id, row.scan_id);
+  if (!scanEngineFor(env)) return;
+  let after = "";
+  while (true) {
+    const { results } = await env.DB.prepare(
+      "SELECT e.scan_id,e.user_id FROM scan_execution e JOIN scans s ON s.id=e.scan_id WHERE e.execution_kind='workflow' AND s.status IN ('queued','running') AND e.scan_id>? ORDER BY e.scan_id LIMIT 100"
+    )
+      .bind(after)
+      .all<{ scan_id: string; user_id: string }>();
+    if (results.length === 0) return;
+    for (const row of results) {
+      await reconcileDurableScan(env, row.user_id, row.scan_id);
+      after = row.scan_id;
+    }
+  }
 }

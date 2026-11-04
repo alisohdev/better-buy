@@ -1,20 +1,19 @@
 import { z } from "zod";
 import { Effect } from "effect";
 import { CollectorError, type PersistenceError } from "../../domain/failures";
-import { requestJson } from "../../infrastructure/http";
+import { requestJson, type Fetcher } from "../../infrastructure/http";
 import { vendorSchema, responseSchema, normalizeSnappDeals } from "./model";
 import {
   planStoreCampaigns,
   enrichStoreCampaigns,
   type CampaignScope,
-  SNAPP_SCAN_REQUEST_BUDGET,
 } from "./storeCampaigns";
 
 export interface CollectInput {
   latitude: number;
   longitude: number;
   threshold: number;
-  fetcher?: typeof fetch;
+  fetcher?: Fetcher;
   storeCampaigns?: boolean;
   onManifest?: (
     scopes: CampaignScope[]
@@ -52,10 +51,8 @@ export function collectDeals(input: CollectInput) {
     const upstream = input.fetcher ?? fetch;
     let attempts = 0;
     // Physical requests include guest acquisition, renewal and HTTP retries.
-    const fetcher: typeof fetch = input.storeCampaigns
+    const fetcher: Fetcher = input.storeCampaigns
       ? (url, init) => {
-          if (attempts >= SNAPP_SCAN_REQUEST_BUDGET)
-            return Promise.resolve(new Response(null, { status: 499 }));
           attempts++;
           return upstream(url, init);
         }
@@ -163,22 +160,9 @@ export function collectDeals(input: CollectInput) {
             )
           );
         return { ...response, observedAt: new Date().toISOString() };
-      }).pipe(
-        Effect.mapError((error) =>
-          input.storeCampaigns && attempts >= SNAPP_SCAN_REQUEST_BUDGET
-            ? new CollectorError(
-                "INCOMPLETE_PAGINATION",
-                "Snapp scan exhausted its 40-request budget"
-              )
-            : error
-        )
-      );
+      });
     const planned = input.storeCampaigns
-      ? yield* planStoreCampaigns(
-          read,
-          input,
-          () => SNAPP_SCAN_REQUEST_BUDGET - attempts
-        )
+      ? yield* planStoreCampaigns(read, input)
       : undefined;
     if (planned && input.onManifest)
       yield* input.onManifest(
@@ -187,7 +171,7 @@ export function collectDeals(input: CollectInput) {
         )
       );
     let totalCount = Infinity;
-    for (let page = 0; page < 50 && vendors.size < totalCount; page++) {
+    for (let page = 0; vendors.size < totalCount; page++) {
       const url = new URL(
         `https://svc.snapp.market/market-party/${input.latitude}/${input.longitude}`
       );
@@ -299,8 +283,7 @@ export function collectDeals(input: CollectInput) {
       baseline,
       productKeys,
       vendorIds,
-      planned.omitted,
-      () => SNAPP_SCAN_REQUEST_BUDGET - attempts
+      planned.omitted
     );
     if (input.onProgress)
       yield* input.onProgress({
@@ -314,22 +297,9 @@ export function collectDeals(input: CollectInput) {
         discoveredCandidates: planned.discoveredCandidates,
         requests: attempts,
         elapsedMs: Date.now() - startedAt,
-        requestBudget: SNAPP_SCAN_REQUEST_BUDGET,
+        requestBudget: null,
       },
     };
   });
-  return input.storeCampaigns
-    ? collection.pipe(
-        Effect.timeoutOrElse({
-          duration: 20_000,
-          orElse: () =>
-            Effect.fail(
-              new CollectorError(
-                "REQUEST_TIMEOUT",
-                "Snapp enrichment exceeded its 20-second collection budget"
-              )
-            ),
-        })
-      )
-    : collection;
+  return collection;
 }
