@@ -13,6 +13,25 @@ import (
 
 func registerProducts(mux *http.ServeMux, db *sql.DB, cfg config.Config, service *auth.Service, queue *scans.Queue) {
 	productService := products.New(db, cfg.BoxKey)
+	mux.Handle("GET /api/scans/{id}/product-detail", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		key := r.URL.Query().Get("key")
+		if key == "" || len(key) > 1024 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "INVALID_INPUT"})
+			return
+		}
+		groups, scan, err := productService.ProductGroups(r.Context(), queue, requestIdentity(r).User.ID, r.PathValue("id"))
+		if err != nil {
+			writeProductError(w, err)
+			return
+		}
+		for _, group := range groups {
+			if group.Key == key {
+				writeJSON(w, http.StatusOK, map[string]any{"data": map[string]any{"product": group, "source": scan.Source, "locationId": scan.LocationID, "locationName": scan.LocationName, "observedAt": scan.FinishedAt}})
+				return
+			}
+		}
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "PRODUCT_NOT_FOUND"})
+	})))
 	mux.Handle("GET /api/scans/{id}/deals", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		deals, _, err := productService.Deals(r.Context(), queue, requestIdentity(r).User.ID, r.PathValue("id"))
 		if err != nil {

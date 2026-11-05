@@ -22,6 +22,8 @@ export type InboxNotification = {
     discountPercent: number;
     url: string;
     source: string;
+    productKey?: string;
+    vendorTitle?: string;
   }[];
   createdAt: string;
   readAt: string | null;
@@ -92,6 +94,10 @@ function parseMatch(value: unknown): InboxNotification["matches"][number] {
     discountPercent: number(match.discountPercent),
     url: text(match.url),
     source: text(match.source),
+    productKey:
+      match.productKey === undefined ? undefined : text(match.productKey),
+    vendorTitle:
+      match.vendorTitle === undefined ? undefined : text(match.vendorTitle),
   };
 }
 export function parseDevScanStart(value: unknown) {

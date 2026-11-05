@@ -7,7 +7,27 @@ import { Dashboard } from "../features/dashboard/Dashboard";
 import { AuthScreen } from "../features/auth/AuthScreen";
 import { DevSignIn } from "../features/auth/DevSignIn";
 import { useVisitAnalytics } from "../features/admin/useAnalytics";
+import { useEffect, useState } from "react";
+import { NotificationsPage } from "../features/alerts/NotificationsPage";
+import { ProductDetailPage } from "../features/deals/ProductDetailPage";
 export default function Page() {
+  const [destination, setDestination] = useState({
+    page: "",
+    scan: "",
+    product: "",
+  });
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    setDestination({
+      page:
+        params.get("page") ??
+        (params.has("inbox") || params.has("notification")
+          ? "notifications"
+          : ""),
+      scan: params.get("scan") ?? "",
+      product: params.get("product") ?? "",
+    });
+  }, []);
   useVisitAnalytics();
   const { data: session, isPending, error, refetch } = authClient.useSession();
   if (isPending)
@@ -36,7 +56,16 @@ export default function Page() {
     );
   return (
     <QuerySession key={session.user.id}>
-      <Dashboard />
+      {destination.page === "notifications" ? (
+        <NotificationsPage />
+      ) : destination.page === "product" ? (
+        <ProductDetailPage
+          scanId={destination.scan}
+          productKey={destination.product}
+        />
+      ) : (
+        <Dashboard />
+      )}
     </QuerySession>
   );
 }

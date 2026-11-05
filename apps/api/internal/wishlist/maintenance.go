@@ -8,8 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 	"log/slog"
 	"math"
 	"net/http"
@@ -18,7 +16,6 @@ import (
 	"strings"
 	"time"
 
-	webpush "github.com/SherClockHolmes/webpush-go"
 	"github.com/alirezasoheili/better-buy/apps/api/internal/products"
 	"github.com/alirezasoheili/better-buy/apps/api/internal/scans"
 )
@@ -231,11 +228,17 @@ func (s *Service) notifyScan(ctx context.Context, queue *scans.Queue, catalog Pr
 			if !hasAllTokens(products.NormalizeSearchText(group.Title), tokens) {
 				continue
 			}
+			var best *products.VendorOffer
 			for _, offer := range group.Vendors {
 				if offer.State != "no_longer_present" && offer.Stock > 0 && offer.DiscountRatio >= float64(item.minDiscount) {
-					candidates = append(candidates, candidate{product: group, offer: offer})
-					break
+					if best == nil || offer.DiscountRatio > best.DiscountRatio || (offer.DiscountRatio == best.DiscountRatio && (offer.FinalPriceRials < best.FinalPriceRials || (offer.FinalPriceRials == best.FinalPriceRials && offer.VendorID < best.VendorID))) {
+						copy := offer
+						best = &copy
+					}
 				}
+			}
+			if best != nil {
+				candidates = append(candidates, candidate{product: group, offer: *best})
 			}
 		}
 		sort.Slice(candidates, func(i, j int) bool {
@@ -258,7 +261,7 @@ func (s *Service) notifyScan(ctx context.Context, queue *scans.Queue, catalog Pr
 			if previous.Valid && offer.FinalPriceRials >= previous.Float64 {
 				continue
 			}
-			matches = append(matches, Match{Phrase: item.phrase, Title: product.Title, Price: offer.FinalAmountToman, DiscountPercent: offer.DiscountRatio, URL: "/?scan=" + url.QueryEscape(scanID), Source: scan.Source})
+			matches = append(matches, Match{Phrase: item.phrase, Title: product.Title, Price: offer.FinalAmountToman, DiscountPercent: offer.DiscountRatio, URL: "/?scan=" + url.QueryEscape(scanID), Source: scan.Source, ProductKey: product.Key, VendorID: offer.VendorID, VendorTitle: offer.VendorTitle})
 		}
 	}
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -422,7 +425,7 @@ func (m *Maintainer) drainPushDeliveries(ctx context.Context, now time.Time, sco
 		return nil
 	}
 	nowText := isoTime(now)
-	query := `SELECT d.notification_id,d.subscription_id,d.user_id,d.attempts,s.encrypted_subscription,n.title,n.body
+	query := `SELECT d.notification_id,d.subscription_id,d.user_id,d.attempts,s.encrypted_subscription,n.title,n.body,n.scan_id,n.matches_json
 		FROM wishlist_push_deliveries d JOIN push_subscriptions s ON s.id=d.subscription_id AND s.user_id=d.user_id
 		JOIN wishlist_notifications n ON n.id=d.notification_id AND n.user_id=d.user_id
 		WHERE d.delivered_at IS NULL AND d.attempts<5 AND d.next_attempt_at<=? AND (d.lease_until IS NULL OR d.lease_until<=?)`
@@ -439,7 +442,7 @@ func (m *Maintainer) drainPushDeliveries(ctx context.Context, now time.Time, sco
 	deliveries := make([]delivery, 0, 5)
 	for rows.Next() {
 		var item delivery
-		if err := rows.Scan(&item.notificationID, &item.subscriptionID, &item.userID, &item.attempts, &item.encrypted, &item.title, &item.body); err != nil {
+		if err := rows.Scan(&item.notificationID, &item.subscriptionID, &item.userID, &item.attempts, &item.encrypted, &item.title, &item.body, &item.scanID, &item.matchesJSON); err != nil {
 			rows.Close()
 			return err
 		}
@@ -470,6 +473,8 @@ type delivery struct {
 	encrypted      string
 	title          string
 	body           string
+	scanID         string
+	matchesJSON    string
 }
 
 func (m *Maintainer) deliver(ctx context.Context, now time.Time, item delivery) error {
@@ -488,45 +493,28 @@ func (m *Maintainer) deliver(ctx context.Context, now time.Time, item delivery) 
 	if err != nil {
 		return err
 	}
-	var subscription pushSubscription
-	clear, err := decrypt(item.encrypted, m.store.boxKey, "push:"+item.userID+":"+item.subscriptionID)
-	if err == nil {
-		err = json.Unmarshal(clear, &subscription)
+	body := item.body
+	if len([]rune(body)) > 250 {
+		body = string([]rune(body)[:250])
 	}
-	if err == nil && !validSubscription(subscription) {
-		err = errors.New("stored push subscription is invalid")
-	}
-	if err == nil {
-		body := item.body
-		if len([]rune(body)) > 250 {
-			body = string([]rune(body)[:250])
+	pushURL := "/?notification=" + url.QueryEscape(item.notificationID)
+	var matches []Match
+	if json.Unmarshal([]byte(item.matchesJSON), &matches) == nil {
+		if match, ok := featuredMatch(matches); ok {
+			body = productPushBody(match, len(matches)-1)
+			pushURL = productDetailURL(item.scanID, match.ProductKey)
 		}
-		payload, marshalErr := json.Marshal(map[string]string{
-			"id":    item.notificationID,
-			"title": item.title,
-			"body":  body,
-			"url":   "/?notification=" + url.QueryEscape(item.notificationID),
-		})
-		if marshalErr != nil {
-			err = marshalErr
-		} else {
-			requestCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			response, sendErr := webpush.SendNotificationWithContext(requestCtx, payload, &webpush.Subscription{Endpoint: subscription.Endpoint, Keys: webpush.Keys{P256dh: subscription.Keys.P256DH, Auth: subscription.Keys.Auth}}, &webpush.Options{
-				HTTPClient: m.client, Subscriber: m.push.Subject, VAPIDPublicKey: m.push.PublicKey, VAPIDPrivateKey: m.push.PrivateKey, TTL: 3600, Urgency: webpush.UrgencyNormal,
-			})
-			cancel()
-			err = sendErr
-			if response != nil {
-				_, _ = io.Copy(io.Discard, io.LimitReader(response.Body, 4096))
-				_ = response.Body.Close()
-				if response.StatusCode == http.StatusGone || response.StatusCode == http.StatusNotFound {
-					_, deleteErr := m.store.db.ExecContext(ctx, "DELETE FROM push_subscriptions WHERE id=? AND user_id=?", item.subscriptionID, item.userID)
-					return deleteErr
-				}
-				if response.StatusCode < 200 || response.StatusCode >= 300 {
-					err = fmt.Errorf("push endpoint returned status %d", response.StatusCode)
-				}
-			}
+	}
+	if len([]rune(body)) > 250 {
+		body = string([]rune(body)[:250])
+	}
+	payload, err := json.Marshal(map[string]string{"id": item.notificationID, "title": item.title, "body": body, "url": pushURL})
+	if err == nil {
+		var status int
+		status, err = sendPush(ctx, m.client, m.push, m.store.boxKey, item.userID, item.subscriptionID, item.encrypted, payload)
+		if status == http.StatusGone || status == http.StatusNotFound {
+			_, deleteErr := m.store.db.ExecContext(ctx, "DELETE FROM push_subscriptions WHERE id=? AND user_id=?", item.subscriptionID, item.userID)
+			return deleteErr
 		}
 	}
 	if err == nil {

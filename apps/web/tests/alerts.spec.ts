@@ -15,6 +15,7 @@ async function fixture(
     pushFailure?: boolean;
     scan?: boolean;
     devEnabled?: boolean;
+    detail?: boolean;
   } = {}
 ) {
   await page.addInitScript(
@@ -148,6 +149,9 @@ async function fixture(
               discountPercent: 50,
               url: "/?scan=saved",
               source: "snappmarket",
+              ...(options.detail
+                ? { productKey: "tea-key", vendorTitle: "فروشگاه دریانی" }
+                : {}),
             },
           ],
           createdAt: date,
@@ -156,6 +160,42 @@ async function fixture(
           locationId: "office",
         },
       ];
+    } else if (url.pathname === "/api/scans/saved/product-detail") {
+      const offer = {
+        offerKey: "offer",
+        productVariationId: "p",
+        vendorId: "v",
+        vendorTitle: "فروشگاه دریانی",
+        vendorCode: null,
+        priceRials: 24000,
+        discountRials: 12000,
+        finalPriceRials: 12000,
+        discountRatio: 50,
+        stock: 1,
+        state: "new",
+        finalAmountToman: 12000,
+      };
+      data = {
+        source: "snappmarket",
+        product: {
+          key: "tea-key",
+          groupKeyVersion: 2,
+          scanId: "saved",
+          title: "چای ایرانی",
+          image: null,
+          categoryTitle: null,
+          priceRials: 24000,
+          discountRials: 12000,
+          finalPriceRials: 12000,
+          discountRatio: 50,
+          state: "new",
+          vendors: [offer],
+          bestCurrentOffer: offer,
+          currentStoreOfferCount: 1,
+          conditionalOffers: [],
+          diagnostics: [],
+        },
+      };
     } else if (url.pathname === "/api/notifications/notice-1/read")
       state.readAt = date;
     else if (url.pathname === "/api/push/subscriptions") {
@@ -290,19 +330,73 @@ test("wishlist CRUD, independent scan location, and disabled setup banner", asyn
 });
 test("notification deep link opens inbox, keeps local scan links, and marks read", async ({
   page,
-}) => {
+}, testInfo) => {
   const state = await fixture(page);
   await page.goto("/?notification=notice-1");
-  const panel = page.getByRole("dialog", { name: "صندوق اعلان‌ها" });
+  const panel = page.getByRole("main");
+  await expect(panel.getByRole("heading", { name: "اعلان‌ها" })).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await expect(panel.getByText("چای ارزان‌تر شد")).toBeVisible();
   await expect(
     panel.getByRole("link", { name: "مشاهده نتیجه اسکن" })
   ).toHaveAttribute("href", "/?scan=saved");
+  await page.screenshot({
+    path: testInfo.outputPath("notifications.png"),
+    fullPage: true,
+  });
   await panel
     .getByRole("button", { name: "علامت‌گذاری به‌عنوان خوانده‌شده" })
     .click();
   await expect(panel.getByText("خوانده‌نشده", { exact: true })).toHaveCount(0);
   expect(state.readAt).toBe(date);
+});
+test("product notification opens an authenticated product page", async ({
+  page,
+}, testInfo) => {
+  await fixture(page, { detail: true });
+  await page.goto("/?notification=notice-1");
+  await page.getByRole("link", { name: "مشاهده جزئیات کالا" }).click();
+  await expect(
+    page.getByRole("heading", { name: "جزئیات کالا" })
+  ).toBeVisible();
+  await expect(page.getByText("فروشگاه دریانی")).toBeVisible();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await page.screenshot({
+    path: testInfo.outputPath("product-detail.png"),
+    fullPage: true,
+  });
+  await page.reload();
+  await expect(page.getByText("فروشگاه دریانی")).toBeVisible();
+});
+test("product deep link survives email sign in", async ({ page }) => {
+  await fixture(page, { detail: true });
+  let signedIn = false;
+  const identity = {
+    session: {
+      id: "session",
+      userId: "user",
+      expiresAt: "2099-01-01T00:00:00Z",
+    },
+    user: { id: "user", name: "کاربر نمونه", email: "fixture@example.com" },
+  };
+  await page.route("**/api/auth/get-session", (route) =>
+    route.fulfill({ json: signedIn ? identity : null })
+  );
+  await page.route("**/api/auth/sign-in/email", (route) => {
+    signedIn = true;
+    return route.fulfill({ json: { token: "token", user: identity.user } });
+  });
+  await page.goto("/?page=product&scan=saved&product=tea-key");
+  await page.getByLabel("ایمیل", { exact: true }).fill("fixture@example.com");
+  await page.getByLabel("رمز عبور", { exact: true }).fill("test-password");
+  await page
+    .getByRole("button", { name: "ورود با ایمیل", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "جزئیات کالا" })
+  ).toBeVisible();
+  await expect(page.getByText("فروشگاه دریانی")).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("product")).toBe("tea-key");
 });
 test("scan deep link restores the scan location and source", async ({
   page,

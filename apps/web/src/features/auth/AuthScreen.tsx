@@ -78,7 +78,9 @@ export function AuthScreen() {
         return;
       }
 
-      window.location.replace("/");
+      window.location.replace(
+        window.location.pathname + window.location.search
+      );
       navigating = true;
     } catch {
       setFeedback(submittedMode);
@@ -101,7 +103,7 @@ export function AuthScreen() {
     try {
       const result = await authClient.signIn.social({
         provider: "google",
-        callbackURL: "/",
+        callbackURL: window.location.pathname + window.location.search,
       });
       failed = Boolean(result.error);
     } catch {

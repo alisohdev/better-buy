@@ -43,6 +43,9 @@ type Match struct {
 	DiscountPercent float64 `json:"discountPercent"`
 	URL             string  `json:"url"`
 	Source          string  `json:"source"`
+	ProductKey      string  `json:"productKey,omitempty"`
+	VendorID        string  `json:"vendorId,omitempty"`
+	VendorTitle     string  `json:"vendorTitle,omitempty"`
 }
 
 type Notification struct {

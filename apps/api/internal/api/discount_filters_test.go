@@ -350,6 +350,9 @@ func TestNotificationsApplyEachWishlistDiscountBeforeSelectingProducts(t *testin
 	if len(matches) != 2 || matches["Tea"].Title != "Tea selected" || matches["Tea"].DiscountPercent != 60 || matches["Tea"].Price != 100 || matches["Rice"].DiscountPercent != 15 {
 		t.Fatalf("per-phrase eligible matches = %+v", matches)
 	}
+	if matches["Tea"].ProductKey == "" || matches["Tea"].VendorID != "b" || matches["Tea"].VendorTitle != "Store b" {
+		t.Fatalf("notification must retain matching product and store: %+v", matches["Tea"])
+	}
 }
 
 func productTitles(items []products.ProductSummary) []string {

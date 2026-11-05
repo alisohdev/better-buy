@@ -12,9 +12,36 @@ mkdir -p dist
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/better-buy-api ./cmd/server
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/better-buy-migrate ./cmd/migrate
 GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/better-buy-backup ./cmd/backup
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/better-buy-push-test ./cmd/push-test
+GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o dist/better-buy-vapid-keygen ./cmd/vapid-keygen
 ```
 
 Install the API and backup binaries as `/usr/local/bin/better-buy-api` and `/usr/local/bin/better-buy-backup`. The migration binary is run once before starting the API.
+
+Install the push test and key generator binaries in `/usr/local/bin` as well.
+Install `scripts/push-test.sh` as `/usr/local/bin/better-buy-push`.
+When push is not yet configured, run `better-buy-vapid-keygen` in a private
+terminal and put its two output values in the protected environment file,
+along with `VAPID_SUBJECT=mailto:YOUR-CONTACT-EMAIL`. Do not rotate existing
+keys: a new pair requires users to resubscribe. Restart the API after changing
+the environment file. Do not put private keys in Git or share terminal output.
+
+On the Android phone, open the installed app, sign in, open the wishlist, tap
+«فعال‌سازی اعلان مرورگر» and allow notifications. If a subscription already
+exists, tap «همگام‌سازی اعلان با حساب». Then run from the VPS checkout:
+
+```sh
+sudo better-buy-push --email you@example.com
+```
+
+The test targets all subscriptions for that account. An accepted result means
+the push service accepted the request, not that Android displayed it. Check the
+phone with the app closed and tap the notification. If no subscription is
+found, enable and synchronize push on the phone. If permission is blocked,
+enable notifications for the site/app in Chrome and Android settings. For an
+expired subscription, enable push again; rejected or timed-out sends require
+checking the VAPID configuration and VPS connectivity. The command can also
+select an account with `--user-id` instead of `--email`.
 
 ## Environment and files
 

@@ -1,13 +1,7 @@
 "use client";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "radix-ui";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type CSSProperties,
-} from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   isWithinTehranBoundary,
   type CartSource,
@@ -31,7 +25,6 @@ import { ScanFeedback } from "../scans/ScanFeedback";
 import { ProviderCart, CartWriteNotice } from "../carts/ProviderCart";
 import { useProviderCart } from "../carts/useProviderCart";
 import { WishlistPanel } from "../alerts/WishlistPanel";
-import { NotificationInbox } from "../alerts/NotificationInbox";
 import { useWishlistQuery } from "../alerts/useAlerts";
 import { AdminDashboard } from "../admin/AdminDashboard";
 import { useAdminAccess } from "../admin/useAdminAnalytics";
@@ -48,7 +41,6 @@ export function Dashboard() {
   const [cartOpen, setCartOpen] = useState(false);
   const [cartSource, setCartSource] = useState<CartSource>("snappmarket");
   const [wishlistOpen, setWishlistOpen] = useState(false);
-  const [inboxOpen, setInboxOpen] = useState(false);
   const overlayReturnFocus = useRef<HTMLElement | null>(null);
   const mobileCartTrigger = useRef<HTMLButtonElement | null>(null);
   const openOverlay = (kind: "wishlist" | "inbox") => {
@@ -57,14 +49,10 @@ export function Dashboard() {
         ? document.activeElement
         : null;
     if (kind === "wishlist") setWishlistOpen(true);
-    else setInboxOpen(true);
+    else window.location.assign("/?page=notifications");
   };
   const restoreOverlayFocus = () =>
     requestAnimationFrame(() => overlayReturnFocus.current?.focus());
-  const changeInboxOpen = useCallback((open: boolean) => {
-    setInboxOpen(open);
-    if (!open) requestAnimationFrame(() => overlayReturnFocus.current?.focus());
-  }, []);
   const [providers, setProviders] = useState<CartSource[]>([
     "snappmarket",
     "okala",
@@ -379,11 +367,6 @@ export function Dashboard() {
           if (!open) restoreOverlayFocus();
         }}
         trigger={<button type="button" hidden aria-label="علاقه‌مندی‌ها" />}
-      />
-      <NotificationInbox
-        open={inboxOpen}
-        onOpenChange={changeInboxOpen}
-        trigger={<button type="button" hidden aria-label="اعلان‌ها" />}
       />
       <div
         className={`workspace ${view === "deals" && workspaceSection === "scan" ? "workspace-scan" : ""}`}
