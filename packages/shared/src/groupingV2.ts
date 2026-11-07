@@ -128,6 +128,7 @@ export async function groupDealsV2(
         logoUrl: row.vendorLogoUrl ?? null,
         offerKey: row.key,
         productVariationId: row.productVariationId,
+        productDestination: null,
         vendorId: row.vendorId,
         vendorTitle: row.vendorTitle,
         vendorCode: row.vendorCode,

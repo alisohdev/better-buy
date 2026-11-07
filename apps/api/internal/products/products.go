@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/alirezasoheili/better-buy/apps/api/internal/discounts"
+	"github.com/alirezasoheili/better-buy/apps/api/internal/productlinks"
 	"github.com/alirezasoheili/better-buy/apps/api/internal/scans"
 	"golang.org/x/text/unicode/norm"
 )
@@ -28,48 +29,50 @@ type Benefit struct {
 }
 
 type DealRecord struct {
-	Key                 string   `json:"key"`
-	ScanID              string   `json:"scanId"`
-	ProductVariationID  string   `json:"productVariationId"`
-	VendorID            string   `json:"vendorId"`
-	Title               string   `json:"title"`
-	Image               *string  `json:"image"`
-	VendorTitle         string   `json:"vendorTitle"`
-	VendorCode          *string  `json:"vendorCode"`
-	VendorLogoURL       *string  `json:"vendorLogoUrl,omitempty"`
-	CategoryTitle       *string  `json:"categoryTitle"`
-	PriceRials          float64  `json:"priceRials"`
-	DiscountRials       float64  `json:"discountRials"`
-	FinalPriceRials     float64  `json:"finalPriceRials"`
-	DiscountRatio       float64  `json:"discountRatio"`
-	Stock               float64  `json:"stock"`
-	State               string   `json:"state"`
-	Benefit             *Benefit `json:"benefit,omitempty"`
-	ObservedAt          string   `json:"observedAt,omitempty"`
-	Provenance          []string `json:"provenance,omitempty"`
-	ObservationPriority int      `json:"observationPriority,omitempty"`
+	ProductDestination  *productlinks.Destination `json:"productDestination"`
+	Key                 string                    `json:"key"`
+	ScanID              string                    `json:"scanId"`
+	ProductVariationID  string                    `json:"productVariationId"`
+	VendorID            string                    `json:"vendorId"`
+	Title               string                    `json:"title"`
+	Image               *string                   `json:"image"`
+	VendorTitle         string                    `json:"vendorTitle"`
+	VendorCode          *string                   `json:"vendorCode"`
+	VendorLogoURL       *string                   `json:"vendorLogoUrl,omitempty"`
+	CategoryTitle       *string                   `json:"categoryTitle"`
+	PriceRials          float64                   `json:"priceRials"`
+	DiscountRials       float64                   `json:"discountRials"`
+	FinalPriceRials     float64                   `json:"finalPriceRials"`
+	DiscountRatio       float64                   `json:"discountRatio"`
+	Stock               float64                   `json:"stock"`
+	State               string                    `json:"state"`
+	Benefit             *Benefit                  `json:"benefit,omitempty"`
+	ObservedAt          string                    `json:"observedAt,omitempty"`
+	Provenance          []string                  `json:"provenance,omitempty"`
+	ObservationPriority int                       `json:"observationPriority,omitempty"`
 }
 
 type VendorOffer struct {
-	LogoURL             *string  `json:"logoUrl"`
-	OfferKey            string   `json:"offerKey"`
-	ProductVariationID  string   `json:"productVariationId"`
-	VendorID            string   `json:"vendorId"`
-	VendorTitle         string   `json:"vendorTitle"`
-	VendorCode          *string  `json:"vendorCode"`
-	PriceRials          float64  `json:"priceRials"`
-	DiscountRials       float64  `json:"discountRials"`
-	FinalPriceRials     float64  `json:"finalPriceRials"`
-	DiscountRatio       float64  `json:"discountRatio"`
-	Stock               float64  `json:"stock"`
-	State               string   `json:"state"`
-	Benefit             Benefit  `json:"benefit"`
-	ObservedAt          string   `json:"observedAt,omitempty"`
-	Provenance          []string `json:"provenance"`
-	SourceMoneyUnit     string   `json:"sourceMoneyUnit"`
-	OriginalAmountToman float64  `json:"originalAmountToman"`
-	DiscountAmountToman float64  `json:"discountAmountToman"`
-	FinalAmountToman    float64  `json:"finalAmountToman"`
+	ProductDestination  *productlinks.Destination `json:"productDestination"`
+	LogoURL             *string                   `json:"logoUrl"`
+	OfferKey            string                    `json:"offerKey"`
+	ProductVariationID  string                    `json:"productVariationId"`
+	VendorID            string                    `json:"vendorId"`
+	VendorTitle         string                    `json:"vendorTitle"`
+	VendorCode          *string                   `json:"vendorCode"`
+	PriceRials          float64                   `json:"priceRials"`
+	DiscountRials       float64                   `json:"discountRials"`
+	FinalPriceRials     float64                   `json:"finalPriceRials"`
+	DiscountRatio       float64                   `json:"discountRatio"`
+	Stock               float64                   `json:"stock"`
+	State               string                    `json:"state"`
+	Benefit             Benefit                   `json:"benefit"`
+	ObservedAt          string                    `json:"observedAt,omitempty"`
+	Provenance          []string                  `json:"provenance"`
+	SourceMoneyUnit     string                    `json:"sourceMoneyUnit"`
+	OriginalAmountToman float64                   `json:"originalAmountToman"`
+	DiscountAmountToman float64                   `json:"discountAmountToman"`
+	FinalAmountToman    float64                   `json:"finalAmountToman"`
 }
 
 type Group struct {
@@ -614,7 +617,7 @@ func buildGroup(provider, identity string, rows []DealRecord, variants map[strin
 			amount = math.Round
 		}
 		benefit := benefitFor(provider, row)
-		all = append(all, VendorOffer{LogoURL: row.VendorLogoURL, OfferKey: row.Key, ProductVariationID: row.ProductVariationID, VendorID: row.VendorID, VendorTitle: row.VendorTitle, VendorCode: row.VendorCode, PriceRials: row.PriceRials, DiscountRials: row.DiscountRials, FinalPriceRials: row.FinalPriceRials, DiscountRatio: row.DiscountRatio, Stock: row.Stock, State: row.State, Benefit: benefit, ObservedAt: row.ObservedAt, Provenance: prov, SourceMoneyUnit: kind, OriginalAmountToman: amount(row.PriceRials), DiscountAmountToman: amount(row.DiscountRials), FinalAmountToman: amount(row.FinalPriceRials)})
+		all = append(all, VendorOffer{ProductDestination: productlinks.Resolve(provider, productlinks.Identity{ProductVariationID: row.ProductVariationID, VendorID: row.VendorID, VendorCode: row.VendorCode}, ""), LogoURL: row.VendorLogoURL, OfferKey: row.Key, ProductVariationID: row.ProductVariationID, VendorID: row.VendorID, VendorTitle: row.VendorTitle, VendorCode: row.VendorCode, PriceRials: row.PriceRials, DiscountRials: row.DiscountRials, FinalPriceRials: row.FinalPriceRials, DiscountRatio: row.DiscountRatio, Stock: row.Stock, State: row.State, Benefit: benefit, ObservedAt: row.ObservedAt, Provenance: prov, SourceMoneyUnit: kind, OriginalAmountToman: amount(row.PriceRials), DiscountAmountToman: amount(row.DiscountRials), FinalAmountToman: amount(row.FinalPriceRials)})
 		_ = id
 	}
 	conditional := make([]VendorOffer, 0)

@@ -1,3 +1,4 @@
+import { ProductDestination } from "./ProductDestination";
 import { useRef, useState } from "react";
 import { Dialog } from "radix-ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -241,6 +242,7 @@ export function ProductRow({
                 {offer.state !== "no_longer_present" &&
                   ` · موجودی ثبت‌شده ${faNumber.format(offer.stock)}`}
               </small>
+              <ProductDestination offer={offer} source={source} />
               {offer.benefit?.kind === "conditional" && (
                 <small>
                   {offer.benefit.terms ?? "شرایط استفاده مشخص نیست"}
@@ -325,6 +327,7 @@ export function ProductRow({
             />
             <bdi>{best?.vendorTitle ?? "پیشنهاد جاری قابل مقایسه نیست"}</bdi>
           </p>
+          <ProductDestination offer={best} source={source} />
           <small>
             {feedStateLabel(group.state)}
             {group.categoryTitle && ` · ${group.categoryTitle}`}
@@ -405,21 +408,7 @@ export function ProductRow({
                 )}
                 قیمت و موجودی مشاهده زمان اسکن است.
               </p>
-              {source !== "digikalajet" && (
-                <a
-                  className="provider-website"
-                  href={
-                    source === "okala"
-                      ? "https://www.okala.com"
-                      : "https://snapp.market"
-                  }
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  باز کردن وب‌سایت {sourceLabel(source)}
-                  <AppIcon name="external" />
-                </a>
-              )}
+              <ProductDestination offer={best} source={source} />
             </div>
           </div>
           <section

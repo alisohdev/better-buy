@@ -8,6 +8,11 @@ import type { DealRecord, DealState } from "./contracts";
  */
 export const DEAL_GROUP_KEY_VERSION = 1 as const;
 export interface VendorOfferRecord {
+  productDestination?: {
+    url: string;
+    productVariationId: string;
+    vendorId: string;
+  } | null;
   logoUrl?: string | null;
   benefit?: DealRecord["benefit"];
   observedAt?: string;
@@ -147,6 +152,7 @@ export function groupDeals(
         .map((row): VendorOfferRecord => ({
           offerKey: row.key,
           productVariationId: row.productVariationId,
+          productDestination: null,
           vendorId: row.vendorId,
           vendorTitle: row.vendorTitle,
           vendorCode: row.vendorCode,

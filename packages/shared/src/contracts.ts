@@ -62,6 +62,11 @@ export interface ScanRecord {
   errorMessage: string | null;
 }
 export interface DealRecord {
+  productDestination?: {
+    url: string;
+    productVariationId: string;
+    vendorId: string;
+  } | null;
   benefit?: {
     kind: "standard_discount" | "market_party" | "conditional";
     identity: string;

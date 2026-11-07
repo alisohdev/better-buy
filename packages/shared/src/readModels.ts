@@ -98,6 +98,36 @@ export const scanRecordSchema = z.object({
   errorMessage: z.string().nullable(),
 });
 export const vendorOfferSchema = z.object({
+  productDestination: z
+    .object({
+      url: z
+        .string()
+        .url()
+        .refine((value) => {
+          const url = new URL(value);
+          return (
+            url.protocol === "https:" &&
+            !url.username &&
+            !url.password &&
+            !url.port &&
+            !url.search &&
+            !url.hash &&
+            url.pathname !== "/" &&
+            !url.pathname.includes("%") &&
+            !value.includes("\\") &&
+            [
+              "snapp.market",
+              "www.snapp.market",
+              "okala.com",
+              "www.okala.com",
+            ].includes(url.hostname)
+          );
+        }),
+      productVariationId: z.string().min(1),
+      vendorId: z.string().min(1),
+    })
+    .nullable()
+    .default(null),
   logoUrl: z
     .string()
     .url()

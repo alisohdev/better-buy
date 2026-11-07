@@ -1,3 +1,4 @@
+import { ProductDestination } from "./ProductDestination";
 import { useState } from "react";
 import type { DealGroupRecord } from "@better-buy/shared";
 import type { DealSource } from "../dashboard/types";
@@ -94,6 +95,7 @@ export function DealRow({
                 </strong>
                 <small>
                   {feedStateLabel(v.state)}
+                  <ProductDestination offer={v} source={source} />
                   {v.state !== "no_longer_present" &&
                     ` · موجودی ثبت‌شده ${faNumber.format(v.stock)}`}
                 </small>

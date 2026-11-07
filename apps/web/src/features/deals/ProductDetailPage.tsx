@@ -1,3 +1,4 @@
+import { ProductDestination } from "./ProductDestination";
 import { useQuery } from "@tanstack/react-query";
 import { displayToman, productGroupSchema } from "@better-buy/shared";
 import { api } from "../../lib/api";
@@ -141,6 +142,7 @@ export function ProductDetailPage({
             {result.product.vendors.map((offer) => (
               <li key={offer.offerKey}>
                 <strong>{offer.vendorTitle}</strong>
+                <ProductDestination offer={offer} source={result.source} />
                 <p>
                   {faNumber.format(offer.discountRatio)}٪ تخفیف ·{" "}
                   {faNumber.format(
