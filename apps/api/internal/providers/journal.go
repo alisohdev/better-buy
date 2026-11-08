@@ -125,7 +125,7 @@ func (j *journal) reserveRequest(ctx context.Context, operation string) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
 	budget := 0
 	if strings.HasPrefix(operation, "digikala-fresh:") {
-		budget = 500
+		budget = 1500
 	}
 	result, err := tx.ExecContext(ctx, `UPDATE scan_execution SET attempt_count=attempt_count+1,heartbeat_at=? WHERE scan_id=? AND user_id=? AND instance_id=? AND cancel_requested=0 AND (SELECT COUNT(*) FROM scan_attempts WHERE scan_id=? AND operation=?)<3 AND (?=0 OR (SELECT COUNT(*) FROM scan_attempts WHERE scan_id=?)<?) AND EXISTS(SELECT 1 FROM scans s JOIN vps_scan_jobs q ON q.scan_id=s.id WHERE s.id=? AND s.user_id=? AND s.status='running' AND q.instance_id=? AND q.owner_boot_id=? AND q.state='running' AND q.stop_requested=0)`, now, j.claim.ScanID, j.claim.UserID, j.claim.InstanceID, j.claim.ScanID, operation, budget, j.claim.ScanID, budget, j.claim.ScanID, j.claim.UserID, j.claim.InstanceID, j.claim.OwnerBootID)
 	if err != nil {

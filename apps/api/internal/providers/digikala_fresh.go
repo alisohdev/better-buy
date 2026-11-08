@@ -185,7 +185,7 @@ func (c *Collector) collectDigikalaFresh(ctx context.Context, job *scanJob) (sca
 					continue
 				}
 				detailRequests++
-				if detailRequests > 350 {
+				if detailRequests > 750 {
 					return scanResult{}, &Failure{Code: "DIGIKALA_DETAIL_BUDGET", Message: "Fresh price revalidation budget was exhausted before coverage completed.", Status: 502}
 				}
 				candidates = append(candidates, digikalaCandidate{Deal: deal, AddCartSource: result.Data.AddCartSource, CategoryAllowed: categoryAllowed})
