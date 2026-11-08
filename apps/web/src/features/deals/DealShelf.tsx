@@ -284,8 +284,7 @@ export function DealShelf({
                       cartWritePending={cart?.writePending}
                       onAddToCart={(key) => cart?.add(key)}
                       onOpenCart={() => {
-                        if (feed.source !== "digikalajet")
-                          onOpenCart(feed.source);
+                        onOpenCart(feed.source);
                       }}
                       inWishlist={!!saved}
                       favoritePending={favoritePending}

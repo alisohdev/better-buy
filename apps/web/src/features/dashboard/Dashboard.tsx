@@ -42,7 +42,7 @@ export function Dashboard() {
     "offers"
   );
   const [cartOpen, setCartOpen] = useState(false);
-  const [cartSource, setCartSource] = useState<CartSource>("snappmarket");
+
   const [wishlistOpen, setWishlistOpen] = useState(false);
   const overlayReturnFocus = useRef<HTMLElement | null>(null);
   const mobileCartTrigger = useRef<HTMLButtonElement | null>(null);
@@ -117,7 +117,12 @@ export function Dashboard() {
     scanId: latestOkala?.id ?? null,
     coordinateRevision,
   });
-  const cart = cartSource === "okala" ? okalaCart : snappCart;
+  const digikalaCart = useProviderCart({
+    source: "digikalajet",
+    locationId: data.selected,
+    scanId: latestCompatible("digikalajet")?.id ?? null,
+    coordinateRevision,
+  });
   const activeSnappRecord =
     data.scans.find(
       (run) => run.source === "snappmarket" && isActiveScan(run)
@@ -180,6 +185,9 @@ export function Dashboard() {
       ...(okalaCart.cart.data?.lines ?? []).map(
         (line) => `okala:${line.key}:${line.quantity}`
       ),
+      ...(digikalaCart.cart.data?.lines ?? []).map(
+        (line) => `digikalajet:${line.key}:${line.quantity}`
+      ),
     ]
       .sort()
       .join("|"),
@@ -232,8 +240,8 @@ export function Dashboard() {
     {
       source: "digikalajet",
       ledger: jetLedger,
-      cart: null,
-      latestAvailableScan: null,
+      cart: digikalaCart,
+      latestAvailableScan: latestCompatible("digikalajet"),
     },
   ];
   const feeds = allFeeds.filter((feed) =>
@@ -325,8 +333,7 @@ export function Dashboard() {
   const scanProgressPercent = progressTotal
     ? Math.min(100, Math.round((progressCompleted / progressTotal) * 100))
     : null;
-  const openCart = (source: CartSource) => {
-    setCartSource(source);
+  const openCart = (_source: CartSource) => {
     setCartOpen(true);
   };
   return (
@@ -346,24 +353,14 @@ export function Dashboard() {
         view={view}
         actions={
           <>
-            <select
-              className="header-cart-source"
-              aria-label="فروشگاه سبد خرید"
-              value={cartSource}
-              onChange={(event) =>
-                setCartSource(
-                  event.target.value === "okala" ? "okala" : "snappmarket"
-                )
-              }
-            >
-              <option value="snappmarket">اسنپ‌مارکت</option>
-              <option value="okala">اکالا</option>
-            </select>
             <ProviderCart
-              source={cartSource}
               locationId={data.selected}
               locationName={selectedLocation?.name ?? "موقعیت انتخاب‌شده"}
-              controller={cart}
+              carts={[
+                { source: "snappmarket", controller: snappCart },
+                { source: "okala", controller: okalaCart },
+                { source: "digikalajet", controller: digikalaCart },
+              ]}
               open={cartOpen}
               onOpenChange={(open) => {
                 setCartOpen(open);
@@ -377,14 +374,8 @@ export function Dashboard() {
         }
         feedback={
           <>
-            <CartWriteNotice
-              controller={snappCart}
-              visible={!cartOpen || cartSource !== "snappmarket"}
-            />
-            <CartWriteNotice
-              controller={okalaCart}
-              visible={!cartOpen || cartSource !== "okala"}
-            />
+            <CartWriteNotice controller={snappCart} visible={!cartOpen} />
+            <CartWriteNotice controller={okalaCart} visible={!cartOpen} />
           </>
         }
       />
@@ -765,32 +756,15 @@ export function Dashboard() {
         )}
       </div>
       <nav className="mobile-bottom-nav" aria-label="دسترسی سریع">
-        <DropdownMenu.Root dir="rtl">
-          <DropdownMenu.Trigger asChild>
-            <button ref={mobileCartTrigger} type="button" aria-label="سبد خرید">
-              <AppIcon name="cart" />
-              <small>سبد خرید</small>
-            </button>
-          </DropdownMenu.Trigger>
-          <DropdownMenu.Portal>
-            <DropdownMenu.Content
-              className="account-menu cart-provider-menu"
-              align="start"
-              side="top"
-              sideOffset={12}
-            >
-              <DropdownMenu.Label>سبد کدام فروشگاه؟</DropdownMenu.Label>
-              <DropdownMenu.Item onSelect={() => openCart("snappmarket")}>
-                <ProviderMark source="snappmarket" />
-                سبد اسنپ‌مارکت
-              </DropdownMenu.Item>
-              <DropdownMenu.Item onSelect={() => openCart("okala")}>
-                <ProviderMark source="okala" />
-                سبد اکالا
-              </DropdownMenu.Item>
-            </DropdownMenu.Content>
-          </DropdownMenu.Portal>
-        </DropdownMenu.Root>
+        <button
+          ref={mobileCartTrigger}
+          type="button"
+          aria-label="سبد خرید"
+          onClick={() => setCartOpen(true)}
+        >
+          <AppIcon name="cart" />
+          <small>سبد خرید</small>
+        </button>
         <button type="button" onClick={() => openOverlay("wishlist")}>
           <AppIcon name="heart" />
           <small>علاقه‌مندی‌ها</small>

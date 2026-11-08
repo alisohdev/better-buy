@@ -32,12 +32,13 @@ type Line struct {
 }
 
 type Offer struct {
-	VendorID    string
-	VendorCode  *string
-	VendorTitle string
-	LogoURL     *string
-	PriceRials  float64
-	Stock       float64
+	VendorID           string
+	VendorCode         *string
+	VendorTitle        string
+	LogoURL            *string
+	PriceRials         float64
+	OriginalPriceRials float64
+	Stock              float64
 }
 
 type offerLine struct {
@@ -47,8 +48,9 @@ type offerLine struct {
 
 type AssignedItem struct {
 	Line
-	PriceRials     float64 `json:"priceRials"`
-	LineTotalRials float64 `json:"lineTotalRials"`
+	PriceRials         float64 `json:"priceRials"`
+	OriginalPriceRials float64 `json:"originalPriceRials"`
+	LineTotalRials     float64 `json:"lineTotalRials"`
 }
 
 type StoreRecommendation struct {
@@ -314,7 +316,7 @@ func groupOffers(group products.Group) []Offer {
 		if offer.State == "no_longer_present" || offer.Benefit.Kind == "conditional" || offer.Benefit.Applicable == nil || !*offer.Benefit.Applicable {
 			continue
 		}
-		offers = append(offers, Offer{VendorID: offer.VendorID, VendorCode: offer.VendorCode, VendorTitle: offer.VendorTitle, LogoURL: offer.LogoURL, PriceRials: offer.FinalPriceRials, Stock: offer.Stock})
+		offers = append(offers, Offer{VendorID: offer.VendorID, VendorCode: offer.VendorCode, VendorTitle: offer.VendorTitle, LogoURL: offer.LogoURL, PriceRials: offer.FinalPriceRials, OriginalPriceRials: offer.PriceRials, Stock: offer.Stock})
 	}
 	return offers
 }
@@ -538,7 +540,7 @@ func recommendOffers(lines []offerLine, scanAvailable bool) Recommendation {
 			}
 			line := lines[i].Line
 			lineTotal := offer.PriceRials * float64(line.Quantity)
-			store.Items = append(store.Items, AssignedItem{Line: line, PriceRials: offer.PriceRials, LineTotalRials: lineTotal})
+			store.Items = append(store.Items, AssignedItem{Line: line, PriceRials: offer.PriceRials, OriginalPriceRials: math.Max(offer.PriceRials, offer.OriginalPriceRials), LineTotalRials: lineTotal})
 			store.TotalRials += lineTotal
 		}
 	}

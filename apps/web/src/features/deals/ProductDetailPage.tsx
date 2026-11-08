@@ -41,11 +41,11 @@ export function ProductDetailPage({
   });
   const result = query.data;
   const cart = useProviderCart({
-    source: result?.source === "okala" ? "okala" : "snappmarket",
+    source: result?.source ?? "snappmarket",
     locationId: result?.locationId ?? "",
     scanId,
     coordinateRevision: 1,
-    enabled: !!result && result.source !== "digikalajet",
+    enabled: !!result,
   });
   const saved =
     result &&
@@ -97,8 +97,7 @@ export function ProductDetailPage({
                 اطلاعات بر اساس زمان اسکن ذخیره شده است و ممکن است تغییر کرده
                 باشد.
               </p>
-              {result.source !== "digikalajet" &&
-                cart.cart.isSuccess &&
+              {cart.cart.isSuccess &&
                 cart.cart.data.scanId === scanId &&
                 result.product.bestCurrentOffer && (
                   <Button

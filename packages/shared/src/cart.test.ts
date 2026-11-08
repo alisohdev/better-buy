@@ -10,7 +10,7 @@ describe("provider cart contracts", () => {
   it("supports only enabled cart providers", () => {
     expect(cartSourceSchema.safeParse("snappmarket").success).toBe(true);
     expect(cartSourceSchema.safeParse("okala").success).toBe(true);
-    expect(cartSourceSchema.safeParse("digikalajet").success).toBe(false);
+    expect(cartSourceSchema.safeParse("digikalajet").success).toBe(true);
   });
 
   it("validates absolute quantity updates and bounded scan identities", () => {

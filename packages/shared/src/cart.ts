@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-/** Providers with a live, supported grocery cart. Jet remains intentionally disabled. */
-export const cartSourceSchema = z.enum(["snappmarket", "okala"]);
+/** Grocery providers supported by the shared basket. */
+export const cartSourceSchema = z.enum(["snappmarket", "okala", "digikalajet"]);
 export type CartSource = z.infer<typeof cartSourceSchema>;
 
 export const cartQuantitySchema = z.number().int().min(1).max(99);
@@ -34,6 +34,7 @@ export interface CartLine {
 export interface CartAssignedItem extends CartLine {
   priceRials: number;
   lineTotalRials: number;
+  originalPriceRials?: number;
 }
 
 export interface CartStoreRecommendation {
@@ -80,6 +81,7 @@ const cartLineSchema = z.object({
 const cartAssignedItemSchema = cartLineSchema.extend({
   priceRials: z.number().finite().nonnegative(),
   lineTotalRials: z.number().finite().nonnegative(),
+  originalPriceRials: z.number().finite().nonnegative().optional(),
 });
 export const cartRecommendationSchema = z.object({
   status: z.enum(["empty", "no_scan", "complete", "partial", "search_limit"]),

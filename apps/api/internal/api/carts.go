@@ -103,7 +103,7 @@ func registerCarts(mux *http.ServeMux, db *sql.DB, cfg config.Config, service *a
 }
 
 func cartSource(source string) (string, bool) {
-	return source, source == "snappmarket" || source == "okala"
+	return source, source == "snappmarket" || source == "okala" || source == "digikalajet"
 }
 
 func validCartQuantity(quantity int) bool { return quantity >= 1 && quantity <= 99 }

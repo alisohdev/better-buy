@@ -3,321 +3,238 @@ import { Button } from "@/components/ui/button";
 
 import { useRef, useState } from "react";
 import { Dialog } from "radix-ui";
-import type {
-  CartAssignedItem,
-  CartLine,
-  CartMissingItem,
-  CartStoreRecommendation,
-} from "@better-buy/shared";
-import { faDate, faNumber, money, sourceLabel } from "../dashboard/format";
+
+import { faNumber, money, sourceLabel } from "../dashboard/format";
 import { RequestFailure } from "../../lib/api";
 import { type CartProvider, type useProviderCart } from "./useProviderCart";
 import "./provider-cart.css";
+import { displayToman } from "@better-buy/shared";
+import { ProviderMark } from "../dashboard/AppIcon";
 
 type Controller = ReturnType<typeof useProviderCart>;
 
 export function ProviderCart({
-  source,
+  carts,
   locationId,
   locationName,
-  controller,
   open,
   onOpenChange,
 }: {
-  source: CartProvider;
+  carts: { source: CartProvider; controller: Controller }[];
   locationId: string;
   locationName: string;
-  controller: Controller;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const response = controller.cart.data;
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
-  const rowControls = useRef(new Map<string, Map<string, HTMLButtonElement>>());
-  const count = response?.lines.length ?? 0;
-  const shouldRestoreFocus = (origin: Element | null) => {
-    const active = document.activeElement;
-    const disabledOrigin =
-      origin instanceof HTMLButtonElement && origin.disabled;
-    return (
-      active === document.body ||
-      active === contentRef.current ||
-      (active === origin && disabledOrigin)
-    );
-  };
-  const focusAfterMutation = (key: string, control: string) => {
-    const origin = document.activeElement;
-    return () => {
-      requestAnimationFrame(() => {
-        if (!shouldRestoreFocus(origin)) return;
-        const controls = rowControls.current.get(key);
-        const fallback = control === "minus" ? "plus" : "minus";
-        const target = [controls?.get(control), controls?.get(fallback)].find(
-          (button) => button && !button.disabled
-        );
-        target?.focus();
-      });
-    };
-  };
-  const refFor =
-    (key: string, control: string) => (node: HTMLButtonElement | null) => {
-      const controls = rowControls.current.get(key) ?? new Map();
-      if (node) controls.set(control, node);
-      else controls.delete(control);
-      if (controls.size) rowControls.current.set(key, controls);
-      else rowControls.current.delete(key);
-    };
-  const lines = response?.lines ?? [];
-  const assigned = new Map<string, CartAssignedItem>();
-  response?.recommendation.stores.forEach((store) =>
-    store.items.forEach((item) => assigned.set(item.key, item))
-  );
-  const missing = new Map<string, CartMissingItem>(
-    response?.recommendation.missingItems.map((item) => [item.key, item]) ?? []
-  );
-  const unassigned = lines.filter((line) => !assigned.has(line.key));
-  const assignedKeys = new Set(assigned.keys());
-  const totalLabel =
-    response?.recommendation.status === "partial"
-      ? "جمع اقلام دارای پیشنهاد"
-      : "جمع قیمت‌های مشاهده‌شده";
-  const footerLabel = response?.recommendation.missingItems.length
-    ? "جمع اقلام دارای پیشنهاد"
-    : totalLabel;
-
-  const removeLine = (key: string) => {
-    const origin = document.activeElement;
-    const index = lines.findIndex((line) => line.key === key);
-    const nextKey = lines[index + 1]?.key ?? lines[index - 1]?.key;
-    controller.remove(key, () => {
-      requestAnimationFrame(() => {
-        if (!shouldRestoreFocus(origin)) return;
-        const nextControl = nextKey
-          ? rowControls.current.get(nextKey)
-          : undefined;
-        const nextTarget = [
-          nextControl?.get("minus"),
-          nextControl?.get("plus"),
-        ].find((button) => button && !button.disabled);
-        (nextTarget ?? titleRef.current)?.focus();
-      });
+  const controls = useRef(new Map<string, HTMLButtonElement>());
+  const rows = carts.flatMap(({ source, controller }) => {
+    const data = controller.cart.data;
+    return (data?.lines ?? []).map((line) => {
+      const store = data?.recommendation.stores.find((store) =>
+        store.items.some((item) => item.key === line.key)
+      );
+      const offer = store?.items.find((item) => item.key === line.key);
+      return {
+        source,
+        controller,
+        line,
+        store,
+        offer,
+        id: source + ":" + line.key,
+      };
     });
-  };
-
+  });
+  const priced = rows.filter((row) => row.offer);
+  const total = priced.reduce(
+    (sum, row) =>
+      sum + displayToman(row.offer?.lineTotalRials ?? 0, row.source),
+    0
+  );
+  const originalKnown = priced.every(
+    (row) => row.offer?.originalPriceRials !== undefined
+  );
+  const original = priced.reduce(
+    (sum, row) =>
+      sum +
+      displayToman(
+        (row.offer?.originalPriceRials ?? row.offer?.priceRials ?? 0) *
+          row.line.quantity,
+        row.source
+      ),
+    0
+  );
+  const amount = (value: number) => `${faNumber.format(value)} تومان`;
+  const loading = carts.some(({ controller }) => controller.cart.isPending);
+  const incomplete =
+    priced.length !== rows.length ||
+    carts.some(({ controller }) => !!controller.cart.error) ||
+    loading;
+  const after = (id: string, control: string) => () =>
+    requestAnimationFrame(() =>
+      controls.current.get(id + ":" + control)?.focus()
+    );
   return (
-    <>
-      <Dialog.Root open={open} onOpenChange={onOpenChange}>
-        <Dialog.Trigger asChild>
-          <Button
-            variant="outline"
-            className="cart-trigger"
-            aria-label={`سبد ${sourceLabel(source)}، ${faNumber.format(count)} کالا`}
-          >
-            <CartIcon />
-            <span className="cart-trigger-count" aria-hidden="true">
-              {faNumber.format(count)}
-            </span>
-          </Button>
-        </Dialog.Trigger>
-        <Dialog.Portal>
-          <Dialog.Overlay className="sheet-backdrop cart-backdrop" />
-          <Dialog.Content
-            ref={contentRef}
-            className="provider-cart-drawer"
-            dir="rtl"
-          >
-            <header className="provider-cart-header">
-              <div>
-                <Dialog.Title
-                  ref={titleRef}
-                  tabIndex={-1}
-                  className="provider-cart-title"
-                >
-                  سبد {sourceLabel(source)}
-                </Dialog.Title>
-                <Dialog.Description className="provider-cart-description">
-                  کالاها برای هر ارائه‌دهنده جداگانه ذخیره می‌شوند.
-                </Dialog.Description>
-              </div>
-              <Dialog.Close asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="cart-close"
-                  aria-label="بستن سبد"
-                >
-                  ×
-                </Button>
-              </Dialog.Close>
-            </header>
-            {open && controller.writeError && (
-              <div
-                className="cart-read-error cart-drawer-write-error"
-                role="alert"
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Trigger asChild>
+        <Button
+          variant="outline"
+          className="cart-trigger"
+          aria-label={`سبد خرید، ${faNumber.format(rows.length)} کالا`}
+        >
+          <CartIcon />
+          <span className="cart-trigger-count" aria-hidden="true">
+            {faNumber.format(rows.length)}
+          </span>
+        </Button>
+      </Dialog.Trigger>
+      <Dialog.Portal>
+        <Dialog.Overlay className="sheet-backdrop cart-backdrop" />
+        <Dialog.Content className="provider-cart-drawer" dir="rtl">
+          <header className="provider-cart-header">
+            <div>
+              <Dialog.Title
+                ref={titleRef}
+                tabIndex={-1}
+                className="provider-cart-title"
               >
-                <p>{cartErrorMessage(controller.writeError)}</p>
-                <Button variant="outline" onClick={controller.clearWriteError}>
-                  بستن پیام
-                </Button>
+                سبد خرید
+              </Dialog.Title>
+              <Dialog.Description className="provider-cart-description">
+                همه کالاهای انتخاب‌شده · {locationName}
+              </Dialog.Description>
+            </div>
+            <Dialog.Close asChild>
+              <Button variant="ghost" size="icon" aria-label="بستن سبد">
+                ×
+              </Button>
+            </Dialog.Close>
+          </header>
+          <div className="provider-cart-scroll" aria-live="polite">
+            {carts.map(({ source, controller }) => (
+              <div key={source}>
+                {controller.cart.error && (
+                  <ReadError
+                    error={controller.cart.error}
+                    busy={controller.cart.isFetching}
+                    cached={!!controller.cart.data}
+                    retry={() => void controller.cart.refetch()}
+                  />
+                )}
+                {controller.writeError && (
+                  <div role="alert" className="cart-read-error">
+                    <p>{cartErrorMessage(controller.writeError)}</p>
+                    <Button onClick={controller.clearWriteError}>
+                      بستن پیام
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ))}
+            {loading && <p role="status">در حال دریافت سبد…</p>}
+            {!locationId && (
+              <p className="cart-state-note">
+                برای مشاهده قیمت‌ها موقعیت تحویل را انتخاب کنید.
+              </p>
+            )}
+            {!loading && !rows.length && (
+              <div className="cart-empty">
+                <CartIcon />
+                <h3>سبد خرید خالی است</h3>
+                <p>از پیشنهادهای فروشگاه‌ها کالا اضافه کنید.</p>
               </div>
             )}
-
-            <div className="provider-cart-scroll" aria-live="polite">
-              {!locationId ? (
-                <p className="cart-state-note">
-                  برای پیشنهاد فروشگاه، موقعیت تحویل را انتخاب کنید. کالاهای
-                  ذخیره‌شده در سبد باقی می‌مانند.
-                </p>
-              ) : controller.cart.isPending ? (
-                <p role="status" className="cart-state-note">
-                  در حال دریافت سبد و قیمت‌های این موقعیت…
-                </p>
-              ) : controller.cart.error && !response ? (
-                <ReadError
-                  error={controller.cart.error}
-                  busy={controller.cart.isFetching}
-                  retry={() => void controller.cart.refetch()}
+            {rows.map(({ id, source, controller, line, store, offer }) => (
+              <div key={id} className="unified-cart-item">
+                <div className="cart-item-source">
+                  <ProviderMark source={source} />
+                  <span>
+                    {sourceLabel(source)}
+                    {store ? ` · ${store.vendorTitle}` : ""}
+                  </span>
+                </div>
+                <CartLineRow
+                  line={line}
+                  source={source}
+                  writing={controller.writePending}
+                  unitPrice={offer?.priceRials}
+                  subtotal={offer?.lineTotalRials}
+                  originalSubtotal={
+                    offer?.originalPriceRials === undefined
+                      ? undefined
+                      : offer.originalPriceRials * line.quantity
+                  }
+                  reason={
+                    controller.cart.data?.recommendation.missingItems.find(
+                      (item) => item.key === line.key
+                    )?.reason
+                  }
+                  controlsRef={(_, control) => (node) => {
+                    if (node) controls.current.set(id + ":" + control, node);
+                    else controls.current.delete(id + ":" + control);
+                  }}
+                  onQuantity={(quantity, control) =>
+                    controller.setQuantity(
+                      line.key,
+                      quantity,
+                      after(id, control)
+                    )
+                  }
+                  onRemove={() => {
+                    const index = rows.findIndex((row) => row.id === id);
+                    const next = rows[index + 1] ?? rows[index - 1];
+                    controller.remove(line.key, () =>
+                      requestAnimationFrame(() =>
+                        (next
+                          ? controls.current.get(next.id + ":minus")
+                          : titleRef.current
+                        )?.focus()
+                      )
+                    );
+                  }}
                 />
-              ) : response ? (
-                <>
-                  {controller.cart.error && (
-                    <ReadError
-                      error={controller.cart.error}
-                      busy={controller.cart.isFetching}
-                      cached
-                      retry={() => void controller.cart.refetch()}
-                    />
-                  )}
-                  {response.recommendation.status === "empty" ? (
-                    <div className="cart-empty">
-                      <span className="cart-empty-icon">
-                        <CartIcon />
-                      </span>
-                      <h3>سبد {sourceLabel(source)} خالی است</h3>
-                      <p>
-                        از پیشنهادهای همین ارائه‌دهنده کالا اضافه کنید. سبد
-                        اسنپ‌مارکت و اکالا جداگانه ذخیره می‌شوند.
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {response.recommendation.status !== "no_scan" && (
-                        <CartSummary response={response} />
-                      )}
-                      {response.recommendation.status === "no_scan" && (
-                        <p className="cart-state-note">
-                          کالاها ذخیره شده‌اند؛ برای این موقعیت هنوز اسکن موفق
-                          سازگاری نداریم.
-                        </p>
-                      )}
-                      {response.recommendation.status !== "no_scan" &&
-                        !response.recommendation.optimal && (
-                          <p
-                            className="cart-state-note cart-bounded-note"
-                            role="status"
-                          >
-                            جست‌وجو به نتیجه‌ای رسیده که کمترین تعداد فروشگاه در
-                            آن تأیید نشده است.
-                          </p>
-                        )}
-                      {response.recommendation.stores.map((store) => (
-                        <StoreSection
-                          key={store.vendorId}
-                          store={store}
-                          source={source}
-                          assignedKeys={assignedKeys}
-                          lines={lines}
-                          writing={controller.writePending}
-                          refFor={refFor}
-                          onQuantity={(key, quantity, control) =>
-                            controller.setQuantity(
-                              key,
-                              quantity,
-                              focusAfterMutation(key, control)
-                            )
-                          }
-                          onRemove={removeLine}
-                        />
-                      ))}
-                      {unassigned.length > 0 && (
-                        <section
-                          className="cart-unassigned"
-                          aria-labelledby="cart-unassigned-title"
-                        >
-                          <h3 id="cart-unassigned-title">
-                            {response.recommendation.status === "no_scan"
-                              ? "کالاهای ذخیره‌شده"
-                              : "بدون پیشنهاد قیمت"}
-                          </h3>
-                          {response.recommendation.status !== "no_scan" && (
-                            <p>برای این کالاها پیشنهاد سازگار پیدا نشد.</p>
-                          )}
-                          {unassigned.map((line) => (
-                            <CartLineRow
-                              key={line.key}
-                              line={line}
-                              source={source}
-                              writing={controller.writePending}
-                              reason={missing.get(line.key)?.reason}
-                              controlsRef={refFor}
-                              onQuantity={(quantity, control) =>
-                                controller.setQuantity(
-                                  line.key,
-                                  quantity,
-                                  focusAfterMutation(line.key, control)
-                                )
-                              }
-                              onRemove={() => removeLine(line.key)}
-                            />
-                          ))}
-                        </section>
-                      )}
-                    </>
-                  )}
-                  <details className="cart-context">
-                    <summary>جزئیات قیمت و پوشش</summary>
-                    <p>
-                      موقعیت {locationName} ·{" "}
-                      {response.observedAt
-                        ? `مشاهده ${faDate.format(new Date(response.observedAt))}`
-                        : "بدون اسکن موفق سازگار"}
-                    </p>
-                    <p>
-                      {response.coverage === "legacy_unverified"
-                        ? "پوشش اسکن تاریخی کامل تأیید نشده است."
-                        : "قیمت‌ها از فهرست‌های تخفیف پشتیبانی‌شده‌اند و همه کالاهای فروشگاه‌ها را پوشش نمی‌دهند."}
-                    </p>
-                  </details>
-                </>
-              ) : (
-                <p className="cart-state-note">اطلاعات سبد آماده نیست.</p>
-              )}
-            </div>
-
-            <footer className="provider-cart-footer">
-              <div className="cart-total-line">
-                <span>{response?.lines.length ? footerLabel : "جمع سبد"}</span>
-                <strong>
-                  {response?.recommendation.status === "no_scan" ||
-                  !response?.lines.length
-                    ? "—"
-                    : money(response.recommendation.totalRials, source)}
-                </strong>
+                {!offer && (
+                  <small className="cart-unpriced">
+                    قیمت فعلی این کالا در دسترس نیست و در جمع محاسبه نشده است.
+                  </small>
+                )}
               </div>
-              <Dialog.Close asChild>
-                <Button variant="outline" className="cart-continue">
-                  ادامه انتخاب کالا
-                </Button>
-              </Dialog.Close>
-              <small>
-                قیمت‌ها مربوط به زمان اسکن هستند؛ پیش از خرید بررسی کنید.
-              </small>
-            </footer>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
-    </>
+            ))}
+          </div>
+          <footer className="provider-cart-footer">
+            {incomplete && rows.length > 0 && (
+              <p className="cart-state-note">
+                جمع زیر فقط شامل کالاهای دارای قیمت است.
+              </p>
+            )}
+            <div className="cart-total-line">
+              <span>جمع بدون تخفیف</span>
+              <del>
+                {priced.length && originalKnown ? amount(original) : "—"}
+              </del>
+            </div>
+            <div className="cart-total-line cart-savings">
+              <span>سود شما از تخفیف</span>
+              <strong>
+                {priced.length && originalKnown
+                  ? amount(Math.max(0, original - total))
+                  : "—"}
+              </strong>
+            </div>
+            <div className="cart-total-line">
+              <span>جمع با تخفیف</span>
+              <strong>{priced.length ? amount(total) : "—"}</strong>
+            </div>
+            <Dialog.Close asChild>
+              <Button className="cart-continue">ادامه انتخاب کالا</Button>
+            </Dialog.Close>
+            <small>
+              قیمت‌ها مربوط به زمان اسکن هستند؛ پیش از خرید بررسی کنید.
+            </small>
+          </footer>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -343,105 +260,13 @@ export function CartWriteNotice({
   );
 }
 
-function CartSummary({
-  response,
-}: {
-  response: NonNullable<Controller["cart"]["data"]>;
-}) {
-  const rec = response.recommendation;
-  const complete =
-    rec.status === "complete" ||
-    (rec.status === "search_limit" && rec.missingItems.length === 0);
-  return (
-    <section className="cart-summary" aria-live="polite">
-      <strong>
-        {complete
-          ? rec.stores.length === 1
-            ? "همه کالاها در یک فروشگاه"
-            : `همه کالاها در ${faNumber.format(rec.stores.length)} فروشگاه`
-          : rec.status === "partial"
-            ? `پیشنهاد برای ${faNumber.format(rec.stores.reduce((sum, store) => sum + store.items.length, 0))} کالا`
-            : "پیشنهاد فروشگاه‌ها"}
-      </strong>
-      <span>
-        {rec.optimal
-          ? "کمترین تعداد فروشگاه تأییدشده"
-          : "کمترین تعداد فروشگاه تأیید نشده"}
-      </span>
-    </section>
-  );
-}
-
-function StoreSection({
-  store,
-  source,
-  assignedKeys,
-  lines,
-  writing,
-  refFor,
-  onQuantity,
-  onRemove,
-}: {
-  store: CartStoreRecommendation;
-  source: CartProvider;
-  assignedKeys: Set<string>;
-  lines: CartLine[];
-  writing: boolean;
-  refFor: (
-    key: string,
-    control: string
-  ) => (node: HTMLButtonElement | null) => void;
-  onQuantity: (key: string, quantity: number, control: string) => void;
-  onRemove: (key: string) => void;
-}) {
-  const items = store.items.filter((item) => assignedKeys.has(item.key));
-  if (!items.length) return null;
-  return (
-    <section className="cart-store" aria-label={`اقلام ${store.vendorTitle}`}>
-      <header className="cart-store-heading">
-        <ProviderLogo
-          key={store.logoUrl ?? store.vendorId}
-          title={store.vendorTitle}
-          logoUrl={store.logoUrl}
-        />
-        <div className="cart-store-copy">
-          <h3>
-            <bdi>{store.vendorTitle}</bdi>
-          </h3>
-          <p className="cart-store-total">
-            جمع این فروشگاه · {money(store.totalRials, source)}
-          </p>
-        </div>
-      </header>
-      {items.map((item) => {
-        const line = lines?.find((value) => value.key === item.key);
-        if (!line) return null;
-        return (
-          <CartLineRow
-            key={line.key}
-            line={line}
-            source={source}
-            writing={writing}
-            unitPrice={item.priceRials}
-            subtotal={item.lineTotalRials}
-            controlsRef={refFor}
-            onQuantity={(quantity, control) =>
-              onQuantity(line.key, quantity, control)
-            }
-            onRemove={() => onRemove(line.key)}
-          />
-        );
-      })}
-    </section>
-  );
-}
-
 function CartLineRow({
   line,
   source,
   writing,
   unitPrice,
   subtotal,
+  originalSubtotal,
   reason,
   controlsRef,
   onQuantity,
@@ -458,6 +283,7 @@ function CartLineRow({
   writing: boolean;
   unitPrice?: number;
   subtotal?: number;
+  originalSubtotal?: number;
   reason?: "insufficient_quantity" | "missing_product";
   controlsRef: (
     key: string,
@@ -502,9 +328,15 @@ function CartLineRow({
         )}
         <div className="cart-line-controls">
           {subtotal !== undefined && (
-            <strong className="cart-line-price">
-              {money(subtotal, source)}
-            </strong>
+            <span className="cart-price-stack">
+              <strong className="cart-line-price">
+                {money(subtotal, source)}
+              </strong>
+              {originalSubtotal !== undefined &&
+                originalSubtotal > subtotal && (
+                  <del>{money(originalSubtotal, source)}</del>
+                )}
+            </span>
           )}
           <div
             className="provider-cart-quantity"
@@ -594,35 +426,6 @@ function cartErrorMessage(error: unknown): string {
         ? error.message
         : "تغییر سبد ذخیره نشد. دوباره تلاش کنید.";
   }
-}
-
-function ProviderLogo({
-  title,
-  logoUrl,
-}: {
-  title: string;
-  logoUrl: string | null;
-}) {
-  const [broken, setBroken] = useState(false);
-  const initials = title.trim().slice(0, 1) || "ف";
-  return logoUrl && !broken ? (
-    <img
-      key={logoUrl}
-      className="provider-cart-logo"
-      src={logoUrl}
-      alt=""
-      width={40}
-      height={40}
-      onError={() => setBroken(true)}
-    />
-  ) : (
-    <span
-      className="provider-cart-logo provider-cart-logo-fallback"
-      aria-hidden="true"
-    >
-      {initials}
-    </span>
-  );
 }
 
 function CartIcon() {
