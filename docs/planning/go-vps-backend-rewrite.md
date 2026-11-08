@@ -1,3 +1,5 @@
+> Authentication sections below describe the historical rewrite. Phone authentication supersedes them; see [current configuration](../phone-auth.md).
+
 # Go VPS backend rewrite
 
 ## Goal

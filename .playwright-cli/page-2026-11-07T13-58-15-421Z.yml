@@ -1,0 +1,65 @@
+- generic [ref=f2e1]:
+    - button "Open Next.js Dev Tools" [ref=f2e8] [cursor=pointer]
+    - alert [ref=f2e12]
+    - main [ref=f2e13]:
+        - generic [ref=f2e14]:
+            - button "بهتر بخر، پیشنهادها" [ref=f2e15] [cursor=pointer]:
+                - generic [ref=f2e16]: ب
+                - generic [ref=f2e17]:
+                    - strong [ref=f2e18]: بهتر بخر
+                    - generic [ref=f2e19]: Better Buy
+            - navigation "ناوبری اصلی" [ref=f2e20]:
+                - button "علاقه‌مندی‌ها" [ref=f2e21] [cursor=pointer]
+                - button "اعلان‌ها" [ref=f2e22] [cursor=pointer]
+                - button "تاریخچه" [ref=f2e23] [cursor=pointer]
+            - generic [ref=f2e24]:
+                - combobox "فروشگاه سبد خرید" [ref=f2e25]:
+                    - option "اسنپ‌مارکت" [selected]
+                    - option "اکالا"
+                - button "سبد اسنپ‌مارکت، ۰ کالا" [ref=f2e26] [cursor=pointer]:
+                    - generic [aria-hidden] [ref=f2e27]: ۰
+            - button "منوی برنامه" [ref=f2e28] [cursor=pointer]
+        - generic [ref=f2e29]:
+            - navigation "بخش‌های خرید" [ref=f2e30]:
+                - button "پیشنهادها" [ref=f2e31] [cursor=pointer]
+                - button "اسکن تخفیف‌ها" [active] [ref=f2e34] [cursor=pointer]
+            - region [ref=f2e53]:
+                - generic [ref=f2e54]:
+                    - button "بازگشت به پیشنهادها" [ref=f2e55] [cursor=pointer]
+                    - generic [ref=f2e56]:
+                        - heading "اسکن تخفیف‌ها" [level=1] [ref=f2e57]
+                        - paragraph [ref=f2e58]: پیشنهادهای فروشگاه‌های انتخاب‌شده را پیدا کنید.
+                - region "تنظیم اسکن تخفیف‌ها" [ref=f2e63]:
+                    - generic [ref=f2e64]:
+                        - generic [ref=f2e65]: موقعیت تحویل
+                        - combobox "موقعیت تحویل" [ref=f2e69] [cursor=pointer]:
+                            - generic: Test location
+                    - group "انتخاب فروشگاه‌ها" [ref=f2e72]:
+                        - generic [ref=f2e74]:
+                            - generic [ref=f2e75] [cursor=pointer]:
+                                - checkbox "اسنپ‌مارکت" [checked] [ref=f2e76]
+                                - strong [ref=f2e78]: اسنپ‌مارکت
+                            - generic [ref=f2e82] [cursor=pointer]:
+                                - checkbox "اکالا" [checked] [ref=f2e83]
+                                - strong [ref=f2e85]: اکالا
+                            - generic [ref=f2e89] [cursor=pointer]:
+                                - checkbox "سوپرمارکت دیجی‌کالا" [ref=f2e90]
+                                - generic [aria-hidden] [ref=f2e91]: دی
+                                - strong [ref=f2e93]: سوپرمارکت دیجی‌کالا
+                    - generic [ref=f2e97]:
+                        - generic [ref=f2e98]:
+                            - generic [ref=f2e99]: محدوده تخفیف
+                            - status [ref=f2e100]: ۴۰٪
+                        - paragraph [ref=f2e101]: از ۴۰٪ به بالا
+                        - slider [ref=f2e102] [cursor=pointer]: "40"
+                        - generic [aria-hidden] [ref=f2e103]:
+                            - generic [ref=f2e104]: ۱۵٪
+                            - generic [ref=f2e105]: ۸۰٪
+                        - generic [ref=f2e106]: این فیلتر نتیجه‌ها را بدون اسکن دوباره به‌روز می‌کند.
+                    - generic [ref=f2e107]:
+                        - button "شروع اسکن" [disabled]
+                - status [ref=f2e108]:
+                    - generic [ref=f2e109]:
+                        - strong [ref=f2e110]: تاریخچه اسکن دریافت نشد
+                        - paragraph [ref=f2e111]: وضعیت اسکن‌های حساب را دوباره بررسی کنید.
+                    - button "دریافت دوباره" [ref=f2e112] [cursor=pointer]

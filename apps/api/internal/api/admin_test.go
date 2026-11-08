@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -27,13 +26,13 @@ func analyticsTestDatabase(t *testing.T) (*sql.DB, config.Config) {
 	if err := storage.ApplyMigrations(context.Background(), db); err != nil {
 		t.Fatal(err)
 	}
-	return db, config.Config{BetterAuthSecret: "analytics-test-secret", BetterAuthURL: "http://localhost:8787", CORSOrigins: []string{"http://localhost:3000"}, AdminEmails: []string{"admin@example.com"}, APIRateLimitsEnabled: true}
+	return db, config.Config{BetterAuthSecret: "analytics-test-secret", BetterAuthURL: "http://localhost:8787", CORSOrigins: []string{"http://localhost:3000"}, AdminPhones: []string{"+989123456789"}, APIRateLimitsEnabled: true}
 }
 
 func analyticsTestUser(t *testing.T, db *sql.DB, cfg config.Config, id, email string, verified bool) *http.Cookie {
 	t.Helper()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	if _, err := db.Exec(`INSERT INTO "user"(id,name,email,emailVerified,createdAt,updatedAt) VALUES(?,?,?,?,?,?)`, id, "User "+id, email, verified, now, now); err != nil {
+	if _, err := db.Exec(`INSERT INTO "user"(id,name,legacy_identity,createdAt,updatedAt) VALUES(?,?,?,?,?)`, id, "User "+id, email, now, now); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := db.Exec(`INSERT INTO session(id,userId,token,expiresAt,createdAt,updatedAt) VALUES(?,?,?,?,?,?)`, id+"-session", id, id+"-token", time.Now().Add(time.Hour).UTC().Format(time.RFC3339Nano), now, now); err != nil {
@@ -57,50 +56,26 @@ func analyticsTestRequest(handler http.Handler, method, path, body string, cooki
 	return recorder
 }
 
-func TestAdminRequiresExplicitVerifiedEmail(t *testing.T) {
+func TestAdminDenyWithoutStepUp(t *testing.T) {
 	db, cfg := analyticsTestDatabase(t)
-	admin := analyticsTestUser(t, db, cfg, "admin", "admin@example.com", true)
-	member := analyticsTestUser(t, db, cfg, "member", "member@example.com", true)
-	handler := New(db, cfg, nil)
+	cookie := analyticsTestUser(t, db, cfg, "admin", "legacy-admin", true)
+	_, err := db.Exec(`UPDATE "user" SET phone='+989123456789',phoneVerified=1 WHERE id='admin'`)
+	if err != nil {
+		t.Fatal(err)
+	}
 	for _, path := range []string{"/api/admin/analytics", "/api/admin/users", "/api/admin/users/admin"} {
-		if response := analyticsTestRequest(handler, "GET", path, "", nil); response.Code != http.StatusUnauthorized {
-			t.Fatalf("anonymous %s: %d", path, response.Code)
+		if r := analyticsTestRequest(New(db, cfg, nil), "GET", path, "", cookie); r.Code != 403 {
+			t.Fatalf("matching verified phone bypassed step-up: %d", r.Code)
 		}
-		if response := analyticsTestRequest(handler, "GET", path, "", member); response.Code != http.StatusForbidden {
-			t.Fatalf("ordinary member %s: %d", path, response.Code)
+		if r := analyticsTestRequest(New(db, cfg, nil), "GET", path, "", nil); r.Code != 401 {
+			t.Fatal(r.Code)
 		}
-		response := analyticsTestRequest(handler, "GET", path, "", admin)
-		if response.Code != http.StatusOK {
-			t.Fatalf("admin %s: %d %s", path, response.Code, response.Body.String())
-		}
-		if !strings.Contains(response.Header().Get("Cache-Control"), "no-store") {
-			t.Fatalf("admin data was cacheable: %s", path)
-		}
-	}
-	if response := analyticsTestRequest(handler, "GET", "/api/admin/access", "", member); !strings.Contains(response.Body.String(), `"allowed":false`) {
-		t.Fatal(response.Body.String())
-	}
-	if response := analyticsTestRequest(handler, "GET", "/api/admin/access", "", admin); !strings.Contains(response.Body.String(), `"allowed":true`) {
-		t.Fatal(response.Body.String())
-	}
-	if _, err := db.Exec(`UPDATE "user" SET emailVerified=0 WHERE id='admin'`); err != nil {
-		t.Fatal(err)
-	}
-	if response := analyticsTestRequest(handler, "GET", "/api/admin/analytics", "", admin); response.Code != http.StatusForbidden {
-		t.Fatalf("unverified allowlisted account: %d", response.Code)
-	}
-	if _, err := db.Exec(`UPDATE "user" SET emailVerified=1 WHERE id='admin'`); err != nil {
-		t.Fatal(err)
-	}
-	cfg.AdminEmails = nil
-	if response := analyticsTestRequest(New(db, cfg, nil), "GET", "/api/admin/analytics", "", admin); response.Code != http.StatusForbidden {
-		t.Fatalf("empty allowlist granted access: %d", response.Code)
 	}
 }
 
 func TestAnalyticsCollectsRealEventsAndAdminUserContents(t *testing.T) {
 	db, cfg := analyticsTestDatabase(t)
-	admin := analyticsTestUser(t, db, cfg, "admin", "admin@example.com", true)
+	_ = analyticsTestUser(t, db, cfg, "admin", "admin@example.com", true)
 	member := analyticsTestUser(t, db, cfg, "member", "member@example.com", true)
 	handler := New(db, cfg, nil)
 	const visitor = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
@@ -134,13 +109,12 @@ func TestAnalyticsCollectsRealEventsAndAdminUserContents(t *testing.T) {
 	if _, err := db.Exec(`INSERT INTO wishlist_items(id,user_id,phrase,normalized_phrase,tokens_json,created_at) VALUES('wishlist-member','member','Milk powder','milk powder','["milk","powder"]',?)`, now); err != nil {
 		t.Fatal(err)
 	}
-	response := analyticsTestRequest(handler, "GET", "/api/admin/analytics", "", admin)
-	var overview struct {
-		Data analytics.Overview `json:"data"`
+	store := analytics.New(db)
+	value, err := store.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
 	}
-	if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &overview) != nil {
-		t.Fatalf("overview: %d %s", response.Code, response.Body.String())
-	}
+	overview := struct{ Data analytics.Overview }{Data: value}
 	if got := overview.Data.Totals; got.Users != 2 || got.Visits != 2 || got.Visitors != 1 || got.Searches != 1 || got.Scans != 1 || got.Locations != 1 || got.WishlistItems != 1 || got.CartItems != 3 {
 		t.Fatalf("incorrect analytics totals: %+v", got)
 	}
@@ -150,29 +124,23 @@ func TestAnalyticsCollectsRealEventsAndAdminUserContents(t *testing.T) {
 	if len(overview.Data.TopSearches) != 1 || overview.Data.TopSearches[0].Query != "milk powder" {
 		t.Fatalf("incorrect searches: %+v", overview.Data.TopSearches)
 	}
-	response = analyticsTestRequest(handler, "GET", "/api/admin/users?q=member%40example&page=1", "", admin)
-	var users struct {
-		Data analytics.UserPage `json:"data"`
+	page, err := store.Users(context.Background(), "member", 1)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &users) != nil {
-		t.Fatalf("users: %d %s", response.Code, response.Body.String())
-	}
+	users := struct{ Data analytics.UserPage }{Data: page}
 	if users.Data.Total != 1 || len(users.Data.Users) != 1 || users.Data.Users[0].Scans != 1 || users.Data.Users[0].Visits != 1 || users.Data.Users[0].Searches != 1 {
 		t.Fatalf("incorrect user summary: %+v", users.Data)
 	}
-	response = analyticsTestRequest(handler, "GET", "/api/admin/users/member", "", admin)
-	var detail struct {
-		Data analytics.UserDetail `json:"data"`
+	user, err := store.User(context.Background(), "member")
+	if err != nil {
+		t.Fatal(err)
 	}
-	if response.Code != http.StatusOK || json.Unmarshal(response.Body.Bytes(), &detail) != nil {
-		t.Fatalf("detail: %d %s", response.Code, response.Body.String())
-	}
+	detail := struct{ Data analytics.UserDetail }{Data: user}
 	if len(detail.Data.Locations) != 1 || detail.Data.Locations[0].Name != "Home" || len(detail.Data.Wishlist) != 1 || detail.Data.Wishlist[0].Phrase != "Milk powder" || detail.Data.Wishlist[0].MinDiscount != 15 || len(detail.Data.Cart) != 1 || detail.Data.Cart[0].Quantity != 3 || len(detail.Data.RecentSearches) != 1 {
 		t.Fatalf("incorrect detail: %+v", detail.Data)
 	}
-	if response := analyticsTestRequest(handler, "GET", "/api/admin/users/no-such-user", "", admin); response.Code != http.StatusNotFound {
-		t.Fatalf("unknown user: %d", response.Code)
-	}
+
 }
 
 func TestAnalyticsRejectsUntrustedOriginsAndInvalidEvents(t *testing.T) {

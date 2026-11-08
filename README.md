@@ -19,7 +19,7 @@ go -C apps/api run ./cmd/migrate
 pnpm dev
 ```
 
-The API listens on `127.0.0.1:8787`; the web development server listens on `127.0.0.1:3000`. For local sign-in without Google OAuth, set `DEV_MODE=true`. The development-only test login route is disabled by default.
+The API listens on `127.0.0.1:8787`; the web development server listens on `127.0.0.1:3000`. For local phone registration, set `DEV_MODE=true` and `SMS_PROVIDER=mock`; see [phone authentication](docs/phone-auth.md).
 
 `VPS_DATABASE_PATH` selects the SQLite database. The default is `../../.data/better-buy-vps.sqlite`, relative to the API process working directory. Point it at the existing database when preserving existing accounts and scan history.
 
@@ -34,8 +34,10 @@ The frontend build writes static files to `apps/web/out`. The Go server is built
 
 ## Configuration
 
-The API requires `BETTER_AUTH_SECRET`, `BOX_KEY`, `GOOGLE_CLIENT_ID`, and `GOOGLE_CLIENT_SECRET`. Configure `APP_ORIGIN`, `BETTER_AUTH_URL`, and `CORS_ORIGIN` for the site. Wishlist scheduling and API rate limits are enabled by default. Browser push requires `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` together.
+The API requires `BETTER_AUTH_SECRET`, `BOX_KEY`, and the SMS settings described in [phone authentication](docs/phone-auth.md). Configure `APP_ORIGIN`, `BETTER_AUTH_URL`, and `CORS_ORIGIN` for the site. Wishlist scheduling and API rate limits are enabled by default. Browser push requires `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, and `VAPID_SUBJECT` together.
 
 ## Deployment
 
 This workspace is deployed on the VPS. The Go API runs from `apps/api`; `deploy/vps` contains the systemd and Caddy configuration. This repository does not record the live service health or database migration state.
+
+Phone authentication configuration and device testing: see [docs/phone-auth.md](docs/phone-auth.md)

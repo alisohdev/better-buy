@@ -1,0 +1,39 @@
+- generic [active] [ref=f1e1]:
+    - button "Open Next.js Dev Tools" [ref=f1e7] [cursor=pointer]
+    - alert [ref=f1e11]
+    - main [ref=f1e12]:
+        - generic [ref=f1e13]:
+            - button "بهتر بخر، پیشنهادها" [ref=f1e14] [cursor=pointer]:
+                - generic [ref=f1e15]: ب
+                - generic [ref=f1e16]:
+                    - strong [ref=f1e17]: بهتر بخر
+                    - generic [ref=f1e18]: Better Buy
+            - navigation "ناوبری اصلی" [ref=f1e19]:
+                - button "علاقه‌مندی‌ها" [ref=f1e20] [cursor=pointer]
+                - button "اعلان‌ها" [ref=f1e21] [cursor=pointer]
+                - button "تاریخچه" [ref=f1e22] [cursor=pointer]
+            - generic [ref=f1e23]:
+                - combobox "فروشگاه سبد خرید" [ref=f1e24]:
+                    - option "اسنپ‌مارکت" [selected]
+                    - option "اکالا"
+                - button "سبد اسنپ‌مارکت، ۰ کالا" [ref=f1e25] [cursor=pointer]:
+                    - generic [aria-hidden] [ref=f1e26]: ۰
+            - button "منوی برنامه" [ref=f1e27] [cursor=pointer]
+        - generic [ref=f1e28]:
+            - navigation "بخش‌های خرید" [ref=f1e29]:
+                - button "پیشنهادها" [ref=f1e30] [cursor=pointer]
+                - button "اسکن تخفیف‌ها" [ref=f1e33] [cursor=pointer]
+            - region "فیلتر نتیجه‌ها بر اساس تخفیف" [ref=f1e37]:
+                - generic [ref=f1e38]:
+                    - strong [ref=f1e39]: حداقل تخفیف نتیجه‌ها
+                    - paragraph [ref=f1e40]: نتایج ذخیره‌شده فیلتر می‌شوند؛ اسکن دوباره لازم نیست.
+                - generic [ref=f1e41]:
+                    - status [ref=f1e42]: ۴۰٪
+                    - slider "حداقل تخفیف نتیجه‌ها" [ref=f1e43]: "40"
+            - region [ref=f1e44]:
+                - generic [ref=f1e46]:
+                    - heading "پیشنهادها" [level=1] [ref=f1e47]
+                    - paragraph [ref=f1e48]: حداقل ۴۰٪ تخفیف · اسنپ‌مارکت و اکالا و سوپرمارکت دیجی‌کالا
+                - generic [ref=f1e49]:
+                    - heading "هنوز نتیجه‌ای برای این انتخاب ندارید" [level=2] [ref=f1e50]
+                    - paragraph [ref=f1e51]: با «پیدا کردن تخفیف‌ها» پیشنهادهای این موقعیت را دریافت کنید.

@@ -67,11 +67,11 @@ func registerAnalytics(mux *http.ServeMux, db *sql.DB, cfg config.Config, authSe
 		}
 	})
 	mux.Handle("GET /api/admin/access", requireIdentity(authService, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]any{"data": map[string]bool{"allowed": adminAllowed(requestIdentity(r).User, cfg.AdminEmails)}})
+		writeJSON(w, http.StatusOK, map[string]any{"data": map[string]bool{"allowed": adminAllowed(requestIdentity(r).User, cfg.AdminPhones)}})
 	})))
 	admin := func(next http.HandlerFunc) http.Handler {
 		return requireIdentity(authService, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if !adminAllowed(requestIdentity(r).User, cfg.AdminEmails) {
+			if !adminAllowed(requestIdentity(r).User, cfg.AdminPhones) {
 				writeJSON(w, http.StatusForbidden, map[string]string{"error": "ADMIN_REQUIRED"})
 				return
 			}
@@ -118,14 +118,5 @@ func registerAnalytics(mux *http.ServeMux, db *sql.DB, cfg config.Config, authSe
 	}))
 }
 
-func adminAllowed(user auth.User, emails []string) bool {
-	if !user.EmailVerified {
-		return false
-	}
-	for _, email := range emails {
-		if strings.EqualFold(strings.TrimSpace(email), user.Email) {
-			return true
-		}
-	}
-	return false
-}
+// Deny by default until a separately audited passkey/TOTP step-up is implemented.
+func adminAllowed(user auth.User, phones []string) bool { return false }

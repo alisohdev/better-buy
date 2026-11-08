@@ -3,101 +3,96 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"github.com/alirezasoheili/better-buy/apps/api/internal/auth"
 	"io"
+	"net"
 	"net/http"
 	"strings"
-
-	"github.com/alirezasoheili/better-buy/apps/api/internal/auth"
 )
 
 type credentials struct {
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Name        string `json:"name"`
+	Phone       string `json:"phone"`
+	Password    string `json:"password"`
+	Purpose     string `json:"purpose"`
+	ChallengeID string `json:"challengeId"`
+	Code        string `json:"code"`
+	Ticket      string `json:"ticket"`
 }
 
 func registerAuth(mux *http.ServeMux, service *auth.Service, devMode bool) {
-	mux.HandleFunc("POST /api/auth/test-login", func(w http.ResponseWriter, r *http.Request) {
-		if !devMode {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "NOT_FOUND"})
-			return
-		}
-		identity, err := service.TestLogin(r.Context())
-		if err != nil {
-			writeAuthError(w, http.StatusInternalServerError, "Local sign in failed.")
-			return
-		}
-		service.SetSessionCookie(w, identity.Session.Token)
-		writeJSON(w, http.StatusOK, map[string]any{"data": map[string]bool{"ok": true}})
-	})
 	mux.HandleFunc("GET /api/auth/get-session", func(w http.ResponseWriter, r *http.Request) {
-		identity, err := service.Session(r)
-		if err != nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": map[string]string{"message": "Could not read the current session."}})
+		w.Header().Set("Cache-Control", "no-store")
+		identity, e := service.Session(r)
+		if e != nil {
+			writeAuthError(w, 503, "دریافت نشست ممکن نشد.")
 			return
 		}
-		writeJSON(w, http.StatusOK, identity)
+		writeJSON(w, 200, identity)
 	})
-	mux.HandleFunc("POST /api/auth/sign-up/email", func(w http.ResponseWriter, r *http.Request) {
-		var input credentials
-		if !decodeAuthBody(w, r, &input) {
-			writeAuthError(w, http.StatusBadRequest, "Invalid request.")
-			return
-		}
-		identity, err := service.SignUp(r.Context(), input.Name, input.Email, input.Password)
-		if err != nil {
-			switch {
-			case errors.Is(err, auth.ErrEmailExists):
-				writeAuthError(w, http.StatusConflict, "An account already exists for this email.")
-			case errors.Is(err, auth.ErrInvalidCredentials):
-				writeAuthError(w, http.StatusBadRequest, "Check the email and password and try again.")
-			default:
-				writeAuthError(w, http.StatusInternalServerError, "Could not create the account.")
+	for _, path := range []string{"otp/start", "otp/verify", "sign-up/phone", "sign-in/phone", "password/reset", "sign-out"} {
+		mux.HandleFunc("POST /api/auth/"+path, func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			ip, _, _ := net.SplitHostPort(r.RemoteAddr)
+			if e := service.Limit(r.Context(), "ip:"+ip, 900, 60); e != nil {
+				writeAuthError(w, 429, auth.ErrLimited.Error())
+				return
 			}
-			return
-		}
-		service.SetSessionCookie(w, identity.Session.Token)
-		writeJSON(w, http.StatusOK, map[string]any{"token": identity.Session.Token, "user": identity.User})
-	})
-	mux.HandleFunc("POST /api/auth/sign-in/email", func(w http.ResponseWriter, r *http.Request) {
-		var input credentials
-		if !decodeAuthBody(w, r, &input) {
-			writeAuthError(w, http.StatusBadRequest, "Invalid request.")
-			return
-		}
-		identity, err := service.SignIn(r.Context(), input.Email, input.Password)
-		if err != nil {
-			if errors.Is(err, auth.ErrInvalidCredentials) {
-				writeAuthError(w, http.StatusUnauthorized, "Invalid email or password.")
-			} else {
-				writeAuthError(w, http.StatusInternalServerError, "Could not sign in.")
+			var input credentials
+			if path != "sign-out" && !decodeAuthBody(w, r, &input) {
+				writeAuthError(w, 400, "درخواست معتبر نیست.")
+				return
 			}
-			return
-		}
-		service.SetSessionCookie(w, identity.Session.Token)
-		writeJSON(w, http.StatusOK, map[string]any{"token": identity.Session.Token, "user": identity.User})
-	})
-	mux.HandleFunc("POST /api/auth/sign-out", func(w http.ResponseWriter, r *http.Request) {
-		if err := service.SignOut(r.Context(), r); err != nil {
-			writeAuthError(w, http.StatusInternalServerError, "Could not sign out.")
-			return
-		}
-		service.ClearSessionCookie(w)
-		writeJSON(w, http.StatusOK, map[string]bool{"success": true})
-	})
-	mux.HandleFunc("GET /api/auth/google/start", func(w http.ResponseWriter, r *http.Request) {
-		if err := service.BeginGoogle(w, r); err != nil {
-			writeAuthError(w, http.StatusBadRequest, "Could not start Google sign in.")
-		}
-	})
-	mux.HandleFunc("GET /api/auth/callback/google", func(w http.ResponseWriter, r *http.Request) {
-		if err := service.CompleteGoogle(w, r); err != nil {
-			service.ClearSessionCookie(w)
-			http.Redirect(w, r, "/?authError=google", http.StatusSeeOther)
-		}
-	})
+			var result any = map[string]bool{"success": true}
+			var e error
+			var identity auth.Identity
+			switch path {
+			case "otp/start":
+				if e = service.Limit(r.Context(), "sms-ip:"+ip, 86400, 30); e == nil {
+					var id string
+					id, e = service.Start(r.Context(), input.Phone, input.Purpose)
+					result = map[string]any{"challengeId": id, "expiresIn": 180, "resendAfter": 60}
+				}
+			case "otp/verify":
+				var ticket string
+				ticket, e = service.Verify(r.Context(), input.ChallengeID, input.Code)
+				result = map[string]string{"ticket": ticket}
+			case "sign-up/phone":
+				identity, e = service.Complete(r.Context(), input.Ticket, input.Name, input.Password, false)
+			case "sign-in/phone":
+				phone, _ := auth.NormalizePhone(input.Phone)
+				if e = service.Limit(r.Context(), "login:"+phone, 900, 15); e == nil {
+					identity, e = service.SignIn(r.Context(), input.Phone, input.Password)
+				}
+			case "password/reset":
+				_, e = service.Complete(r.Context(), input.Ticket, "", input.Password, true)
+			case "sign-out":
+				e = service.SignOut(r.Context(), r)
+				service.ClearSessionCookie(w)
+			}
+			if e != nil {
+				status := 400
+				message := auth.ErrInvalidCredentials.Error()
+				if errors.Is(e, auth.ErrLimited) {
+					status = 429
+					message = e.Error()
+				}
+				if errors.Is(e, auth.ErrDelivery) {
+					status = 503
+					message = e.Error()
+				}
+				writeAuthError(w, status, message)
+				return
+			}
+			if identity.User.ID != "" {
+				service.SetSessionCookie(w, identity.Session.Token)
+				result = map[string]any{"user": identity.User}
+			}
+			_ = service.Cleanup(r.Context())
+			writeJSON(w, 200, result)
+		})
+	}
 }
-
 func decodeAuthBody(w http.ResponseWriter, r *http.Request, target any) bool {
 	r.Body = http.MaxBytesReader(w, r.Body, 16<<10)
 	defer r.Body.Close()

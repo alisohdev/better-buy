@@ -16,7 +16,19 @@ type Deal struct {
 	FinalPriceRials    int64           `json:"finalPriceRials"`
 	DiscountRatio      float64         `json:"discountRatio"`
 	Stock              int             `json:"stock"`
+	Availability       string          `json:"availability,omitempty"`
+	StockQuantity      *int            `json:"stockQuantity,omitempty"`
 	Facts              json.RawMessage `json:"facts"`
+}
+
+func NormalizeAvailability(deal Deal) string {
+	if deal.Availability == "available" || deal.Availability == "unavailable" || deal.Availability == "unknown" {
+		return deal.Availability
+	}
+	if deal.Stock > 0 {
+		return "available"
+	}
+	return "unknown"
 }
 
 type CampaignScope struct {
@@ -31,12 +43,28 @@ type CampaignScope struct {
 }
 
 type Manifest struct {
-	Adapter         string          `json:"adapter"`
-	ContractVersion int             `json:"contractVersion"`
-	FeedKinds       []string        `json:"feedKinds"`
-	CollectionIDs   []int64         `json:"collectionIds,omitempty"`
-	StoreIDs        []int64         `json:"storeIds,omitempty"`
-	StoreCampaigns  []CampaignScope `json:"storeCampaigns,omitempty"`
+	Adapter         string           `json:"adapter"`
+	ContractVersion int              `json:"contractVersion"`
+	FeedKinds       []string         `json:"feedKinds"`
+	CollectionIDs   []int64          `json:"collectionIds,omitempty"`
+	StoreIDs        []int64          `json:"storeIds,omitempty"`
+	StoreCampaigns  []CampaignScope  `json:"storeCampaigns,omitempty"`
+	DigikalaFeeds   []DigikalaFeed   `json:"digikalaFeeds,omitempty"`
+	Digikala        *DigikalaContext `json:"digikala,omitempty"`
+}
+
+type DigikalaFeed struct {
+	ID   string `json:"id"`
+	Kind string `json:"kind"`
+}
+
+type DigikalaContext struct {
+	Surface         string `json:"surface"`
+	Channel         string `json:"channel"`
+	ShipmentType    string `json:"shipmentType"`
+	ShopID          string `json:"shopId"`
+	CoordinatesHash string `json:"coordinatesHash"`
+	CategoryPolicy  string `json:"categoryPolicy"`
 }
 
 type Context struct {

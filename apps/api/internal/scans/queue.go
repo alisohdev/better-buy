@@ -96,6 +96,7 @@ type Error = providers.Failure
 
 type Options struct {
 	SnappStoreCampaignsEnabled bool
+	DigikalaSupermarketEnabled bool
 }
 
 type Queue struct {
@@ -150,7 +151,7 @@ func (q *Queue) Enqueue(ctx context.Context, userID string, input Input, idempot
 			return Record{}, err
 		}
 	}
-	if input.Source == "digikalajet" {
+	if input.Source == "digikalajet" && !q.options.DigikalaSupermarketEnabled {
 		return Record{}, &Error{Code: "PROVIDER_UNAVAILABLE", Message: "This retailer is not available for new scans.", Status: 409}
 	}
 	var location Location
@@ -173,6 +174,9 @@ func (q *Queue) Enqueue(ctx context.Context, userID string, input Input, idempot
 		return Record{}, err
 	}
 	threshold := discounts.Minimum
+	if input.Source == "digikalajet" {
+		threshold = input.Threshold
+	}
 	contextRecord := newContext(location, input, threshold)
 	contextJSON, err := json.Marshal(contextRecord)
 	if err != nil {
@@ -236,7 +240,7 @@ func (q *Queue) Offers(ctx context.Context, userID, scanID string) ([]Deal, erro
 	if item.Status != "succeeded" {
 		return nil, &Error{Code: "SCAN_NOT_PUBLISHED", Message: "Scan results are not available yet.", Status: 409}
 	}
-	rows, err := q.db.QueryContext(ctx, `SELECT deal_key,product_variation_id,vendor_id,title,image,vendor_title,vendor_code,category_title,price_rials,discount_rials,final_price_rials,discount_ratio,stock,facts_json FROM deals WHERE scan_id=? ORDER BY discount_ratio DESC,final_price_rials`, scanID)
+	rows, err := q.db.QueryContext(ctx, `SELECT deal_key,product_variation_id,vendor_id,title,image,vendor_title,vendor_code,category_title,price_rials,discount_rials,final_price_rials,discount_ratio,stock,availability,stock_quantity,facts_json FROM deals WHERE scan_id=? ORDER BY discount_ratio DESC,final_price_rials`, scanID)
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +249,7 @@ func (q *Queue) Offers(ctx context.Context, userID, scanID string) ([]Deal, erro
 	for rows.Next() {
 		var deal Deal
 		var facts sql.NullString
-		if err := rows.Scan(&deal.Key, &deal.ProductVariationID, &deal.VendorID, &deal.Title, &deal.Image, &deal.VendorTitle, &deal.VendorCode, &deal.CategoryTitle, &deal.PriceRials, &deal.DiscountRials, &deal.FinalPriceRials, &deal.DiscountRatio, &deal.Stock, &facts); err != nil {
+		if err := rows.Scan(&deal.Key, &deal.ProductVariationID, &deal.VendorID, &deal.Title, &deal.Image, &deal.VendorTitle, &deal.VendorCode, &deal.CategoryTitle, &deal.PriceRials, &deal.DiscountRials, &deal.FinalPriceRials, &deal.DiscountRatio, &deal.Stock, &deal.Availability, &deal.StockQuantity, &facts); err != nil {
 			return nil, err
 		}
 		if facts.Valid {
@@ -840,7 +844,7 @@ func (q *Queue) finishSuccess(ctx context.Context, claim providers.Claim, comple
 		if facts == "" {
 			facts = "{}"
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO deals(id,scan_id,deal_key,product_variation_id,vendor_id,title,image,vendor_title,vendor_code,category_title,price_rials,discount_rials,final_price_rials,discount_ratio,stock,facts_json) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(scan_id,deal_key) DO UPDATE SET product_variation_id=excluded.product_variation_id,vendor_id=excluded.vendor_id,title=excluded.title,image=excluded.image,vendor_title=excluded.vendor_title,vendor_code=excluded.vendor_code,category_title=excluded.category_title,price_rials=excluded.price_rials,discount_rials=excluded.discount_rials,final_price_rials=excluded.final_price_rials,discount_ratio=excluded.discount_ratio,stock=excluded.stock,facts_json=excluded.facts_json`, dealID, claim.ScanID, deal.Key, deal.ProductVariationID, deal.VendorID, deal.Title, deal.Image, deal.VendorTitle, deal.VendorCode, deal.CategoryTitle, deal.PriceRials, deal.DiscountRials, deal.FinalPriceRials, deal.DiscountRatio, deal.Stock, facts); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO deals(id,scan_id,deal_key,product_variation_id,vendor_id,title,image,vendor_title,vendor_code,category_title,price_rials,discount_rials,final_price_rials,discount_ratio,stock,facts_json,availability,stock_quantity) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(scan_id,deal_key) DO UPDATE SET product_variation_id=excluded.product_variation_id,vendor_id=excluded.vendor_id,title=excluded.title,image=excluded.image,vendor_title=excluded.vendor_title,vendor_code=excluded.vendor_code,category_title=excluded.category_title,price_rials=excluded.price_rials,discount_rials=excluded.discount_rials,final_price_rials=excluded.final_price_rials,discount_ratio=excluded.discount_ratio,stock=excluded.stock,facts_json=excluded.facts_json,availability=excluded.availability,stock_quantity=excluded.stock_quantity`, dealID, claim.ScanID, deal.Key, deal.ProductVariationID, deal.VendorID, deal.Title, deal.Image, deal.VendorTitle, deal.VendorCode, deal.CategoryTitle, deal.PriceRials, deal.DiscountRials, deal.FinalPriceRials, deal.DiscountRatio, deal.Stock, facts, providers.NormalizeAvailability(deal), deal.StockQuantity); err != nil {
 			return err
 		}
 	}
@@ -1012,6 +1016,8 @@ func newContext(location Location, input Input, threshold int) Context {
 	manifest := Manifest{Adapter: "snapp-market-party", ContractVersion: 1, FeedKinds: []string{"market_party"}}
 	if input.Source == "okala" {
 		manifest = Manifest{Adapter: "okala-public-campaigns", ContractVersion: 1, FeedKinds: []string{"public_campaign_feed"}}
+	} else if input.Source == "digikalajet" {
+		manifest = Manifest{Adapter: "digikalajet-pending", ContractVersion: 1, FeedKinds: []string{"fresh_supermarket"}}
 	}
 	scope, _ := digest([]any{input.Source, manifest, threshold, 1, 1})
 	value := Context{RequestedThreshold: input.Threshold, EffectiveThreshold: threshold, PolicyVersion: "automatic-v1", Manifest: manifest, ScopeHash: scope, EligibilityVersion: 1, OfferKeyVersion: 1, Coverage: "pending"}

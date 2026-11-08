@@ -45,7 +45,7 @@ select an account with `--user-id` instead of `--email`.
 
 ## Environment and files
 
-Create `/etc/better-buy/better-buy.env` with mode `0640`, owned by `root:better-buy`. Set the auth, Google OAuth, origin, and database values described in the root `.env.example`. On the VPS, set:
+Create `/etc/better-buy/better-buy.env` with mode `0640`, owned by `root:better-buy`. Set the phone authentication, SMS, origin, and database values described in the root `.env.example`. On the VPS, set:
 
 ```dotenv
 VPS_HTTP_HOST=127.0.0.1
@@ -67,3 +67,5 @@ After an authorized rollout, confirm only one `better-buy-api` process is runnin
 ## Cutover
 
 Install the new release and run the Go migration before switching services. Stop the old HTTP and scan-worker units together when performing an authorized rollout, then start the single Go API unit. Verify the health route, sign-in, a queued scan, and the Caddy-served frontend before considering the rollout complete. This repository change does not perform the rollout or write to the production database.
+
+See [phone authentication](../../docs/phone-auth.md) for required SMS secrets, template approval, HTTPS, migration, and device acceptance tests. Admin remains denied until step-up assurance is implemented.

@@ -20,6 +20,14 @@ const offer = (patch: Partial<DealRecord> = {}): DealRecord => ({
   ...patch,
 });
 describe("v2 product comparison", () => {
+  it("keeps boolean availability without inventing an exact stock quantity", async () => {
+    const groups = await groupDealsV2("digikalajet", [
+      offer({ stock: 0, availability: "available", stockQuantity: null }),
+    ]);
+    expect(groups[0]?.bestCurrentOffer?.availability).toBe("available");
+    expect(groups[0]?.bestCurrentOffer?.stock).toBe(0);
+    expect(groups[0]?.bestCurrentOffer?.stockQuantity).toBeNull();
+  });
   it("settles equal-time conflicts by feed identity independently of input order", async () => {
     const a = offer({ provenance: ["a"], observedAt: "2026-10-10T00:00:00Z" });
     const b = offer({

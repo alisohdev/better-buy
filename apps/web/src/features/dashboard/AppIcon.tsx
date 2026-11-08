@@ -92,7 +92,12 @@ export function ProviderMark({
 }: {
   source: "snappmarket" | "okala" | "digikalajet";
 }) {
-  if (source === "digikalajet") return null;
+  if (source === "digikalajet")
+    return (
+      <span className="provider-mark provider-mark-digikala" aria-hidden="true">
+        دی
+      </span>
+    );
   return (
     <img
       className="provider-mark"

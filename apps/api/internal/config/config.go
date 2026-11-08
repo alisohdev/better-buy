@@ -3,7 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
-	"net/mail"
+	"github.com/alirezasoheili/better-buy/apps/api/internal/auth"
 	"net/url"
 	"os"
 	"strconv"
@@ -19,12 +19,11 @@ type Config struct {
 	CORSOrigins                []string
 	BetterAuthSecret           string
 	BoxKey                     string
-	GoogleClientID             string
-	GoogleClientSecret         string
-	AdminEmails                []string
+	AdminPhones                []string
 	WishlistScheduleEnabled    bool
 	APIRateLimitsEnabled       bool
 	SnappStoreCampaignsEnabled bool
+	DigikalaSupermarketEnabled bool
 	DevMode                    bool
 	GeocoderBaseURL            string
 	VAPIDPublicKey             string
@@ -58,17 +57,15 @@ func Load() (Config, error) {
 	}
 
 	for name, target := range map[string]*string{
-		"BETTER_AUTH_SECRET":   &cfg.BetterAuthSecret,
-		"BOX_KEY":              &cfg.BoxKey,
-		"GOOGLE_CLIENT_ID":     &cfg.GoogleClientID,
-		"GOOGLE_CLIENT_SECRET": &cfg.GoogleClientSecret,
+		"BETTER_AUTH_SECRET": &cfg.BetterAuthSecret,
+		"BOX_KEY":            &cfg.BoxKey,
 	} {
 		*target = strings.TrimSpace(get(name))
 		if *target == "" {
 			return Config{}, fmt.Errorf("missing required environment variable: %s", name)
 		}
 	}
-	cfg.AdminEmails, err = adminEmails(get("ADMIN_EMAILS"))
+	cfg.AdminPhones, err = adminPhones(get("ADMIN_PHONES"))
 	if err != nil {
 		return Config{}, err
 	}
@@ -85,9 +82,19 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	cfg.DigikalaSupermarketEnabled, err = boolean(get, "DIGIKALA_SUPERMARKET_ENABLED", false)
+	if err != nil {
+		return Config{}, err
+	}
 	cfg.DevMode, err = boolean(get, "DEV_MODE", false)
 	if err != nil {
 		return Config{}, err
+	}
+	if _, err := auth.SMSFromEnv(cfg.DevMode && (strings.HasPrefix(cfg.BetterAuthURL, "http://localhost:") || strings.HasPrefix(cfg.BetterAuthURL, "http://127.0.0.1:"))); err != nil {
+		return Config{}, err
+	}
+	if !cfg.DevMode && !strings.HasPrefix(cfg.BetterAuthURL, "https://") {
+		return Config{}, errors.New("production authentication requires HTTPS")
 	}
 	cfg.GeocoderBaseURL = strings.TrimSpace(get("GEOCODER_BASE_URL"))
 	cfg.VAPIDPublicKey = strings.TrimSpace(get("VAPID_PUBLIC_KEY"))
@@ -99,7 +106,7 @@ func Load() (Config, error) {
 	return cfg, nil
 }
 
-func adminEmails(value string) ([]string, error) {
+func adminPhones(value string) ([]string, error) {
 	result := make([]string, 0)
 	seen := make(map[string]bool)
 	for _, part := range strings.Split(value, ",") {
@@ -107,10 +114,12 @@ func adminEmails(value string) ([]string, error) {
 		if email == "" {
 			continue
 		}
-		parsed, err := mail.ParseAddress(email)
-		if err != nil || parsed.Address != email || parsed.Name != "" {
-			return nil, errors.New("ADMIN_EMAILS must contain comma-separated email addresses")
+		normalized, err := auth.NormalizePhone(email)
+		if err != nil {
+			return nil, errors.New("ADMIN_PHONES must contain Iranian mobile numbers")
 		}
+		email = normalized
+
 		if !seen[email] {
 			seen[email] = true
 			result = append(result, email)

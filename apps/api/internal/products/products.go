@@ -45,6 +45,8 @@ type DealRecord struct {
 	FinalPriceRials     float64                   `json:"finalPriceRials"`
 	DiscountRatio       float64                   `json:"discountRatio"`
 	Stock               float64                   `json:"stock"`
+	Availability        string                    `json:"availability"`
+	StockQuantity       *int                      `json:"stockQuantity"`
 	State               string                    `json:"state"`
 	Benefit             *Benefit                  `json:"benefit,omitempty"`
 	ObservedAt          string                    `json:"observedAt,omitempty"`
@@ -65,6 +67,8 @@ type VendorOffer struct {
 	FinalPriceRials     float64                   `json:"finalPriceRials"`
 	DiscountRatio       float64                   `json:"discountRatio"`
 	Stock               float64                   `json:"stock"`
+	Availability        string                    `json:"availability"`
+	StockQuantity       *int                      `json:"stockQuantity"`
 	State               string                    `json:"state"`
 	Benefit             Benefit                   `json:"benefit"`
 	ObservedAt          string                    `json:"observedAt,omitempty"`
@@ -318,7 +322,7 @@ func LegacyGroups(source string, deals []DealRecord) []map[string]any {
 			return ordered[i].VendorID < ordered[j].VendorID
 		})
 		for _, row := range ordered {
-			vendors = append(vendors, map[string]any{"offerKey": row.Key, "productVariationId": row.ProductVariationID, "vendorId": row.VendorID, "vendorTitle": row.VendorTitle, "vendorCode": row.VendorCode, "priceRials": row.PriceRials, "discountRials": row.DiscountRials, "finalPriceRials": row.FinalPriceRials, "discountRatio": row.DiscountRatio, "stock": row.Stock, "state": row.State})
+			vendors = append(vendors, map[string]any{"offerKey": row.Key, "productVariationId": row.ProductVariationID, "vendorId": row.VendorID, "vendorTitle": row.VendorTitle, "vendorCode": row.VendorCode, "priceRials": row.PriceRials, "discountRials": row.DiscountRials, "finalPriceRials": row.FinalPriceRials, "discountRatio": row.DiscountRatio, "stock": row.Stock, "availability": row.Availability, "stockQuantity": row.StockQuantity, "state": row.State})
 		}
 		representative := rows[0]
 		for _, row := range rows {
@@ -444,7 +448,7 @@ func (s *Service) OfferPage(ctx context.Context, queue *scans.Queue, userID, sca
 }
 
 func (s *Service) readDeals(ctx context.Context, scanID, selectedScanID string) ([]DealRecord, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT deal_key,product_variation_id,vendor_id,title,image,vendor_title,vendor_code,category_title,price_rials,discount_rials,final_price_rials,discount_ratio,stock,facts_json FROM deals WHERE scan_id=? ORDER BY discount_ratio DESC,final_price_rials`, scanID)
+	rows, err := s.db.QueryContext(ctx, `SELECT deal_key,product_variation_id,vendor_id,title,image,vendor_title,vendor_code,category_title,price_rials,discount_rials,final_price_rials,discount_ratio,stock,availability,stock_quantity,facts_json FROM deals WHERE scan_id=? ORDER BY discount_ratio DESC,final_price_rials`, scanID)
 	if err != nil {
 		return nil, err
 	}
@@ -453,7 +457,7 @@ func (s *Service) readDeals(ctx context.Context, scanID, selectedScanID string) 
 	for rows.Next() {
 		var item DealRecord
 		var image, vendorCode, category, facts sql.NullString
-		if err := rows.Scan(&item.Key, &item.ProductVariationID, &item.VendorID, &item.Title, &image, &item.VendorTitle, &vendorCode, &category, &item.PriceRials, &item.DiscountRials, &item.FinalPriceRials, &item.DiscountRatio, &item.Stock, &facts); err != nil {
+		if err := rows.Scan(&item.Key, &item.ProductVariationID, &item.VendorID, &item.Title, &image, &item.VendorTitle, &vendorCode, &category, &item.PriceRials, &item.DiscountRials, &item.FinalPriceRials, &item.DiscountRatio, &item.Stock, &item.Availability, &item.StockQuantity, &facts); err != nil {
 			return nil, err
 		}
 		item.ScanID = selectedScanID
@@ -617,7 +621,7 @@ func buildGroup(provider, identity string, rows []DealRecord, variants map[strin
 			amount = math.Round
 		}
 		benefit := benefitFor(provider, row)
-		all = append(all, VendorOffer{ProductDestination: productlinks.Resolve(provider, productlinks.Identity{ProductVariationID: row.ProductVariationID, VendorID: row.VendorID, VendorCode: row.VendorCode}, ""), LogoURL: row.VendorLogoURL, OfferKey: row.Key, ProductVariationID: row.ProductVariationID, VendorID: row.VendorID, VendorTitle: row.VendorTitle, VendorCode: row.VendorCode, PriceRials: row.PriceRials, DiscountRials: row.DiscountRials, FinalPriceRials: row.FinalPriceRials, DiscountRatio: row.DiscountRatio, Stock: row.Stock, State: row.State, Benefit: benefit, ObservedAt: row.ObservedAt, Provenance: prov, SourceMoneyUnit: kind, OriginalAmountToman: amount(row.PriceRials), DiscountAmountToman: amount(row.DiscountRials), FinalAmountToman: amount(row.FinalPriceRials)})
+		all = append(all, VendorOffer{ProductDestination: productlinks.Resolve(provider, productlinks.Identity{ProductVariationID: row.ProductVariationID, VendorID: row.VendorID, VendorCode: row.VendorCode}, ""), LogoURL: row.VendorLogoURL, OfferKey: row.Key, ProductVariationID: row.ProductVariationID, VendorID: row.VendorID, VendorTitle: row.VendorTitle, VendorCode: row.VendorCode, PriceRials: row.PriceRials, DiscountRials: row.DiscountRials, FinalPriceRials: row.FinalPriceRials, DiscountRatio: row.DiscountRatio, Stock: row.Stock, Availability: row.Availability, StockQuantity: row.StockQuantity, State: row.State, Benefit: benefit, ObservedAt: row.ObservedAt, Provenance: prov, SourceMoneyUnit: kind, OriginalAmountToman: amount(row.PriceRials), DiscountAmountToman: amount(row.DiscountRials), FinalAmountToman: amount(row.FinalPriceRials)})
 		_ = id
 	}
 	conditional := make([]VendorOffer, 0)
@@ -625,10 +629,10 @@ func buildGroup(provider, identity string, rows []DealRecord, variants map[strin
 	for _, offer := range all {
 		cond := offer.Benefit.Kind == "conditional" || offer.Benefit.Applicable == nil || !*offer.Benefit.Applicable
 		if cond {
-			if offer.State == "no_longer_present" || offer.Stock > 0 {
+			if offer.State == "no_longer_present" || offer.Availability == "available" || offer.Stock > 0 {
 				conditional = append(conditional, offer)
 			}
-		} else if offer.State == "no_longer_present" || offer.Stock > 0 {
+		} else if offer.State == "no_longer_present" || offer.Availability == "available" || offer.Stock > 0 {
 			vendors = append(vendors, offer)
 		}
 	}

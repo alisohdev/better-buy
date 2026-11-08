@@ -102,7 +102,11 @@ async function request(path, body) {
 }
 
 async function main() {
-  await request("/api/auth/test-login", {});
+  cookie = process.env.BETTER_BUY_SESSION_COOKIE ?? "";
+  if (!cookie)
+    throw new Error(
+      "Set BETTER_BUY_SESSION_COOKIE from a local phone-auth session."
+    );
   if (!cookie)
     throw new Error("Local test login did not return a session cookie.");
   const session = await request("/api/auth/get-session");

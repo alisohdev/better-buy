@@ -313,20 +313,18 @@ test("signed out, pending, and authentication error have clear next steps", asyn
   await mock(page, { signedOut: true });
   await page.goto("/");
   await expect(
-    page.getByRole("heading", { name: "بهتر بخر", exact: true })
+    page.getByRole("heading", { name: "به بهتر بخر خوش آمدید", exact: true })
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "ادامه با گوگل" })
+    page.getByRole("button", { name: "ساخت حساب کاربری" })
   ).toBeVisible();
-  await page.route("**/api/auth/sign-in/email", (r) =>
+  await page.route("**/api/auth/sign-in/phone", (r) =>
     r.fulfill({ status: 500, json: { error: { message: "failed" } } })
   );
-  await page.getByLabel("ایمیل", { exact: true }).fill("test@example.com");
+  await page.getByLabel("شماره همراه", { exact: true }).fill("09123456789");
   await page.getByLabel("رمز عبور", { exact: true }).fill("test-password");
-  await page
-    .getByRole("button", { name: "ورود با ایمیل", exact: true })
-    .click();
-  await expect(page.locator(".auth-error")).toContainText("ورود انجام نشد");
+  await page.getByRole("button", { name: "ورود", exact: true }).click();
+  await expect(page.locator(".phone-auth-error")).toContainText("failed");
   await captureState(page, "sign-in-error");
   let release = () => {};
   const waiting = new Promise<void>((resolve) => {
@@ -349,7 +347,7 @@ test("signed out, pending, and authentication error have clear next steps", asyn
     .getByRole("button", { name: "دریافت دوباره", exact: true })
     .click();
   await expect(
-    page.getByRole("button", { name: "ادامه با گوگل" })
+    page.getByRole("button", { name: "ساخت حساب کاربری" })
   ).toBeVisible();
 });
 test("first visit creates a location from address search and maps the selected result", async ({
@@ -889,7 +887,7 @@ test("sign-out retires reads and another account cannot see late private results
   await page.getByRole("button", { name: "منوی برنامه", exact: true }).click();
   await page.getByRole("menuitem", { name: "خروج از حساب" }).click();
   await expect(
-    page.getByRole("button", { name: "ادامه با گوگل" })
+    page.getByRole("button", { name: "ساخت حساب کاربری" })
   ).toBeVisible();
   release();
   await page.waitForTimeout(300);
@@ -1388,7 +1386,7 @@ test("capture state views, real retailer images, touch targets, focus and token 
   await mock(page, { signedOut: true });
   await page.goto("/");
   await expect(
-    page.getByRole("button", { name: "ادامه با گوگل" })
+    page.getByRole("button", { name: "ساخت حساب کاربری" })
   ).toBeVisible();
   await capture("signed-out");
   const state = await mock(page, { locations: [] });

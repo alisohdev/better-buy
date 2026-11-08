@@ -48,6 +48,8 @@ func (c *Collector) Collect(ctx context.Context, claim Claim) (Completed, error)
 		result, collectErr = c.collectSnapp(ctx, &job)
 	case "okala":
 		result, collectErr = c.collectOkala(ctx, &job)
+	case "digikalajet":
+		result, collectErr = c.collectDigikalaFresh(ctx, &job)
 	default:
 		return Completed{}, &Failure{Code: "PROVIDER_UNAVAILABLE", Message: "This retailer is not available for new scans.", Status: 409}
 	}
@@ -64,6 +66,10 @@ type response struct {
 }
 
 func (c *Collector) request(ctx context.Context, method, rawURL string, headers http.Header, payload []byte, provider string, attempts int, allow401 bool, reserve func(context.Context, string) error) (response, error) {
+	return c.requestWithRedirectHost(ctx, method, rawURL, headers, payload, provider, attempts, allow401, reserve, "")
+}
+
+func (c *Collector) requestWithRedirectHost(ctx context.Context, method, rawURL string, headers http.Header, payload []byte, provider string, attempts int, allow401 bool, reserve func(context.Context, string) error, redirectHost string) (response, error) {
 	if attempts < 1 {
 		attempts = 1
 	} else if attempts > maxRequestAttempts {
@@ -99,7 +105,18 @@ func (c *Collector) request(ctx context.Context, method, rawURL string, headers 
 				req.Header.Add(key, value)
 			}
 		}
-		resp, err := c.client.Do(req)
+		client := c.client
+		if redirectHost != "" {
+			copy := *c.client
+			copy.CheckRedirect = func(next *http.Request, via []*http.Request) error {
+				if next.URL.Scheme != "https" || next.URL.Hostname() != redirectHost || len(via) >= 5 {
+					return http.ErrUseLastResponse
+				}
+				return nil
+			}
+			client = &copy
+		}
+		resp, err := client.Do(req)
 		if err != nil {
 			if ctxErr := ctx.Err(); ctxErr != nil {
 				return response{}, ctxErr
@@ -127,6 +144,8 @@ func (c *Collector) request(ctx context.Context, method, rawURL string, headers 
 				return response{}, lastErr
 			} else if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
 				return response{}, &Failure{Code: "UPSTREAM_FORBIDDEN", Message: "Access to " + provider + " was rejected.", Status: 502}
+			} else if redirectHost != "" && resp.StatusCode >= 300 && resp.StatusCode < 400 {
+				return response{status: resp.StatusCode, body: body}, nil
 			} else if resp.StatusCode == http.StatusRequestTimeout || resp.StatusCode >= 500 {
 				lastErr = &Failure{Code: "UPSTREAM_ERROR", Message: provider + " returned an unsuccessful response.", Status: 502, Retryable: true}
 			} else if resp.StatusCode < 200 || resp.StatusCode >= 300 {

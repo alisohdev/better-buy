@@ -87,8 +87,8 @@ function parseUser(value: unknown) {
   return {
     id: text(user.id),
     name: text(user.name),
-    email: text(user.email),
-    emailVerified: boolean(user.emailVerified),
+    phone: text(user.phone),
+    phoneVerified: boolean(user.phoneVerified),
     createdAt: text(user.createdAt),
     lastSeenAt: nullableText(user.lastSeenAt),
     visits: count(user.visits),

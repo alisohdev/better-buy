@@ -167,6 +167,8 @@ export const vendorOfferSchema = z.object({
   vendorCode: z.string().nullable(),
   ...prices,
   stock: z.number(),
+  availability: z.enum(["available", "unavailable", "unknown"]).optional(),
+  stockQuantity: z.number().int().nonnegative().nullable().optional(),
   state,
 });
 export const dealRecordSchema = vendorOfferSchema

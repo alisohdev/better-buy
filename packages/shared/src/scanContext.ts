@@ -9,7 +9,7 @@ export interface ScanContext {
   };
   requestedThreshold: number;
   effectiveThreshold: number;
-  policyVersion: "automatic-v1";
+  policyVersion: "automatic-v1" | "grocery-consumables-v1";
   manifest: {
     adapter: string;
     contractVersion: number;
@@ -25,6 +25,15 @@ export interface ScanContext {
       maxPages?: number;
       bounded?: boolean;
     }[];
+    digikalaFeeds?: { id: string; kind: string }[];
+    digikala?: {
+      surface: string;
+      channel: string;
+      shipmentType: string;
+      shopId: string;
+      coordinatesHash: string;
+      categoryPolicy: string;
+    };
   };
   scopeHash: string;
   eligibilityVersion: 1;
@@ -48,15 +57,24 @@ export async function defaultScanContext(
   effectiveThreshold: number,
   requestedThreshold = effectiveThreshold
 ): Promise<ScanContext> {
-  const manifest = {
-    adapter:
-      source === "snappmarket"
-        ? "snapp-market-party"
-        : "okala-public-campaigns",
-    contractVersion: 1,
-    feedKinds:
-      source === "snappmarket" ? ["market_party"] : ["public_campaign_feed"],
-  };
+  const manifest =
+    source === "snappmarket"
+      ? {
+          adapter: "snapp-market-party",
+          contractVersion: 1,
+          feedKinds: ["market_party"],
+        }
+      : source === "okala"
+        ? {
+            adapter: "okala-public-campaigns",
+            contractVersion: 1,
+            feedKinds: ["public_campaign_feed"],
+          }
+        : {
+            adapter: "digikalajet-pending",
+            contractVersion: 1,
+            feedKinds: ["fresh_supermarket"],
+          };
   return {
     location: {
       name: location.name,

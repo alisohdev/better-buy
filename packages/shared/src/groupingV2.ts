@@ -137,6 +137,8 @@ export async function groupDealsV2(
         finalPriceRials: row.finalPriceRials,
         discountRatio: row.discountRatio,
         stock: row.stock,
+        availability: row.availability,
+        stockQuantity: row.stockQuantity,
         state: row.state,
         benefit: row.benefit ?? {
           kind:
@@ -155,7 +157,9 @@ export async function groupDealsV2(
       const conditionalOffers = offers
         .filter(
           (offer) =>
-            (offer.state === "no_longer_present" || offer.stock > 0) &&
+            (offer.state === "no_longer_present" ||
+              offer.availability === "available" ||
+              offer.stock > 0) &&
             (offer.benefit?.kind === "conditional" ||
               offer.benefit?.applicable !== true)
         )
@@ -164,7 +168,9 @@ export async function groupDealsV2(
         .filter(
           (offer) =>
             !conditionalOffers.includes(offer) &&
-            (offer.state === "no_longer_present" || offer.stock > 0)
+            (offer.state === "no_longer_present" ||
+              offer.availability === "available" ||
+              offer.stock > 0)
         )
         .sort(compareOfferPrice);
       const current = vendors.filter(

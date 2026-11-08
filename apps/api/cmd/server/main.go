@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/alirezasoheili/better-buy/apps/api/internal/api"
+	"github.com/alirezasoheili/better-buy/apps/api/internal/auth"
 	"github.com/alirezasoheili/better-buy/apps/api/internal/config"
 	"github.com/alirezasoheili/better-buy/apps/api/internal/products"
 	"github.com/alirezasoheili/better-buy/apps/api/internal/providers"
@@ -43,7 +44,7 @@ func run() error {
 	defer db.Close()
 
 	collector := providers.New(db)
-	queue, err := scans.NewQueue(db, collector, scans.Options{SnappStoreCampaignsEnabled: cfg.SnappStoreCampaignsEnabled})
+	queue, err := scans.NewQueue(db, collector, scans.Options{SnappStoreCampaignsEnabled: cfg.SnappStoreCampaignsEnabled, DigikalaSupermarketEnabled: cfg.DigikalaSupermarketEnabled})
 	if err != nil {
 		return err
 	}
@@ -64,6 +65,22 @@ func run() error {
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+	go func() {
+		cleaner := auth.New(db, cfg.BetterAuthSecret, cfg.BetterAuthURL)
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			if err := cleaner.Cleanup(ctx); err != nil && ctx.Err() == nil {
+				slog.Error("auth cleanup failed")
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
+
 	queueResult := make(chan error, 1)
 	go func() {
 		queueResult <- queue.Run(ctx)
@@ -127,5 +144,4 @@ func run() error {
 		<-maintenanceResult
 		return nil
 	}
-	return nil
 }

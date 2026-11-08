@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -122,7 +123,11 @@ func (j *journal) reserveRequest(ctx context.Context, operation string) error {
 	}
 	defer tx.Rollback()
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	result, err := tx.ExecContext(ctx, `UPDATE scan_execution SET attempt_count=attempt_count+1,heartbeat_at=? WHERE scan_id=? AND user_id=? AND instance_id=? AND cancel_requested=0 AND (SELECT COUNT(*) FROM scan_attempts WHERE scan_id=? AND operation=?)<3 AND EXISTS(SELECT 1 FROM scans s JOIN vps_scan_jobs q ON q.scan_id=s.id WHERE s.id=? AND s.user_id=? AND s.status='running' AND q.instance_id=? AND q.owner_boot_id=? AND q.state='running' AND q.stop_requested=0)`, now, j.claim.ScanID, j.claim.UserID, j.claim.InstanceID, j.claim.ScanID, operation, j.claim.ScanID, j.claim.UserID, j.claim.InstanceID, j.claim.OwnerBootID)
+	budget := 0
+	if strings.HasPrefix(operation, "digikala-fresh:") {
+		budget = 500
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE scan_execution SET attempt_count=attempt_count+1,heartbeat_at=? WHERE scan_id=? AND user_id=? AND instance_id=? AND cancel_requested=0 AND (SELECT COUNT(*) FROM scan_attempts WHERE scan_id=? AND operation=?)<3 AND (?=0 OR (SELECT COUNT(*) FROM scan_attempts WHERE scan_id=?)<?) AND EXISTS(SELECT 1 FROM scans s JOIN vps_scan_jobs q ON q.scan_id=s.id WHERE s.id=? AND s.user_id=? AND s.status='running' AND q.instance_id=? AND q.owner_boot_id=? AND q.state='running' AND q.stop_requested=0)`, now, j.claim.ScanID, j.claim.UserID, j.claim.InstanceID, j.claim.ScanID, operation, budget, j.claim.ScanID, budget, j.claim.ScanID, j.claim.UserID, j.claim.InstanceID, j.claim.OwnerBootID)
 	if err != nil {
 		return err
 	}
@@ -138,6 +143,15 @@ func (j *journal) reserveRequest(ctx context.Context, operation string) error {
 		}
 		if cancelRequested == 1 || status == "cancelled" {
 			return &Failure{Code: "SCAN_CANCELLED", Message: "The scan was cancelled.", Status: 409}
+		}
+		if budget > 0 {
+			var count int
+			if err := tx.QueryRowContext(ctx, `SELECT COUNT(*) FROM scan_attempts WHERE scan_id=?`, j.claim.ScanID).Scan(&count); err != nil {
+				return err
+			}
+			if count >= budget {
+				return &Failure{Code: "PROVIDER_REQUEST_BUDGET_EXHAUSTED", Message: "Fresh scan request budget was exhausted before coverage completed.", Status: 502}
+			}
 		}
 		return &Failure{Code: "REQUEST_RETRIES_EXHAUSTED", Message: "Provider operation retry attempts exhausted.", Status: 502}
 	}
@@ -322,6 +336,48 @@ func (j *journal) recordPage(ctx context.Context, page pageCheckpoint) error {
 	}
 	if _, err := tx.ExecContext(ctx, `UPDATE scan_execution SET heartbeat_at=? WHERE scan_id=? AND user_id=? AND instance_id=?`, time.Now().UTC().Format(time.RFC3339Nano), j.claim.ScanID, j.claim.UserID, j.claim.InstanceID); err != nil {
 		return err
+	}
+	return tx.Commit()
+}
+
+func (j *journal) freezeDigikalaManifest(ctx context.Context, contextJSON string) error {
+	var frozen Context
+	if json.Unmarshal([]byte(contextJSON), &frozen) != nil || frozen.Manifest.Adapter != "digikala-fresh-supermarket" || frozen.Manifest.ContractVersion != 1 || len(frozen.Manifest.DigikalaFeeds) == 0 || frozen.ScopeHash == "" {
+		return errors.New("invalid Digikala Fresh manifest")
+	}
+	tx, err := j.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := j.activeOn(ctx, tx); err != nil {
+		return err
+	}
+	var existing sql.NullString
+	if err := tx.QueryRowContext(ctx, `SELECT context_json FROM scans WHERE id=? AND user_id=?`, j.claim.ScanID, j.claim.UserID).Scan(&existing); err != nil {
+		return err
+	}
+	if existing.Valid {
+		var prior Context
+		if json.Unmarshal([]byte(existing.String), &prior) != nil {
+			return errors.New("invalid saved scan context")
+		}
+		if prior.Manifest.Adapter != "digikalajet-pending" || prior.Manifest.ContractVersion != 1 {
+			return errors.New("scan manifest was already frozen")
+		}
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE scans SET context_json=? WHERE id=? AND user_id=? AND status='running'`, contextJSON, j.claim.ScanID, j.claim.UserID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE scan_execution SET manifest_frozen=1,campaign_contribution_version=1 WHERE scan_id=? AND user_id=? AND instance_id=?`, j.claim.ScanID, j.claim.UserID, j.claim.InstanceID); err != nil {
+		return err
+	}
+	for _, feed := range frozen.Manifest.DigikalaFeeds {
+		encoded, _ := json.Marshal(feed)
+		unitID := "digikala:" + feed.Kind + ":" + feed.ID
+		if _, err := tx.ExecContext(ctx, `INSERT INTO scan_units(scan_id,unit_id,descriptor_json) VALUES(?,?,?) ON CONFLICT(scan_id,unit_id) DO NOTHING`, j.claim.ScanID, unitID, string(encoded)); err != nil {
+			return err
+		}
 	}
 	return tx.Commit()
 }

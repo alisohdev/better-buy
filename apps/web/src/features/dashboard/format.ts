@@ -7,7 +7,7 @@ export const faDate = new Intl.DateTimeFormat("fa-IR", {
 });
 export const sourceLabel = (source: DealSource) =>
   source === "digikalajet"
-    ? "دیجی‌کالا جت"
+    ? "سوپرمارکت دیجی‌کالا"
     : source === "okala"
       ? "اکالا"
       : "اسنپ‌مارکت";

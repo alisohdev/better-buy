@@ -122,6 +122,43 @@ func TestLegacyDiscoveryConflictKeepsBodyAndUsesStableStartFallback(t *testing.T
 	}
 }
 
+func TestDigikalaFreshManifestSurvivesResumeWithFrozenFeeds(t *testing.T) {
+	db := openJournalTestDB(t)
+	claim := insertRunningJournalScan(t, db, "scan-digikala-resume", "2026-11-07T10:00:00Z", "2026-11-07T09:00:00Z")
+	ctx := Context{RequestedThreshold: 15, EffectiveThreshold: 15, PolicyVersion: "automatic-v1", ScopeHash: "pending", EligibilityVersion: 1, OfferKeyVersion: 1, Coverage: "pending", Manifest: Manifest{Adapter: "digikalajet-pending", ContractVersion: 1}}
+	ctx.Location.Name = "Test location"
+	ctx.Location.Latitude = 35.7
+	ctx.Location.Longitude = 51.4
+	ctx.Location.Revision = 2
+	encoded, _ := json.Marshal(ctx)
+	if _, err := db.ExecContext(context.Background(), `UPDATE scans SET source='digikalajet',context_json=? WHERE id=?`, string(encoded), claim.ScanID); err != nil {
+		t.Fatal(err)
+	}
+	manifest := Manifest{Adapter: "digikala-fresh-supermarket", ContractVersion: 1, FeedKinds: []string{"fresh_campaign_carousels"}, DigikalaFeeds: []DigikalaFeed{{ID: "static_amazing", Kind: "carousel"}}, Digikala: &DigikalaContext{Surface: "fresh_supermarket", Channel: "sd", ShipmentType: "scheduled", ShopID: "shop", CoordinatesHash: "coords", CategoryPolicy: "grocery-consumables-v1"}}
+	ctx.Manifest = manifest
+	ctx.PolicyVersion = "grocery-consumables-v1"
+	ctx.ScopeHash = "frozen-scope"
+	encoded, _ = json.Marshal(ctx)
+	j := &journal{db: db, claim: claim}
+	if err := j.freezeDigikalaManifest(context.Background(), string(encoded)); err != nil {
+		t.Fatal(err)
+	}
+	collector := &Collector{db: db}
+	resumed, err := collector.loadScanJob(context.Background(), claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !resumed.ManifestFrozen || resumed.Context.Manifest.Adapter != "digikala-fresh-supermarket" || len(resumed.Context.Manifest.DigikalaFeeds) != 1 || resumed.Context.Manifest.DigikalaFeeds[0].ID != "static_amazing" {
+		t.Fatalf("resumed scan lost its frozen Fresh context: %+v", resumed.Context)
+	}
+	if err := resumed.RecordPage(context.Background(), pageCheckpoint{UnitID: "digikala:carousel:static_amazing", Descriptor: `{"id":"static_amazing","kind":"carousel"}`, Page: 1, ResponseBody: []byte(`{"status":200,"data":{"result":[]}}`), Metadata: `{"contractVersion":1,"reportedTotalPages":1,"reportedTotalItems":0}`, Terminal: true, TerminalNote: "pages=1 items=0"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := resumed.RecordPage(context.Background(), pageCheckpoint{UnitID: "digikala:carousel:static_amazing", Descriptor: `{"id":"static_amazing","kind":"carousel"}`, Page: 1, ResponseBody: []byte(`{"status":200,"data":{"result":[]}}`), Metadata: `{"contractVersion":1,"reportedTotalPages":1,"reportedTotalItems":0}`, Terminal: true, TerminalNote: "pages=1 items=0"}); err != nil {
+		t.Fatalf("idempotent page replay failed: %v", err)
+	}
+}
+
 func openJournalTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	ctx := context.Background()

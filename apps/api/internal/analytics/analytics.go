@@ -67,8 +67,8 @@ type Overview struct {
 type User struct {
 	ID            string  `json:"id"`
 	Name          string  `json:"name"`
-	Email         string  `json:"email"`
-	EmailVerified bool    `json:"emailVerified"`
+	Phone         string  `json:"phone"`
+	PhoneVerified bool    `json:"phoneVerified"`
 	CreatedAt     string  `json:"createdAt"`
 	LastSeenAt    *string `json:"lastSeenAt"`
 	Visits        int     `json:"visits"`
@@ -222,7 +222,7 @@ func (s *Service) Overview(ctx context.Context) (Overview, error) {
 	return result, rows.Err()
 }
 
-const userColumns = `u.id,u.name,u.email,u.emailVerified,u.createdAt,
+const userColumns = `u.id,u.name,COALESCE(u.phone,''),u.phoneVerified,u.createdAt,
 	(SELECT MAX(created_at) FROM analytics_events e WHERE e.user_id=u.id),
 	(SELECT COUNT(*) FROM analytics_events e WHERE e.user_id=u.id AND e.kind='visit'),
 	(SELECT COUNT(*) FROM analytics_events e WHERE e.user_id=u.id AND e.kind='search'),
@@ -236,7 +236,7 @@ type scanner interface{ Scan(...any) error }
 func scanUser(row scanner) (User, error) {
 	var result User
 	var lastSeen sql.NullString
-	err := row.Scan(&result.ID, &result.Name, &result.Email, &result.EmailVerified, &result.CreatedAt, &lastSeen, &result.Visits, &result.Searches, &result.Scans, &result.Locations, &result.WishlistItems, &result.CartItems)
+	err := row.Scan(&result.ID, &result.Name, &result.Phone, &result.PhoneVerified, &result.CreatedAt, &lastSeen, &result.Visits, &result.Searches, &result.Scans, &result.Locations, &result.WishlistItems, &result.CartItems)
 	if lastSeen.Valid {
 		result.LastSeenAt = &lastSeen.String
 	}
@@ -246,11 +246,11 @@ func scanUser(row scanner) (User, error) {
 func (s *Service) Users(ctx context.Context, query string, page int) (UserPage, error) {
 	result := UserPage{Users: make([]User, 0), Page: page, PageSize: UsersPerPage}
 	query = strings.TrimSpace(query)
-	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM "user" u WHERE ?='' OR INSTR(LOWER(u.email || ' ' || u.name),LOWER(?))>0`, query, query).Scan(&result.Total)
+	err := s.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM "user" u WHERE ?='' OR INSTR(LOWER(COALESCE(u.phone,'') || ' ' || u.name),LOWER(?))>0`, query, query).Scan(&result.Total)
 	if err != nil {
 		return UserPage{}, err
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT `+userColumns+` FROM "user" u WHERE ?='' OR INSTR(LOWER(u.email || ' ' || u.name),LOWER(?))>0 ORDER BY u.createdAt DESC,u.id LIMIT ? OFFSET ?`, query, query, UsersPerPage, (page-1)*UsersPerPage)
+	rows, err := s.db.QueryContext(ctx, `SELECT `+userColumns+` FROM "user" u WHERE ?='' OR INSTR(LOWER(COALESCE(u.phone,'') || ' ' || u.name),LOWER(?))>0 ORDER BY u.createdAt DESC,u.id LIMIT ? OFFSET ?`, query, query, UsersPerPage, (page-1)*UsersPerPage)
 	if err != nil {
 		return UserPage{}, err
 	}

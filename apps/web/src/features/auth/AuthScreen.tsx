@@ -1,254 +1,308 @@
 "use client";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { type FormEvent, useEffect, useRef, useState } from "react";
-import { authClient } from "../../app/auth-client";
-
-type AuthMode = "sign-in" | "sign-up";
-type PendingAuth = null | "email" | "google";
-type AuthFeedback = AuthMode | "google" | "sign-in-session" | "sign-up-session";
-
-const feedbackMessages = {
-  "sign-in":
-    "ورود انجام نشد. ایمیل و رمز عبور را بررسی کنید یا با گوگل ادامه دهید.",
-  "sign-up":
-    "ثبت‌نام انجام نشد. دوباره تلاش کنید، وارد حساب شوید یا با گوگل ادامه دهید.",
-  google: "شروع ورود با گوگل ممکن نشد؛ دوباره تلاش کنید.",
-  "sign-in-session": "ورود در مرورگر تأیید نشد. لطفاً دوباره وارد شوید.",
-  "sign-up-session":
-    "حساب ممکن است ساخته شده باشد، اما ورود در مرورگر تأیید نشد. لطفاً با ایمیل و رمز عبور دوباره وارد شوید.",
-} satisfies Record<AuthFeedback, string>;
-
+import { OtpInput } from "@/components/otp-input";
+import { authClient, type OTPPurpose } from "@/app/auth-client";
+import { normalizeDigits, useWebOTP } from "./useWebOTP";
+type Flow =
+  | { kind: "login" }
+  | { kind: "phone"; purpose: OTPPurpose }
+  | { kind: "otp"; purpose: OTPPurpose; id: string; until: number }
+  | { kind: "details"; purpose: OTPPurpose; ticket: string }
+  | { kind: "complete" };
 export function AuthScreen() {
-  const [mode, setMode] = useState<AuthMode>("sign-in");
-  const [pending, setPending] = useState<PendingAuth>(null);
-  const [feedback, setFeedback] = useState<AuthFeedback | null>(null);
-  const attempt = useRef<PendingAuth>(null);
-  const emailRef = useRef<HTMLInputElement>(null);
-  const passwordRef = useRef<HTMLInputElement>(null);
-  const feedbackRef = useRef<HTMLParagraphElement>(null);
-  const busy = pending !== null;
-
+  const [flow, setFlow] = useState<Flow>({ kind: "login" });
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [name, setName] = useState("");
+  const [visible, setVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [now, setNow] = useState(Date.now());
+  const generation = useRef(0);
+  const gate = useRef(false);
+  const webOTP = useWebOTP();
+  const ticket = useRef("");
   useEffect(() => {
-    if (feedback) feedbackRef.current?.focus();
-  }, [feedback]);
-
-  const submitEmail = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    if (attempt.current !== null) return;
-
-    const emailInput = emailRef.current;
-    const passwordInput = passwordRef.current;
-    if (!emailInput || !passwordInput) return;
-    emailInput.value = emailInput.value.trim();
-    if (!event.currentTarget.reportValidity()) return;
-
-    const email = emailInput.value;
-    const submittedMode = mode;
-    attempt.current = "email";
-    setPending("email");
-    setFeedback(null);
-    let navigating = false;
-
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  function navigate(next: Flow) {
+    generation.current++;
+    webOTP.cancel();
+    setFlow(next);
+    setError("");
+    setPassword("");
+    setConfirm("");
+  }
+  async function start(purpose: OTPPurpose) {
+    if (gate.current) return;
+    gate.current = true;
+    setBusy(true);
+    setError("");
+    const current = generation.current;
+    webOTP.start();
     try {
-      const result =
-        submittedMode === "sign-up"
-          ? await authClient.signUp.email({
-              name: email.split("@")[0] || "Better Buy user",
-              email,
-              password: passwordInput.value,
-            })
-          : await authClient.signIn.email({
-              email,
-              password: passwordInput.value,
-            });
+      const result = await authClient.startOTP(normalizeDigits(phone), purpose);
+      if (current !== generation.current) return;
       if (result.error) {
-        setFeedback(submittedMode);
+        webOTP.cancel();
+        setError(result.error.message);
         return;
       }
-
-      const session = await authClient.getSession().catch(() => null);
-      if (!session?.data?.user) {
-        setFeedback(
-          submittedMode === "sign-up" ? "sign-up-session" : "sign-in-session"
-        );
-        if (submittedMode === "sign-up") setMode("sign-in");
-        return;
-      }
-
-      window.location.replace(
-        window.location.pathname + window.location.search
-      );
-      navigating = true;
-    } catch {
-      setFeedback(submittedMode);
-    } finally {
-      passwordInput.value = "";
-      if (!navigating) {
-        attempt.current = null;
-        setPending(null);
-      }
-    }
-  };
-
-  const signInWithGoogle = async () => {
-    if (attempt.current !== null) return;
-    if (passwordRef.current) passwordRef.current.value = "";
-    attempt.current = "google";
-    setPending("google");
-    setFeedback(null);
-    let failed = false;
-    try {
-      const result = await authClient.signIn.social({
-        provider: "google",
-        callbackURL: window.location.pathname + window.location.search,
+      setFlow({
+        kind: "otp",
+        purpose,
+        id: result.data.challengeId,
+        until: Date.now() + result.data.resendAfter * 1000,
       });
-      failed = Boolean(result.error);
-    } catch {
-      failed = true;
+    } finally {
+      gate.current = false;
+      setBusy(false);
     }
-    if (!failed) return;
-    setFeedback("google");
-    attempt.current = null;
-    setPending(null);
-  };
-
-  const switchMode = () => {
-    if (attempt.current !== null) return;
-    if (passwordRef.current) passwordRef.current.value = "";
-    setMode(mode === "sign-in" ? "sign-up" : "sign-in");
-    setFeedback(null);
-  };
-
+  }
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (flow.kind === "phone") {
+      await start(flow.purpose);
+      return;
+    }
+    if (gate.current) return;
+    gate.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      if (flow.kind === "login") {
+        const result = await authClient.signIn.phone({
+          phone: normalizeDigits(phone),
+          password,
+        });
+        if (result.error) setError(result.error.message);
+      } else if (flow.kind === "details") {
+        if (password !== confirm) {
+          setError("رمزهای عبور یکسان نیستند.");
+          return;
+        }
+        const result =
+          flow.purpose === "registration"
+            ? await authClient.signUp.phone({
+                ticket: flow.ticket,
+                name,
+                password,
+              })
+            : await authClient.resetPassword(flow.ticket, password);
+        if (result.error) setError(result.error.message);
+        else if (flow.purpose === "password_reset")
+          navigate({ kind: "complete" });
+      }
+    } finally {
+      gate.current = false;
+      setBusy(false);
+    }
+  }
+  const title =
+    flow.kind === "login"
+      ? "به بهتر بخر خوش آمدید"
+      : flow.kind === "phone"
+        ? flow.purpose === "registration"
+          ? "ساخت حساب کاربری"
+          : "بازیابی رمز عبور"
+        : flow.kind === "otp"
+          ? "تأیید شماره همراه"
+          : flow.kind === "details"
+            ? "یک قدم تا پایان"
+            : "رمز عبور تغییر کرد";
   return (
-    <main className="auth-shell">
-      <Card className="auth-card" aria-labelledby="sign-in-title">
-        <div className="auth-mark">ب</div>
-        <h1 id="sign-in-title">بهتر بخر</h1>
-        <p>
-          پیشنهادهای اسنپ‌مارکت و اکالا را برای موقعیت تحویل خود پیدا کنید و
-          قیمت فروشگاه‌ها را مقایسه کنید.
-        </p>
-        <form noValidate onSubmit={(event) => void submitEmail(event)}>
-          <fieldset
-            disabled={busy}
-            className="grid min-w-0 gap-4 border-0 p-0"
-            aria-busy={pending === "email"}
-          >
-            <legend className="mb-4 text-lg font-semibold">
-              {mode === "sign-in" ? "ورود با ایمیل" : "ساخت حساب با ایمیل"}
-            </legend>
-            <div className="grid gap-2">
-              <Label htmlFor="auth-email">ایمیل</Label>
-              <Input
-                ref={emailRef}
-                id="auth-email"
-                name="email"
-                type="email"
-                autoComplete="username"
-                autoCapitalize="none"
-                spellCheck={false}
-                dir="ltr"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="auth-password">رمز عبور</Label>
-              <Input
-                key={mode}
-                ref={passwordRef}
-                id="auth-password"
-                name="password"
-                type="password"
-                autoComplete={
-                  mode === "sign-in" ? "current-password" : "new-password"
-                }
-                aria-describedby="auth-password-hint"
-                dir="ltr"
-                minLength={8}
-                maxLength={128}
-                required
-              />
-              <p
-                id="auth-password-hint"
-                className="text-xs text-muted-foreground"
-              >
-                رمز عبور باید بین ۸ تا ۱۲۸ نویسه باشد.
-              </p>
-            </div>
-            <Button type="submit" className="w-full">
-              {pending === "email"
-                ? mode === "sign-in"
-                  ? "در حال ورود…"
-                  : "در حال ساخت حساب…"
-                : mode === "sign-in"
-                  ? "ورود با ایمیل"
-                  : "ساخت حساب"}
-            </Button>
-          </fieldset>
-        </form>
-        <Button
-          type="button"
-          variant="ghost"
-          className="mt-3 w-full whitespace-normal"
-          disabled={busy}
-          onClick={switchMode}
-        >
-          {mode === "sign-in"
-            ? "حساب ندارید؟ ثبت‌نام کنید"
-            : "حساب دارید؟ وارد شوید"}
-        </Button>
-        <div className="my-5 flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="h-px flex-1 bg-border" aria-hidden="true" />
-          <span>یا</span>
-          <span className="h-px flex-1 bg-border" aria-hidden="true" />
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          className="google-button"
-          onClick={() => void signInWithGoogle()}
-          disabled={busy}
-          aria-busy={pending === "google"}
-        >
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path
-              fill="#4285f4"
-              d="M21.35 12.25c0-.7-.06-1.22-.2-1.77H12v3.34h5.37c-.11.83-.71 2.08-2.04 2.92l-.02.11 2.96 2.29.2.02c1.87-1.72 2.88-4.25 2.88-6.91Z"
-            />
-            <path
-              fill="#34a853"
-              d="M12 21.75c2.63 0 4.84-.87 6.45-2.36l-3.07-2.42c-.82.57-1.92.97-3.38.97-2.58 0-4.77-1.71-5.55-4.07l-.1.01-3.08 2.38-.04.1A9.75 9.75 0 0 0 12 21.75Z"
-            />
-            <path
-              fill="#fbbc05"
-              d="M6.45 13.87A5.87 5.87 0 0 1 6.14 12c0-.65.11-1.28.3-1.87v-.12l-3.11-2.42-.1.05A9.75 9.75 0 0 0 2.25 12c0 1.57.38 3.06.98 4.36l3.22-2.49Z"
-            />
-            <path
-              fill="#ea4335"
-              d="M12 6.06c1.84 0 3.08.8 3.79 1.46l2.77-2.7C16.83 3.2 14.63 2.25 12 2.25a9.75 9.75 0 0 0-8.77 5.39l3.21 2.49C7.23 7.77 9.42 6.06 12 6.06Z"
-            />
-          </svg>
-          {pending === "google" ? "در حال باز کردن گوگل…" : "ادامه با گوگل"}
-        </Button>
-        {feedback && (
-          <p
-            ref={feedbackRef}
-            className="auth-error"
-            role="alert"
-            aria-live="polite"
-            tabIndex={-1}
-          >
-            {feedbackMessages[feedback]}
+    <main className="phone-auth" dir="rtl">
+      <section className="phone-auth-card">
+        <header>
+          <span className="phone-auth-brand">بهتر بخر</span>
+          <h1>{title}</h1>
+          <p>خریدهای روزمره، با انتخاب بهتر</p>
+        </header>
+        {error && (
+          <p role="alert" className="phone-auth-error">
+            {error}
           </p>
         )}
-        <small>
-          موقعیت‌ها و تاریخچه در حساب شما نگهداری می‌شوند. برای بررسی پیشنهادها،
-          ورود به فروشگاه لازم نیست.
-        </small>
-      </Card>
+        {flow.kind === "otp" ? (
+          <>
+            <p>
+              کد ارسال‌شده به{" "}
+              <bdi dir="ltr">{normalizeDigits(phone).slice(0, -4)}••••</bdi> را
+              وارد کنید.
+            </p>
+            <OtpInput
+              key={flow.id}
+              enableSound={false}
+              value={webOTP.code}
+              verify={async (code) => {
+                webOTP.cancel();
+                if (gate.current) return false;
+                gate.current = true;
+                try {
+                  const result = await authClient.verifyOTP(flow.id, code);
+                  if (result.error) {
+                    setError(result.error.message);
+                    return false;
+                  }
+                  ticket.current = result.data.ticket;
+                  return true;
+                } finally {
+                  gate.current = false;
+                }
+              }}
+              onVerified={() =>
+                navigate({
+                  kind: "details",
+                  purpose: flow.purpose,
+                  ticket: ticket.current,
+                })
+              }
+            />
+            <p role="status">
+              {Math.max(0, Math.ceil((flow.until - now) / 1000)) > 0
+                ? `ارسال دوباره تا ${Math.max(0, Math.ceil((flow.until - now) / 1000))} ثانیه دیگر`
+                : "می‌توانید کد جدید دریافت کنید."}
+            </p>
+            <Button
+              disabled={busy || now < flow.until}
+              onClick={() => void start(flow.purpose)}
+            >
+              ارسال دوباره کد
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => navigate({ kind: "phone", purpose: flow.purpose })}
+            >
+              ویرایش شماره
+            </Button>
+          </>
+        ) : flow.kind === "complete" ? (
+          <>
+            <p role="status">اکنون با رمز جدید وارد شوید.</p>
+            <Button onClick={() => navigate({ kind: "login" })}>
+              بازگشت به ورود
+            </Button>
+          </>
+        ) : (
+          <form onSubmit={(event) => void submit(event)} aria-busy={busy}>
+            <fieldset disabled={busy}>
+              {(flow.kind === "login" || flow.kind === "phone") && (
+                <label>
+                  شماره همراه
+                  <Input
+                    dir="ltr"
+                    type="tel"
+                    autoComplete="tel"
+                    required
+                    value={phone}
+                    onChange={(e) => setPhone(normalizeDigits(e.target.value))}
+                    pattern="(09[0-9]{9}|989[0-9]{9}|\+989[0-9]{9})"
+                    placeholder="09123456789"
+                  />
+                </label>
+              )}
+              {flow.kind === "details" && flow.purpose === "registration" && (
+                <label>
+                  نام شما
+                  <Input
+                    autoComplete="name"
+                    required
+                    maxLength={120}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                  />
+                </label>
+              )}
+              {(flow.kind === "login" || flow.kind === "details") && (
+                <>
+                  <label>
+                    رمز عبور
+                    <Input
+                      dir="ltr"
+                      type={visible ? "text" : "password"}
+                      autoComplete={
+                        flow.kind === "login"
+                          ? "current-password"
+                          : "new-password"
+                      }
+                      required
+                      minLength={12}
+                      maxLength={1024}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    aria-pressed={visible}
+                    onClick={() => setVisible(!visible)}
+                  >
+                    {visible ? "پنهان کردن رمز" : "نمایش رمز"}
+                  </Button>
+                  {flow.kind === "details" && (
+                    <>
+                      <p>
+                        حداقل ۱۲ نویسه؛ می‌توانید یک عبارت طولانی انتخاب کنید.
+                      </p>
+                      <label>
+                        تکرار رمز عبور
+                        <Input
+                          dir="ltr"
+                          type={visible ? "text" : "password"}
+                          autoComplete="new-password"
+                          required
+                          value={confirm}
+                          onChange={(e) => setConfirm(e.target.value)}
+                        />
+                      </label>
+                    </>
+                  )}
+                </>
+              )}
+              <Button type="submit">
+                {busy
+                  ? "در حال انجام…"
+                  : flow.kind === "login"
+                    ? "ورود"
+                    : flow.kind === "phone"
+                      ? "دریافت کد تأیید"
+                      : flow.purpose === "registration"
+                        ? "ساخت حساب"
+                        : "ذخیره رمز جدید"}
+              </Button>
+            </fieldset>
+          </form>
+        )}
+        {flow.kind === "login" ? (
+          <nav>
+            <Button
+              variant="link"
+              onClick={() =>
+                navigate({ kind: "phone", purpose: "password_reset" })
+              }
+            >
+              رمز عبور را فراموش کرده‌ام
+            </Button>
+            <Button
+              variant="link"
+              onClick={() =>
+                navigate({ kind: "phone", purpose: "registration" })
+              }
+            >
+              ساخت حساب کاربری
+            </Button>
+          </nav>
+        ) : (
+          <Button variant="link" onClick={() => navigate({ kind: "login" })}>
+            بازگشت به ورود
+          </Button>
+        )}
+      </section>
     </main>
   );
 }

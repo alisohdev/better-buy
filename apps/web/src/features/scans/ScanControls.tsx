@@ -7,11 +7,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { CartSource, LocationRecord } from "@better-buy/shared";
+import type { LocationRecord } from "@better-buy/shared";
+import type { DealSource } from "../dashboard/types";
 import { AppIcon, ProviderMark } from "../dashboard/AppIcon";
 import { faNumber, sourceLabel } from "../dashboard/format";
 
-const providers: CartSource[] = ["snappmarket", "okala"];
+export const digikalaSupermarketEnabled =
+  process.env.NEXT_PUBLIC_DIGIKALA_SUPERMARKET_ENABLED === "true";
 
 export function ScanControls({
   locations,
@@ -30,18 +32,21 @@ export function ScanControls({
 }: {
   locations: LocationRecord[];
   selected: string;
-  selectedProviders: CartSource[];
+  selectedProviders: DealSource[];
   minDiscount: number;
   blocked: boolean;
   submitting: boolean;
   hasSnapshot: boolean;
   historical: boolean;
   onLocation: (id: string) => void;
-  onToggleProvider: (source: CartSource) => void;
+  onToggleProvider: (source: DealSource) => void;
   onMinDiscount: (value: number) => void;
   onStart: () => void;
   onLive: () => void;
 }) {
+  const providers: DealSource[] = digikalaSupermarketEnabled
+    ? ["snappmarket", "okala", "digikalajet"]
+    : ["snappmarket", "okala"];
   return (
     <section className="scan-controls" aria-label="تنظیم اسکن تخفیف‌ها">
       <Label className="feed-location scan-location-control">

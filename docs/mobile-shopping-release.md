@@ -21,10 +21,10 @@ Before migrations, the production backup service produced `/var/backups/better-b
 
 ## Operational notes
 
-`ADMIN_EMAILS` was not configured on production and has deliberately not been inferred from an account. Set that environment variable to the intended verified administrator emails and restart the service to enable access. Analytics begins collecting with this release; it does not invent historical visits.
-
 Store buttons link to the official provider websites. Product-specific purchase routes and cart transfer were not verified, so the interface labels these links as website links. Digikala Jet remains available for historical results only, consistent with the existing disabled collector.
 
 Existing scans collected above 15% cannot recover offers that were never collected. A fresh scan creates the broader result set.
 
 Photon API contract reference: https://github.com/komoot/photon/blob/master/docs/api-v1.md. Provider icons were retrieved from each official website's declared app icon assets.
+
+Phone authentication configuration and device testing: see [phone-auth.md](phone-auth.md)

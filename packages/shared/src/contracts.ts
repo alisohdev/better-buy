@@ -91,5 +91,7 @@ export interface DealRecord {
   finalPriceRials: number;
   discountRatio: number;
   stock: number;
+  availability?: "available" | "unavailable" | "unknown";
+  stockQuantity?: number | null;
   state: DealState;
 }

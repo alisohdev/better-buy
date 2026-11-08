@@ -40,7 +40,7 @@ function ReadError({ retry }: { retry: () => void }) {
   );
 }
 
-function UserDetails({ id, email }: { id: string; email: string }) {
+function UserDetails({ id, phone }: { id: string; phone: string }) {
   const [open, setOpen] = useState(false);
   const detail = useAdminUser(open ? id : null);
   const data = detail.data;
@@ -48,8 +48,8 @@ function UserDetails({ id, email }: { id: string; email: string }) {
     <Panel
       title="جزئیات کاربر"
       trigger={
-        <Button variant="link" className="admin-email">
-          <bdi>{email}</bdi>
+        <Button variant="link" className="admin-phone">
+          <bdi>{phone}</bdi>
         </Button>
       }
       open={open}
@@ -65,10 +65,12 @@ function UserDetails({ id, email }: { id: string; email: string }) {
           <header>
             <strong>{data.user.name}</strong>
             <p>
-              <bdi>{data.user.email}</bdi>
+              <bdi>{data.user.phone}</bdi>
             </p>
             <small>
-              {data.user.emailVerified ? "ایمیل تأیید شده" : "ایمیل تأیید نشده"}{" "}
+              {data.user.phoneVerified
+                ? "شماره همراه تأیید شده"
+                : "شماره همراه تأیید نشده"}{" "}
               · عضویت: {date(data.user.createdAt)}
             </small>
           </header>
@@ -318,14 +320,14 @@ export function AdminDashboard({ onClose }: { onClose: () => void }) {
             }}
           >
             <label htmlFor="admin-user-search" className="sr-only">
-              جست‌وجو با ایمیل یا نام
+              جست‌وجو با شماره همراه یا نام
             </label>
             <Input
               id="admin-user-search"
               type="search"
               maxLength={120}
               value={draft}
-              placeholder="ایمیل یا نام کاربر"
+              placeholder="شماره همراه یا نام کاربر"
               onChange={(event) => setDraft(event.target.value)}
             />
             <Button variant="outline" type="submit">
@@ -374,7 +376,7 @@ export function AdminDashboard({ onClose }: { onClose: () => void }) {
                     {userPage.users.map((user) => (
                       <tr key={user.id}>
                         <th scope="row">
-                          <UserDetails id={user.id} email={user.email} />
+                          <UserDetails id={user.id} phone={user.phone} />
                           <small>{user.name}</small>
                         </th>
                         <td>

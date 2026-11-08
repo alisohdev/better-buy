@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "بهتر بخر", statusBarStyle: "default" },
   icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
 };
-export const viewport: Viewport = { themeColor: "#9a3412" };
+export const viewport: Viewport = { themeColor: "#C3CDFF" };
 export default function RootLayout({
   children,
 }: {

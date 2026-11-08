@@ -5,8 +5,8 @@ import { useCallback, useEffect, useState } from "react";
 type User = {
   id: string;
   name: string;
-  email: string;
-  emailVerified: boolean;
+  phone: string;
+  phoneVerified: boolean;
   image: string | null;
   createdAt: string;
   updatedAt: string;
@@ -15,7 +15,6 @@ type User = {
 type Session = {
   id: string;
   userId: string;
-  token: string;
   expiresAt: string;
   createdAt: string;
   updatedAt: string;
@@ -48,7 +47,7 @@ async function request<T>(
     });
   } catch {
     return {
-      error: { message: "The authentication service could not be reached." },
+      error: { message: "ارتباط برقرار نشد؛ اتصال اینترنت را بررسی کنید." },
     };
   }
 
@@ -63,7 +62,7 @@ async function request<T>(
         message:
           error && typeof error.message === "string"
             ? error.message
-            : "Authentication request failed.",
+            : "درخواست انجام نشد؛ دوباره تلاش کنید.",
         status: response.status,
       },
     };
@@ -138,47 +137,27 @@ function useSession() {
   return { data, isPending, error, refetch };
 }
 
-const signUpEmail = async (input: {
+export type OTPPurpose = "registration" | "password_reset";
+async function post<T>(path: string, input: object) {
+  return request<T>("/api/auth/" + path, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+const signInPhone = async (input: { phone: string; password: string }) => {
+  const result = await post<{ user: User }>("sign-in/phone", input);
+  if (!result.error) notifyAuthChanged();
+  return result;
+};
+const signUpPhone = async (input: {
+  ticket: string;
   name: string;
-  email: string;
   password: string;
 }) => {
-  const result = await request<{ token: string; user: User }>(
-    "/api/auth/sign-up/email",
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-    }
-  );
+  const result = await post<{ user: User }>("sign-up/phone", input);
   if (!result.error) notifyAuthChanged();
   return result;
 };
-
-const signInEmail = async (input: { email: string; password: string }) => {
-  const result = await request<{ token: string; user: User }>(
-    "/api/auth/sign-in/email",
-    {
-      method: "POST",
-      body: JSON.stringify(input),
-    }
-  );
-  if (!result.error) notifyAuthChanged();
-  return result;
-};
-
-const signInSocial = async (input: {
-  provider: "google";
-  callbackURL?: string;
-}) => {
-  if (input.provider !== "google")
-    return { error: { message: "Unsupported sign-in provider." } };
-  const base = authBase || window.location.origin;
-  const url = new URL("/api/auth/google/start", base);
-  url.searchParams.set("callbackURL", input.callbackURL || "/");
-  window.location.assign(url.toString());
-  return { data: { redirect: true as const, url: url.toString() } };
-};
-
 const signOut = async () => {
   const result = await request<{ success: boolean }>("/api/auth/sign-out", {
     method: "POST",
@@ -190,7 +169,16 @@ const signOut = async () => {
 export const authClient = {
   useSession,
   getSession,
-  signUp: { email: signUpEmail },
-  signIn: { email: signInEmail, social: signInSocial },
+  signUp: { phone: signUpPhone },
+  signIn: { phone: signInPhone },
+  startOTP: (phone: string, purpose: OTPPurpose) =>
+    post<{ challengeId: string; expiresIn: number; resendAfter: number }>(
+      "otp/start",
+      { phone, purpose }
+    ),
+  verifyOTP: (challengeId: string, code: string) =>
+    post<{ ticket: string }>("otp/verify", { challengeId, code }),
+  resetPassword: (ticket: string, password: string) =>
+    post<{ success: boolean }>("password/reset", { ticket, password }),
   signOut,
 };

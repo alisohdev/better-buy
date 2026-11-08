@@ -12,7 +12,10 @@ import { AppIcon, ProviderMark } from "./AppIcon";
 import { ReadNotice } from "./Primitives";
 import { faNumber, sourceLabel } from "./format";
 import { useDashboardData } from "./useDashboardData";
-import { ScanControls } from "../scans/ScanControls";
+import {
+  ScanControls,
+  digikalaSupermarketEnabled,
+} from "../scans/ScanControls";
 import { HistoryPanel } from "../scans/HistoryPanel";
 import { useScanLedger } from "../scans/useScanLedger";
 import { useScanPolling, isActiveScan } from "../scans/useScanPolling";
@@ -53,7 +56,7 @@ export function Dashboard() {
   };
   const restoreOverlayFocus = () =>
     requestAnimationFrame(() => overlayReturnFocus.current?.focus());
-  const [providers, setProviders] = useState<CartSource[]>([
+  const [providers, setProviders] = useState<DealSource[]>([
     "snappmarket",
     "okala",
   ]);
@@ -87,7 +90,7 @@ export function Dashboard() {
     (location) => location.id === data.selected
   );
   const coordinateRevision = selectedLocation?.coordinateRevision ?? 1;
-  const latestCompatible = (source: CartSource) =>
+  const latestCompatible = (source: DealSource) =>
     data.scans
       .filter(
         (run) =>
@@ -130,6 +133,15 @@ export function Dashboard() {
   const activeOkala = isActiveScan(okalaPolling.data)
     ? okalaPolling.data
     : activeOkalaRecord;
+  const activeDigikalaRecord = digikalaSupermarketEnabled
+    ? (data.scans.find(
+        (run) => run.source === "digikalajet" && isActiveScan(run)
+      ) ?? null)
+    : null;
+  const digikalaPolling = useScanPolling(activeDigikalaRecord);
+  const activeDigikala = isActiveScan(digikalaPolling.data)
+    ? digikalaPolling.data
+    : activeDigikalaRecord;
   const snappStart = useStartScan({
     locationId: data.selected,
     source: "snappmarket",
@@ -139,6 +151,12 @@ export function Dashboard() {
   const okalaStart = useStartScan({
     locationId: data.selected,
     source: "okala",
+    threshold: 15,
+    mode: "partial",
+  });
+  const digikalaStart = useStartScan({
+    locationId: data.selected,
+    source: "digikalajet",
     threshold: 15,
     mode: "partial",
   });
@@ -221,7 +239,7 @@ export function Dashboard() {
   const feeds = allFeeds.filter((feed) =>
     historical
       ? feed.source === selection.source
-      : feed.source !== "digikalajet" &&
+      : (feed.source !== "digikalajet" || digikalaSupermarketEnabled) &&
         providers.includes(feed.source === "okala" ? "okala" : "snappmarket")
   );
   const valid =
@@ -230,9 +248,11 @@ export function Dashboard() {
       selectedLocation.latitude,
       selectedLocation.longitude
     );
-  const submitting = snappStart.submitting || okalaStart.submitting;
-  const unresolved = snappStart.unresolved || okalaStart.unresolved;
-  const active = !!activeSnapp || !!activeOkala;
+  const submitting =
+    snappStart.submitting || okalaStart.submitting || digikalaStart.submitting;
+  const unresolved =
+    snappStart.unresolved || okalaStart.unresolved || digikalaStart.unresolved;
+  const active = !!activeSnapp || !!activeOkala || !!activeDigikala;
   const blocked =
     submitting ||
     unresolved ||
@@ -262,10 +282,20 @@ export function Dashboard() {
     setSelection({ source: null, runId: null });
     setWorkspaceSection("scan");
     for (const provider of providers)
-      (provider === "okala" ? okalaStart : snappStart).start();
+      (provider === "okala"
+        ? okalaStart
+        : provider === "digikalajet"
+          ? digikalaStart
+          : snappStart
+      ).start();
   };
   const latestSuccessfulRuns = providers.flatMap((provider) => {
-    const run = provider === "okala" ? latestOkala : latestSnapp;
+    const run =
+      provider === "okala"
+        ? latestOkala
+        : provider === "digikalajet"
+          ? latestCompatible("digikalajet")
+          : latestSnapp;
     return run ? [run] : [];
   });
   const freshSuccessfulRuns = scanAttemptBaseIds
@@ -281,7 +311,7 @@ export function Dashboard() {
     (total, run) => total + run.productCount,
     0
   );
-  const activeRuns = [activeSnapp, activeOkala].filter(
+  const activeRuns = [activeSnapp, activeOkala, activeDigikala].filter(
     (run): run is ScanRecord => run !== null
   );
   const progressCompleted = activeRuns.reduce(
@@ -422,7 +452,7 @@ export function Dashboard() {
                   onOpen={openRun}
                   blocked={blocked}
                   onRetry={(run) => {
-                    if (blocked || run.source === "digikalajet") return;
+                    if (blocked) return;
                     setScanAttemptBaseIds(
                       new Set(data.scans.map((item) => item.id))
                     );
@@ -431,7 +461,12 @@ export function Dashboard() {
                     setProviders([run.source]);
                     setView("deals");
                     setWorkspaceSection("scan");
-                    (run.source === "okala" ? okalaStart : snappStart).start({
+                    (run.source === "okala"
+                      ? okalaStart
+                      : run.source === "digikalajet"
+                        ? digikalaStart
+                        : snappStart
+                    ).start({
                       locationId: run.locationId,
                       source: run.source,
                       threshold: 15,
@@ -471,7 +506,7 @@ export function Dashboard() {
                   </Button>
                   <div className="scan-flow-title">
                     <h1 id="scan-page-title">اسکن تخفیف‌ها</h1>
-                    <p>پیشنهادهای اکالا و اسنپ‌مارکت را پیدا کنید.</p>
+                    <p>پیشنهادهای فروشگاه‌های انتخاب‌شده را پیدا کنید.</p>
                   </div>
                   <span className="scan-header-icon" aria-hidden="true">
                     <AppIcon name="scan" />
@@ -644,6 +679,20 @@ export function Dashboard() {
                       setWorkspaceSection("offers");
                     }}
                   />
+                  {digikalaSupermarketEnabled && (
+                    <ScanFeedback
+                      active={activeDigikala ?? null}
+                      polling={digikalaPolling}
+                      start={digikalaStart}
+                      locations={data.locations}
+                      onOpenContext={(run) => {
+                        data.setSelected(run.locationId);
+                        setSelection({ source: null, runId: null });
+                        setView("deals");
+                        setWorkspaceSection("offers");
+                      }}
+                    />
+                  )}
                 </div>
               </section>
             ) : !valid && !data.busy && !data.locationsQuery.error ? (
@@ -774,7 +823,12 @@ export function Dashboard() {
                 setView("deals");
                 setWorkspaceSection("scan");
                 for (const provider of providers)
-                  (provider === "okala" ? okalaStart : snappStart).start({
+                  (provider === "okala"
+                    ? okalaStart
+                    : provider === "digikalajet"
+                      ? digikalaStart
+                      : snappStart
+                  ).start({
                     locationId: saved.id,
                     threshold: 15,
                   });

@@ -22,7 +22,7 @@ The target runtime is one Go server process with a persistent SQLite scan queue.
 
 ## Authentication, security, and privacy
 
-- [ ] Verify email sign-in, Google OAuth, session cookies, sign-out, trusted origins, CORS, and existing-session behavior on staging.
+- [ ] Verify phone registration, password login, SMS password recovery, session cookies, sign-out, trusted origins, CORS, and existing-session behavior on staging.
 - [ ] Keep production `DEV_MODE=false`; verify the dev-only login and wishlist routes return 404.
 - [ ] Keep secrets in systemd environment configuration or a secrets manager, never in tracked files or logs.
 - [ ] Verify BOX_KEY compatibility with retained encrypted rows and keep it stable through rollout.
@@ -43,7 +43,7 @@ The target runtime is one Go server process with a persistent SQLite scan queue.
 
 - [ ] Build the Next static export and verify API requests reach the Go server through the production reverse proxy.
 - [ ] Verify Caddy serves the static frontend and routes `/api/*` and `/healthz` to the Go listener.
-- [ ] Verify secure cookies and Google OAuth redirect URLs through the production domain.
+- [ ] Verify secure cookies and origin-bound SMS hostname and approved pattern through the production domain.
 - [ ] Test service restart, process failure, disk-full behavior, and SQLite backup restoration on staging.
 - [ ] Record a rollback plan for the Go binary, static assets, environment configuration, and database migrations.
 - [ ] Roll out only after a separate explicit deployment authorization.

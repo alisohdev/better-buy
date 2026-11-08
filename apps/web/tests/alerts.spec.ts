@@ -368,7 +368,7 @@ test("product notification opens an authenticated product page", async ({
   await page.reload();
   await expect(page.getByText("فروشگاه دریانی")).toBeVisible();
 });
-test("product deep link survives email sign in", async ({ page }) => {
+test("product deep link survives phone sign in", async ({ page }) => {
   await fixture(page, { detail: true });
   let signedIn = false;
   const identity = {
@@ -382,16 +382,14 @@ test("product deep link survives email sign in", async ({ page }) => {
   await page.route("**/api/auth/get-session", (route) =>
     route.fulfill({ json: signedIn ? identity : null })
   );
-  await page.route("**/api/auth/sign-in/email", (route) => {
+  await page.route("**/api/auth/sign-in/phone", (route) => {
     signedIn = true;
     return route.fulfill({ json: { token: "token", user: identity.user } });
   });
   await page.goto("/?page=product&scan=saved&product=tea-key");
-  await page.getByLabel("ایمیل", { exact: true }).fill("fixture@example.com");
+  await page.getByLabel("شماره همراه", { exact: true }).fill("09123456789");
   await page.getByLabel("رمز عبور", { exact: true }).fill("test-password");
-  await page
-    .getByRole("button", { name: "ورود با ایمیل", exact: true })
-    .click();
+  await page.getByRole("button", { name: "ورود", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "جزئیات کالا" })
   ).toBeVisible();

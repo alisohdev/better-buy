@@ -5,7 +5,6 @@ import { QuerySession } from "../features/dashboard/QuerySession";
 import { authClient } from "./auth-client";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { AuthScreen } from "../features/auth/AuthScreen";
-import { DevSignIn } from "../features/auth/DevSignIn";
 import { useVisitAnalytics } from "../features/admin/useAnalytics";
 import { useEffect, useState } from "react";
 import { NotificationsPage } from "../features/alerts/NotificationsPage";
@@ -48,12 +47,7 @@ export default function Page() {
         </Card>
       </main>
     );
-  if (!session)
-    return process.env.NODE_ENV === "development" ? (
-      <DevSignIn />
-    ) : (
-      <AuthScreen />
-    );
+  if (!session) return <AuthScreen />;
   return (
     <QuerySession key={session.user.id}>
       {destination.page === "notifications" ? (

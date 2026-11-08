@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,7 +21,11 @@ type identityKey struct{}
 
 func New(db *sql.DB, cfg config.Config, queue *scans.Queue) http.Handler {
 	mux := http.NewServeMux()
-	authService := auth.New(db, cfg.BetterAuthSecret, cfg.BetterAuthURL, cfg.GoogleClientID, cfg.GoogleClientSecret)
+	authService := auth.New(db, cfg.BetterAuthSecret, cfg.BetterAuthURL)
+	sms, err := auth.SMSFromEnv(cfg.DevMode && (strings.HasPrefix(cfg.BetterAuthURL, "http://localhost:") || strings.HasPrefix(cfg.BetterAuthURL, "http://127.0.0.1:")))
+	if err == nil {
+		authService.SMS = sms
+	}
 	registerAuth(mux, authService, cfg.DevMode)
 	registerLocations(mux, db, cfg, authService)
 	registerScans(mux, db, cfg, authService, queue)
@@ -56,7 +61,7 @@ func requireIdentity(service *auth.Service, db *sql.DB, rateLimits bool, next ht
 			return
 		}
 		if identity == nil || identity.User.ID == "" {
-			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "UNAUTHENTICATED", "message": "برای ادامه با ایمیل یا گوگل وارد شوید."})
+			writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "UNAUTHENTICATED", "message": "برای ادامه وارد حساب خود شوید."})
 			return
 		}
 		if rateLimits {
@@ -104,6 +109,18 @@ func cors(origins []string, next http.Handler) http.Handler {
 		allowed[origin] = struct{}{}
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") && r.Method != "GET" && r.Method != "HEAD" && r.Method != "OPTIONS" {
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				if ref, err := url.Parse(r.Referer()); err == nil && ref.Host != "" {
+					origin = ref.Scheme + "://" + ref.Host
+				}
+			}
+			if _, ok := allowed[origin]; !ok {
+				writeJSON(w, 403, map[string]string{"error": "INVALID_ORIGIN"})
+				return
+			}
+		}
 		origin := r.Header.Get("Origin")
 		if origin != "" {
 			if _, ok := allowed[origin]; !ok {
