@@ -117,6 +117,7 @@ func (c *Collector) collectDigikalaFresh(ctx context.Context, job *scanJob) (sca
 		seenPages := map[string]struct{}{}
 		seenOffers := map[string]struct{}{}
 		var totalPages, totalItems int
+		movement := 0
 		for page := 1; ; page++ {
 			pageRequests++
 			if page > 100 || pageRequests > 200 {
@@ -137,8 +138,12 @@ func (c *Collector) collectDigikalaFresh(ctx context.Context, job *scanJob) (sca
 			}
 			if totalPages == 0 {
 				totalPages, totalItems = pager.TotalPages, pager.TotalItems
-			} else if totalPages != pager.TotalPages || totalItems != pager.TotalItems {
-				return scanResult{}, &Failure{Code: "DIGIKALA_PAGINATION_DRIFT", Message: "Fresh campaign totals changed during the scan.", Status: 502}
+			} else {
+				movement, err = digikalaTotalMovement(totalItems, pager.TotalItems, movement, pager.RowsOnPage)
+				if err != nil {
+					return scanResult{}, err
+				}
+				totalPages, totalItems = pager.TotalPages, pager.TotalItems
 			}
 			fingerprint := pageFingerprint(result.Data.Result)
 			if _, ok := seenPages[fingerprint]; ok {
@@ -155,7 +160,7 @@ func (c *Collector) collectDigikalaFresh(ctx context.Context, job *scanJob) (sca
 				}
 				if identity != "" {
 					if _, duplicate := seenOffers[identity]; duplicate {
-						return scanResult{}, &Failure{Code: "DIGIKALA_DUPLICATE_OFFER", Message: "Fresh campaign pages contain duplicate offer identities.", Status: 502}
+						continue
 					}
 					seenOffers[identity] = struct{}{}
 				}
@@ -210,7 +215,7 @@ func (c *Collector) collectDigikalaFresh(ctx context.Context, job *scanJob) (sca
 				break
 			}
 		}
-		if len(seenOffers) != totalItems {
+		if len(seenOffers) < totalItems-movement || len(seenOffers) > totalItems+movement {
 			return scanResult{}, &Failure{Code: "DIGIKALA_TOTAL_MISMATCH", Message: "Fresh campaign unique offer count did not match its reported total.", Status: 502}
 		}
 	}
@@ -574,6 +579,20 @@ func validateDigikalaPage(page int, pager digikalaPager, actualRows int) error {
 		return fmt.Errorf("invalid Fresh page metadata")
 	}
 	return nil
+}
+
+// Fresh is a live catalog, not a snapshot. Bound cumulative churn to one page;
+// larger movement still fails closed, as do missing pages and repeated bodies.
+func digikalaTotalMovement(previous, current, movement, pageSize int) (int, error) {
+	delta := current - previous
+	if delta < 0 {
+		delta = -delta
+	}
+	movement += delta
+	if movement > pageSize {
+		return movement, &Failure{Code: "DIGIKALA_PAGINATION_DRIFT", Message: "Fresh catalog changed too much during the scan; retry it.", Status: 502}
+	}
+	return movement, nil
 }
 
 func normalizeDigikalaOffer(raw json.RawMessage, feedID, addCartSource string, observed time.Time, categoryAllowed bool) (Deal, bool, error) {

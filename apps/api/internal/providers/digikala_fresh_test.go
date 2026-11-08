@@ -116,3 +116,15 @@ func TestDigikalaRedirectAllowlist(t *testing.T) {
 		}
 	}
 }
+
+func TestDigikalaLivePaginationTotals(t *testing.T) {
+	if _, err := digikalaTotalMovement(405, 406, 0, 20); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := digikalaTotalMovement(405, 500, 0, 20); err == nil {
+		t.Fatal("unbounded catalog movement accepted")
+	}
+	if _, err := digikalaTotalMovement(405, 406, 20, 20); err == nil {
+		t.Fatal("cumulative churn budget ignored")
+	}
+}

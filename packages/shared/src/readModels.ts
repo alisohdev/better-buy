@@ -17,11 +17,24 @@ export const scanContextSchema = z.object({
   }),
   requestedThreshold: z.number(),
   effectiveThreshold: z.number(),
-  policyVersion: z.literal("automatic-v1"),
+  policyVersion: z.enum(["automatic-v1", "grocery-consumables-v1"]),
   manifest: z.object({
     adapter: z.string(),
     contractVersion: count.positive(),
     feedKinds: z.array(z.string()),
+    digikalaFeeds: z
+      .array(z.object({ id: z.string(), kind: z.string() }))
+      .optional(),
+    digikala: z
+      .object({
+        surface: z.string(),
+        channel: z.string(),
+        shipmentType: z.string(),
+        shopId: z.string(),
+        coordinatesHash: z.string(),
+        categoryPolicy: z.string(),
+      })
+      .optional(),
     collectionIds: z.array(count).optional(),
     storeIds: z.array(count).optional(),
     storeCampaigns: z

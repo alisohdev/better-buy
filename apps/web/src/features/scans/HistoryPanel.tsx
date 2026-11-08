@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { digikalaSupermarketEnabled } from "./ScanControls";
 import type { ScanRecord } from "@better-buy/shared";
 import { faNumber, faDate, sourceLabel } from "../dashboard/format";
 export function HistoryPanel({
@@ -22,7 +23,7 @@ export function HistoryPanel({
       {scans.length ? (
         <div className="run-list">
           {scans.map((s) => (
-            <Card asChild>
+            <Card asChild key={s.id}>
               <article className="run-item" key={s.id}>
                 <div>
                   <h2>{s.locationName}</h2>
@@ -91,7 +92,7 @@ export function HistoryPanel({
                     نمایش نتیجه
                   </Button>
                 ) : (s.status === "failed" || s.status === "cancelled") &&
-                  s.source !== "digikalajet" ? (
+                  (s.source !== "digikalajet" || digikalaSupermarketEnabled) ? (
                   <Button
                     variant="outline"
                     disabled={blocked}

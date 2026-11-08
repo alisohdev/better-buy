@@ -94,9 +94,13 @@ export function ProviderMark({
 }) {
   if (source === "digikalajet")
     return (
-      <span className="provider-mark provider-mark-digikala" aria-hidden="true">
-        دی
-      </span>
+      <img
+        className="provider-mark"
+        src="/providers/digikala.svg"
+        alt=""
+        width={24}
+        height={24}
+      />
     );
   return (
     <img
