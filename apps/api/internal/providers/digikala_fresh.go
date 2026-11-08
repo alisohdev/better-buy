@@ -118,6 +118,7 @@ func (c *Collector) collectDigikalaFresh(ctx context.Context, job *scanJob) (sca
 		seenOffers := map[string]struct{}{}
 		var totalPages, totalItems int
 		movement := 0
+		receivedRows := 0
 		for page := 1; ; page++ {
 			pageRequests++
 			if page > 100 || pageRequests > 200 {
@@ -133,6 +134,7 @@ func (c *Collector) collectDigikalaFresh(ctx context.Context, job *scanJob) (sca
 				return scanResult{}, &Failure{Code: "DIGIKALA_BAD_PAGE", Message: "Fresh returned an invalid campaign page.", Status: 502}
 			}
 			pager := result.Data.Pager
+			receivedRows += len(result.Data.Result)
 			if err := validateDigikalaPage(page, pager, len(result.Data.Result)); err != nil {
 				return scanResult{}, &Failure{Code: "DIGIKALA_BAD_PAGINATION", Message: "Fresh campaign pagination metadata is inconsistent.", Status: 502}
 			}
@@ -215,8 +217,8 @@ func (c *Collector) collectDigikalaFresh(ctx context.Context, job *scanJob) (sca
 				break
 			}
 		}
-		if len(seenOffers) < totalItems-movement || len(seenOffers) > totalItems+movement {
-			return scanResult{}, &Failure{Code: "DIGIKALA_TOTAL_MISMATCH", Message: "Fresh campaign unique offer count did not match its reported total.", Status: 502}
+		if !digikalaRowsComplete(receivedRows, totalItems, movement) {
+			return scanResult{}, &Failure{Code: "DIGIKALA_TOTAL_MISMATCH", Message: "Fresh campaign row count did not match its reported total.", Status: 502}
 		}
 	}
 	job.Context.Coverage = "complete"
@@ -593,6 +595,10 @@ func digikalaTotalMovement(previous, current, movement, pageSize int) (int, erro
 		return movement, &Failure{Code: "DIGIKALA_PAGINATION_DRIFT", Message: "Fresh catalog changed too much during the scan; retry it.", Status: 502}
 	}
 	return movement, nil
+}
+
+func digikalaRowsComplete(rows, total, movement int) bool {
+	return rows >= total-movement && rows <= total+movement
 }
 
 func normalizeDigikalaOffer(raw json.RawMessage, feedID, addCartSource string, observed time.Time, categoryAllowed bool) (Deal, bool, error) {

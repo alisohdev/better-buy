@@ -118,6 +118,10 @@ func TestDigikalaRedirectAllowlist(t *testing.T) {
 }
 
 func TestDigikalaLivePaginationTotals(t *testing.T) {
+	// The captured feed has 405 rows but 404 distinct shop/product identities.
+	if !digikalaRowsComplete(405, 405, 0) || digikalaRowsComplete(404, 405, 0) {
+		t.Fatal("coverage must count received rows, independently of offer deduplication")
+	}
 	if _, err := digikalaTotalMovement(405, 406, 0, 20); err != nil {
 		t.Fatal(err)
 	}
