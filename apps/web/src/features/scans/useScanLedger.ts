@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useQueryClient,
+  type InfiniteData,
+} from "@tanstack/react-query";
 import {
   productPageSchema,
   type ProductPage,
@@ -92,90 +95,30 @@ export function useScanLedger({
     cartRevision,
     minDiscount,
   ];
-  const contextKey = JSON.stringify(baseKey);
-  const [paging, setPaging] = useState<{
-    context: string;
-    cursors: (string | null)[];
-  }>({ context: "", cursors: [null] });
-  const cursors = paging.context === contextKey ? paging.cursors : [null];
-  const cursor = cursors.at(-1) ?? null;
-  const ledger = useQuery<ProductPage>({
-    queryKey: [...baseKey, cursor],
-    placeholderData: (previous, previousQuery) => {
-      const key = previousQuery?.queryKey;
-      return key &&
-        [0, 1, 2, 3, 4, 5, 6, 9].every((index) => key[index] === baseKey[index])
-        ? previous
-        : undefined;
-    },
+  const ledger = useInfiniteQuery({
+    queryKey: baseKey,
+    initialPageParam: null as string | null,
     gcTime: 600_000,
     staleTime: 600_000,
     enabled: !busy && requestedScan?.status === "succeeded",
-    queryFn: async ({ signal }) => {
-      const page = await loadDealLedger(
+    queryFn: ({ signal, pageParam }) =>
+      loadDealLedger(
         requestedScan!.id,
         signal,
         query,
         sort,
-        cursor,
+        pageParam,
         minDiscount
-      );
-      // Retain the loaded window until the next read succeeds. A failed read
-      // must not discard any visible rows merely to make room for its page.
-      if (cursors.length > 20)
-        client.removeQueries({
-          queryKey: [...baseKey, cursors[0]],
-          exact: true,
-        });
-      return page;
-    },
+      ),
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
-  const pages = cursors
-    .map((value) =>
-      value === cursor
-        ? ledger.data
-        : client.getQueryData<ProductPage>([...baseKey, value])
-    )
-    .filter((page): page is ProductPage => !!page);
-  // Preserve the previous matching cached snapshot with its own label if a new
-  // successful scan has an independent result-read failure. No foreign context.
-  const cachedPages = (id: string) => {
-    const readKey = [
-      "ledger",
-      selected,
-      coordinateRevision,
-      source,
+  const cachedPages = (id: string) =>
+    client.getQueryData<InfiniteData<ProductPage>>([
+      ...baseKey.slice(0, 4),
       id,
-      query,
-      sort,
-    ];
-    const cached = client
-      .getQueriesData<ProductPage>({ queryKey: readKey })
-      .filter(
-        ([key, page]) =>
-          !!page &&
-          key.length === baseKey.length + 1 &&
-          key[baseKey.length - 1] === minDiscount
-      )
-      .sort(
-        ([a], [b]) =>
-          (client.getQueryState(b)?.dataUpdatedAt ?? 0) -
-          (client.getQueryState(a)?.dataUpdatedAt ?? 0)
-      );
-    const newestKey = cached[0]?.[0].slice(0, -1);
-    if (!newestKey) return [];
-    return cached
-      .filter(([key]) =>
-        newestKey.every((value, index) => key[index] === value)
-      )
-      .map(([, page]) => page)
-      .filter((page): page is ProductPage => !!page);
-  };
-  const currentPages = pages.length
-    ? pages
-    : requestedScan
-      ? cachedPages(requestedScan.id)
-      : [];
+      ...baseKey.slice(5),
+    ])?.pages ?? [];
+  const currentPages = ledger.data?.pages ?? [];
   const prior =
     !currentPages.length && !selectedRunId
       ? contextual.find(
@@ -185,30 +128,25 @@ export function useScanLedger({
             cachedPages(run.id).length > 0
         )
       : undefined;
-  const fallback = prior ? cachedPages(prior.id) : [];
-  const visiblePages = currentPages.length ? currentPages : fallback;
+  const pages = currentPages.length
+    ? currentPages
+    : prior
+      ? cachedPages(prior.id)
+      : [];
   const groups = new Map(
-    visiblePages
-      .flatMap((page) => page.items)
-      .map((group) => [group.key, group])
+    pages.flatMap((page) => page.items).map((group) => [group.key, group])
   );
-  const nextCursor = ledger.data?.nextCursor ?? null;
   return {
     scan: prior ?? requestedScan,
     requestedScan,
     dealGroups: [...groups.values()],
+    totalCount: pages[0]?.totalCount ?? null,
     results: ledger,
-    hasResults: visiblePages.length > 0,
-    nextCursor,
-    hasPreviousPages: cursors.length > 20,
+    hasResults: pages.length > 0,
+    nextCursor: ledger.hasNextPage ? (pages.at(-1)?.nextCursor ?? null) : null,
     loadMore: () => {
-      if (!nextCursor || ledger.isFetching || cursors.includes(nextCursor))
-        return;
-      setPaging({
-        context: contextKey,
-        cursors: [...cursors.slice(-20), nextCursor],
-      });
+      if (!busy && ledger.hasNextPage && !ledger.isFetching && !ledger.error)
+        void ledger.fetchNextPage();
     },
-    firstPage: () => setPaging({ context: contextKey, cursors: [null] }),
   };
 }

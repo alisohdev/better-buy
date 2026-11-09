@@ -1678,3 +1678,67 @@ test("enabled Digikala loads and displays saved deals on the initial live list",
     })
   ).toBeVisible();
 });
+
+test("infinite live feed loads every provider and shows the server total", async ({
+  page,
+}) => {
+  test.skip(
+    process.env.NEXT_PUBLIC_DIGIKALA_SUPERMARKET_ENABLED !== "true",
+    "Requires Digikala build"
+  );
+  const sources = ["snappmarket", "okala", "digikalajet"] as const;
+  await mock(page, {
+    scans: sources.map((source) => run({ id: source, source })),
+  });
+  await page.route("**/api/scans/*/products*", async (route) => {
+    const url = new URL(route.request().url());
+    const id = url.pathname.split("/")[3]!;
+    const second = url.searchParams.has("cursor");
+    if (url.searchParams.get("q") === "remote") {
+      await route.fulfill({
+        json: {
+          data: {
+            ...products([group(`${id} remote result`, id)]),
+            totalCount: 1,
+            nextCursor: null,
+          },
+        },
+      });
+      return;
+    }
+    await route.fulfill({
+      json: {
+        data: {
+          ...products([group(`${id} item ${second ? 2 : 1}`, id)]),
+          totalCount: 2,
+          nextCursor: second ? null : "second",
+        },
+      },
+    });
+  });
+  await page.goto("/");
+  await page.locator(".feed-load-sentinel").scrollIntoViewIfNeeded();
+  for (const source of sources)
+    await expect(
+      page.getByRole("heading", { name: `${source} item 2`, exact: true })
+    ).toBeVisible();
+  await expect(page.getByText("۶ محصول", { exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "تازه‌سازی نتیجه", exact: true })
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: /نمایش محصولات بیشتر/ })
+  ).toHaveCount(0);
+  await page
+    .getByRole("searchbox", { name: "جست‌وجوی کالا یا فروشگاه" })
+    .fill("remote");
+  for (const source of sources)
+    await expect(
+      page.getByRole("heading", {
+        name: `${source} remote result`,
+        exact: true,
+      })
+    ).toBeVisible();
+  await expect(page.getByText("۳ محصول", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /item 2/ })).toHaveCount(0);
+});

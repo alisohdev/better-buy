@@ -120,6 +120,7 @@ type ProductSummary struct {
 }
 
 type ProductPage struct {
+	TotalCount      int              `json:"totalCount"`
 	Items           []ProductSummary `json:"items"`
 	NextCursor      *string          `json:"nextCursor"`
 	ObservedAt      string           `json:"observedAt"`
@@ -258,7 +259,7 @@ func (s *Service) ProductPage(ctx context.Context, queue *scans.Queue, userID, s
 	if scan.FinishedAt != nil {
 		observedAt = *scan.FinishedAt
 	}
-	page := ProductPage{Items: make([]ProductSummary, 0, end-position), ObservedAt: observedAt, CoverageSummary: "legacy_unverified"}
+	page := ProductPage{TotalCount: len(groups), Items: make([]ProductSummary, 0, end-position), ObservedAt: observedAt, CoverageSummary: "legacy_unverified"}
 	baselineID, reason, _ := s.baseline(ctx, userID, *scan)
 	page.Baseline.ScanID = baselineID
 	page.Baseline.Reason = reason

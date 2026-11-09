@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,10 +91,35 @@ export function DealShelf({
         feed.ledger.results.isPending
     );
   const fetching = feeds.some((feed) => feed.ledger.results.isFetching);
+  const loadMoreSentinel = useRef<HTMLDivElement>(null);
+  const totalCount = feeds.reduce(
+    (sum, feed) => sum + (feed.ledger.totalCount ?? 0),
+    0
+  );
+  const countReady = feeds.every(
+    (feed) => !feed.ledger.scan || feed.ledger.totalCount !== null
+  );
+  useEffect(() => {
+    const target = loadMoreSentinel.current;
+    if (!target || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          for (const feed of feeds) feed.ledger.loadMore();
+        }
+      },
+      { rootMargin: "600px" }
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [feeds]);
   return (
     <section className="deal-section" aria-labelledby="offers-title">
       <header className="section-heading">
         <div>
+          {hasResults && countReady && (
+            <p aria-live="polite">{faNumber.format(totalCount)} محصول</p>
+          )}
           <h1 id="offers-title">{historical ? "نتیجه تاریخی" : "پیشنهادها"}</h1>
           <p>
             حداقل {faNumber.format(minDiscount)}٪ تخفیف ·{" "}
@@ -328,41 +354,13 @@ export function DealShelf({
                 </div>
               )
             )}
-            <div className="feed-pagination">
-              {feeds.map(({ source, ledger }) => (
-                <div key={source}>
-                  {ledger.nextCursor && (
-                    <Button
-                      variant="outline"
-                      disabled={ledger.results.isFetching}
-                      onClick={ledger.loadMore}
-                    >
-                      نمایش محصولات بیشتر · {sourceLabel(source)}
-                    </Button>
-                  )}
-                  {ledger.hasPreviousPages && (
-                    <Button variant="outline" onClick={ledger.firstPage}>
-                      بازگشت به صفحه نخست · {sourceLabel(source)}
-                    </Button>
-                  )}
-                </div>
-              ))}
-            </div>
-            <p className="observation-note">
-              قیمت و موجودی، مشاهده زمان اسکن است. پیش از خرید در فروشگاه بررسی
-              کنید.
-            </p>
-            <Button
-              variant="outline"
-              className="refresh-result"
-              disabled={fetching}
-              onClick={() => {
-                for (const feed of feeds)
-                  if (feed.ledger.scan) void feed.ledger.results.refetch();
-              }}
-            >
-              تازه‌سازی نتیجه
-            </Button>
+            <div
+              ref={loadMoreSentinel}
+              className="feed-load-sentinel"
+              aria-hidden="true"
+              style={{ height: 1 }}
+            />
+            {fetching && <p role="status">در حال دریافت محصولات…</p>}{" "}
           </>
         )
       )}
