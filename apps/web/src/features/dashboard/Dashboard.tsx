@@ -222,7 +222,11 @@ export function Dashboard() {
     ...ledgerOptions,
     source: "digikalajet",
     selectedRunId: selection.source === "digikalajet" ? selection.runId : null,
-    busy: data.busy || !historical || selection.source !== "digikalajet",
+    busy:
+      data.busy ||
+      (historical
+        ? selection.source !== "digikalajet"
+        : !digikalaSupermarketEnabled || !providers.includes("digikalajet")),
   });
   const allFeeds: DealFeed[] = [
     {
@@ -248,7 +252,7 @@ export function Dashboard() {
     historical
       ? feed.source === selection.source
       : (feed.source !== "digikalajet" || digikalaSupermarketEnabled) &&
-        providers.includes(feed.source === "okala" ? "okala" : "snappmarket")
+        providers.includes(feed.source)
   );
   const valid =
     !!selectedLocation &&
