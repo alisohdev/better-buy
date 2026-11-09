@@ -59,6 +59,7 @@ export function Dashboard() {
   const [providers, setProviders] = useState<DealSource[]>([
     "snappmarket",
     "okala",
+    ...(digikalaSupermarketEnabled ? ["digikalajet" as const] : []),
   ]);
   const [minDiscount, setMinDiscount] = useState(40);
   const [scanAttemptBaseIds, setScanAttemptBaseIds] =

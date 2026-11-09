@@ -1652,3 +1652,29 @@ test("map selection stays usable when the visual tile service fails", async ({
   await expect(dialog).toHaveCount(0);
   expect(state.locations[0]?.latitude).not.toBe(home.latitude);
 });
+
+test("enabled Digikala loads and displays saved deals on the initial live list", async ({
+  page,
+}) => {
+  test.skip(
+    process.env.NEXT_PUBLIC_DIGIKALA_SUPERMARKET_ENABLED !== "true",
+    "This scenario requires a build with Digikala enabled."
+  );
+  await mock(page, {
+    scans: [run({ source: "digikalajet" })],
+    groups: [group("Digikala regression product")],
+  });
+  const read = page.waitForRequest(
+    (request) =>
+      new URL(request.url()).pathname === "/api/scans/saved/products",
+    { timeout: 10000 }
+  );
+  await page.goto("/");
+  await read;
+  await expect(
+    page.getByRole("heading", {
+      name: "Digikala regression product",
+      exact: true,
+    })
+  ).toBeVisible();
+});
