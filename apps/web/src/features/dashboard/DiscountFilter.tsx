@@ -1,3 +1,4 @@
+import { DiscountSelect } from "./DiscountSelect";
 import { faNumber } from "./format";
 
 export function DiscountFilter({
@@ -18,7 +19,7 @@ export function DiscountFilter({
         role="group"
         aria-label="تخفیف‌های پیشنهادی"
       >
-        {[15, 30, 40, 50, 70].map((percent) => (
+        {[15, 20, 30, 40, 50, 60, 80].map((percent) => (
           <button
             key={percent}
             type="button"
@@ -29,20 +30,7 @@ export function DiscountFilter({
           </button>
         ))}
       </div>
-      <label className="discount-exact">
-        <span className="sr-only">حداقل تخفیف نتیجه‌ها</span>
-        <select
-          aria-label="حداقل تخفیف نتیجه‌ها"
-          value={value}
-          onChange={(event) => onChange(Number(event.target.value))}
-        >
-          {Array.from({ length: 66 }, (_, i) => i + 15).map((percent) => (
-            <option key={percent} value={percent}>
-              {faNumber.format(percent)}٪ و بیشتر
-            </option>
-          ))}
-        </select>
-      </label>
+      <DiscountSelect value={value} onChange={onChange} />
     </section>
   );
 }

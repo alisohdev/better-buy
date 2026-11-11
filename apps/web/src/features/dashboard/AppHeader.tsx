@@ -1,3 +1,4 @@
+import { AppearanceSwitch } from "./AppearanceSwitch";
 import { Button } from "@/components/ui/button";
 import { useRef, useState, type ReactNode } from "react";
 import { Dialog, DropdownMenu } from "radix-ui";
@@ -157,39 +158,23 @@ export function AppHeader({
             <AppIcon name="list" />
             راهنمای بهتر بخر
           </Button>
-          <div className="sidebar-appearance">
-            <span>ظاهر برنامه</span>
-            <div role="group" aria-label="ظاهر برنامه">
-              {[
-                { value: "light", label: "روشن" },
-                { value: "dark", label: "تیره" },
-                { value: "system", label: "سیستم" },
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  aria-pressed={theme === option.value}
-                  onClick={() => setTheme(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </div>
           {onAdmin && (
             <Button variant="ghost" onClick={onAdmin}>
               مدیریت و آمار
             </Button>
           )}
-          <Button
-            className="sidebar-signout"
-            variant="ghost"
-            disabled={signingOut}
-            onClick={signOut}
-          >
-            <AppIcon name="back" />
-            {signingOut ? "در حال خروج…" : "خروج از حساب"}
-          </Button>
+          <div className="sidebar-footer">
+            <AppearanceSwitch />
+            <Button
+              className="sidebar-signout"
+              variant="ghost"
+              disabled={signingOut}
+              onClick={signOut}
+            >
+              <AppIcon name="back" />
+              {signingOut ? "در حال خروج…" : "خروج از حساب"}
+            </Button>
+          </div>
         </div>
         <DropdownMenu.Root dir="rtl">
           <DropdownMenu.Trigger asChild>
@@ -338,28 +323,16 @@ export function AppHeader({
                   </Button>
                 )}
               </nav>
-              <fieldset className="mobile-menu-theme">
-                <legend>ظاهر برنامه</legend>
-                {[
-                  { value: "light", label: "روشن" },
-                  { value: "dark", label: "تیره" },
-                  { value: "system", label: "سیستم" },
-                ].map((option) => (
-                  <label key={option.value}>
-                    <input
-                      type="radio"
-                      name="mobile-theme"
-                      value={option.value}
-                      checked={theme === option.value}
-                      onChange={() => setTheme(option.value)}
-                    />
-                    {option.label}
-                  </label>
-                ))}
-              </fieldset>
-              <Button variant="outline" disabled={signingOut} onClick={signOut}>
-                {signingOut ? "در حال خروج امن…" : "خروج از حساب"}
-              </Button>
+              <div className="mobile-sidebar-footer">
+                <AppearanceSwitch />
+                <Button
+                  variant="outline"
+                  disabled={signingOut}
+                  onClick={signOut}
+                >
+                  {signingOut ? "در حال خروج امن…" : "خروج از حساب"}
+                </Button>
+              </div>
               {accountError && <p role="alert">{accountError}</p>}
             </Dialog.Content>
           </Dialog.Portal>

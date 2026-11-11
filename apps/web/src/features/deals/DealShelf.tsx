@@ -1,3 +1,4 @@
+import { DiscountSelect } from "../dashboard/DiscountSelect";
 import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,8 @@ import type { useDealFilters } from "./useDealFilters";
 import type { useScanLedger } from "../scans/useScanLedger";
 import type { useProviderCart } from "../carts/useProviderCart";
 import { useWishlist } from "../alerts/useAlerts";
+import { Dialog } from "radix-ui";
+import { AppIcon } from "../dashboard/AppIcon";
 import { ProviderMark } from "../dashboard/AppIcon";
 
 export type DealFeed = {
@@ -42,6 +45,7 @@ export function DealShelf({
   filters,
   feeds,
   minDiscount,
+  onMinDiscount,
   busy,
   historical,
   onOpenCart,
@@ -49,6 +53,7 @@ export function DealShelf({
   filters: ReturnType<typeof useDealFilters>;
   feeds: DealFeed[];
   minDiscount: number;
+  onMinDiscount: (value: number) => void;
   busy: boolean;
   historical: boolean;
   onOpenCart: (source: CartSource) => void;
@@ -115,55 +120,114 @@ export function DealShelf({
   }, [feeds]);
   return (
     <section className="deal-section" aria-labelledby="offers-title">
-      <header className="section-heading">
-        <div>
-          {hasResults && countReady && (
-            <p aria-live="polite">{faNumber.format(totalCount)} محصول</p>
-          )}
-          <h2 id="offers-title">
-            {historical ? "نتیجه تاریخی" : "تخفیف‌های مناسب شما"}
-          </h2>
-          <p>
-            مقایسه قیمت فروشگاه‌ها · از {faNumber.format(minDiscount)}٪ تخفیف
-          </p>
-        </div>
+      <h2 id="offers-title" className="sr-only">
+        {historical ? "نتیجه تاریخی" : "تخفیف‌های مناسب شما"}
+      </h2>
+      <div className="deal-summary">
+        <span role="status">
+          {historical && "نتیجه تاریخی · "}
+          {hasResults && countReady
+            ? `${faNumber.format(totalCount)} محصول`
+            : "پیشنهادها"}
+          {fetching && " · در حال تازه‌سازی"}
+        </span>
         {hasResults && (
-          <details className="scan-details">
-            <summary>جزئیات نتیجه</summary>
-            {feeds.map(
-              ({ source, ledger }) =>
-                ledger.scan && (
-                  <div key={source}>
-                    <strong>
-                      {sourceLabel(source)} · {ledger.scan.locationName}
-                    </strong>
-                    <p>
-                      <time
-                        dateTime={
-                          ledger.scan.finishedAt ?? ledger.scan.createdAt
-                        }
-                      >
-                        {faDate.format(
-                          new Date(
-                            ledger.scan.finishedAt ?? ledger.scan.createdAt
-                          )
-                        )}
-                      </time>
-                    </p>
-                    <p>
-                      {faNumber.format(ledger.scan.vendorCount)} فروشگاه
-                      بررسی‌شده · {faNumber.format(ledger.scan.productCount)}{" "}
-                      رکورد کالا
-                    </p>
-                    {ledger.scan.context == null && (
-                      <p>موقعیت و پوشش تاریخی این نتیجه تأیید نشده است.</p>
-                    )}
+          <Dialog.Root>
+            <Dialog.Trigger asChild>
+              <button type="button" className="result-details-trigger">
+                <AppIcon name="list" />
+                جزئیات نتیجه
+              </button>
+            </Dialog.Trigger>
+            <Dialog.Portal>
+              <Dialog.Overlay className="sheet-backdrop" />
+              <Dialog.Content
+                className="result-details-modal"
+                dir="rtl"
+                aria-describedby="result-details-description"
+              >
+                <header>
+                  <div>
+                    <Dialog.Title>جزئیات نتیجه</Dialog.Title>
+                    <Dialog.Description id="result-details-description">
+                      زمان و پوشش آخرین نتیجه هر فروشگاه
+                    </Dialog.Description>
                   </div>
-                )
-            )}
-          </details>
+                  <Dialog.Close asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="بستن جزئیات"
+                    >
+                      <AppIcon name="close" />
+                    </Button>
+                  </Dialog.Close>
+                </header>
+                <div className="result-details-providers">
+                  {feeds.map(
+                    ({ source, ledger }) =>
+                      ledger.scan && (
+                        <article key={source}>
+                          <div className="result-provider-heading">
+                            <ProviderMark source={source} />
+                            <strong>{sourceLabel(source)}</strong>
+                          </div>
+                          <p className="result-detail-location">
+                            <AppIcon name="location" />
+                            <bdi>{ledger.scan.locationName}</bdi>
+                          </p>
+                          <p className="result-detail-time">
+                            <AppIcon name="history" />
+                            <time
+                              dateTime={
+                                ledger.scan.finishedAt ?? ledger.scan.createdAt
+                              }
+                            >
+                              {faDate.format(
+                                new Date(
+                                  ledger.scan.finishedAt ??
+                                    ledger.scan.createdAt
+                                )
+                              )}
+                            </time>
+                          </p>
+                          <dl>
+                            <div>
+                              <dt>
+                                <AppIcon name="home" />
+                                فروشگاه بررسی‌شده
+                              </dt>
+                              <dd>
+                                {faNumber.format(ledger.scan.vendorCount)}
+                              </dd>
+                            </div>
+                            <div>
+                              <dt>
+                                <AppIcon name="basket" />
+                                رکورد کالا
+                              </dt>
+                              <dd>
+                                {faNumber.format(ledger.scan.productCount)}
+                              </dd>
+                            </div>
+                          </dl>
+                          {ledger.scan.context == null && (
+                            <p className="result-detail-warning">
+                              موقعیت و پوشش تاریخی این نتیجه تأیید نشده است.
+                            </p>
+                          )}
+                        </article>
+                      )
+                  )}
+                </div>
+                <p className="result-details-footnote">
+                  قیمت و موجودی مربوط به زمان اسکن است.
+                </p>
+              </Dialog.Content>
+            </Dialog.Portal>
+          </Dialog.Root>
         )}
-      </header>
+      </div>
       {feeds.map(({ source, ledger }) => (
         <div key={source} className="feed-read-state">
           {ledger.results.error && (
@@ -199,9 +263,9 @@ export function DealShelf({
         </div>
       ))}
       {hasScan && (
-        <div className="results-toolbar">
+        <div className="results-toolbar compact-results-toolbar">
           <Label className="search">
-            جست‌وجو
+            <span className="sr-only">جست‌وجو</span>
             <Input
               type="search"
               aria-label="جست‌وجوی کالا یا فروشگاه"
@@ -211,7 +275,7 @@ export function DealShelf({
             />
           </Label>
           <Label className="sort-control">
-            مرتب‌سازی
+            <span className="sr-only">مرتب‌سازی</span>
             <Select value={sort} onValueChange={setSort}>
               <SelectTrigger aria-label="مرتب‌سازی">
                 <SelectValue />
@@ -223,17 +287,15 @@ export function DealShelf({
               </SelectContent>
             </Select>
           </Label>
+          <div className="discount-control">
+            <DiscountSelect value={minDiscount} onChange={onMinDiscount} />
+          </div>
           {query && (
             <Button variant="outline" onClick={reset}>
               پاک‌کردن جست‌وجو
             </Button>
           )}
         </div>
-      )}
-      {sort === "wishlist" && hasScan && (
-        <p className="personalized-note">
-          اول علاقه‌مندی‌ها، سپس تعداد در سبد و درصد تخفیف
-        </p>
       )}
       {wishlist.mutation.error && (
         <p className="form-error" role="alert">
@@ -263,10 +325,6 @@ export function DealShelf({
       ) : (
         hasResults && (
           <>
-            <p className="result-count" role="status">
-              {faNumber.format(visible.length)} محصول نمایش‌داده‌شده
-              {fetching && " · در حال تازه‌سازی"}
-            </p>
             {visible.length ? (
               <div className="deal-list">
                 {visible.map(({ group, feed, scan }) => {

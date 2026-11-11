@@ -631,3 +631,510 @@
 .scan-history-recovery .read-notice {
   margin: 0;
 }
+
+/* Keep the shopping filters together and let products lead the page. */
+.app-shell .deal-section .deal-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  margin-bottom: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.app-shell .deal-summary .scan-details {
+  margin: 0;
+  font-size: 12px;
+}
+.app-shell .deal-summary .scan-details summary {
+  min-height: 24px;
+}
+.app-shell .deal-section .compact-results-toolbar {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) 180px 170px;
+  align-items: center;
+  gap: 8px;
+  padding: 0 0 12px;
+  margin: 0;
+}
+.app-shell .compact-results-toolbar > label {
+  display: block;
+  min-width: 0;
+  margin: 0;
+}
+.app-shell .compact-results-toolbar input,
+.app-shell .compact-results-toolbar button[role="combobox"],
+.app-shell .compact-results-toolbar select {
+  width: 100%;
+  height: 40px;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--foreground);
+  padding-inline: 12px;
+  font: inherit;
+  font-size: 13px;
+}
+.app-shell .compact-results-toolbar select:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.app-shell .compact-results-toolbar > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.app-shell .feed-read-state:empty {
+  display: none;
+}
+@media (max-width: 768px) {
+  .app-shell .deal-section .compact-results-toolbar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .app-shell .compact-results-toolbar .search {
+    grid-column: 1 / -1;
+  }
+  .app-shell .shopping-page-heading {
+    margin-bottom: 16px;
+  }
+}
+
+.result-details-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  background: transparent;
+  border: 0;
+  color: var(--muted-foreground);
+  font: inherit;
+  cursor: pointer;
+}
+.result-details-trigger svg {
+  width: 16px;
+  height: 16px;
+}
+.result-details-trigger:hover {
+  color: var(--foreground);
+}
+.result-details-trigger:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+.result-details-modal {
+  position: fixed;
+  z-index: 70;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(480px, calc(100vw - 32px));
+  max-height: calc(100dvh - 48px);
+  overflow: auto;
+  background: var(--background);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 24px;
+  box-shadow: 0 24px 80px #0003;
+  animation: details-enter 180ms ease-out;
+}
+.result-details-modal > header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.result-details-modal h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+.result-details-modal header p,
+.result-details-footnote {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.result-details-providers {
+  display: grid;
+  gap: 12px;
+}
+.result-details-providers article {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  background: var(--card);
+}
+.result-provider-heading,
+.result-detail-location,
+.result-detail-time {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.result-provider-heading {
+  margin-bottom: 12px;
+}
+.result-detail-location,
+.result-detail-time {
+  margin: 6px 0;
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.result-details-modal svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+.result-details-modal dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.result-details-modal dt {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.result-details-modal dd {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.result-detail-warning,
+.result-details-footnote {
+  margin: 14px 0 0;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.appearance-switch {
+  padding: 12px 0;
+}
+.appearance-switch > span {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  margin-bottom: 10px;
+}
+.appearance-switch > div {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--background);
+}
+.appearance-switch button {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 58px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  transition:
+    background-color 160ms,
+    color 160ms;
+}
+.appearance-switch button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 1px 4px #0002;
+}
+.appearance-switch button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.appearance-switch svg {
+  width: 22px;
+  height: 22px;
+  transition: transform 240ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.appearance-switch button[aria-pressed="true"] svg {
+  animation: theme-pop 320ms ease-out;
+}
+.appearance-switch button:hover svg {
+  transform: translateY(-2px) rotate(-8deg);
+}
+.appearance-switch .sun-rays {
+  transform-origin: center;
+  transition: transform 400ms ease-out;
+}
+.appearance-switch button:hover .sun-rays {
+  transform: rotate(45deg);
+}
+.appearance-switch button:hover .moon-star {
+  animation: theme-twinkle 600ms ease-in-out;
+}
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 16px;
+}
+.mobile-sidebar-footer {
+  margin-top: auto;
+  padding-top: 16px;
+}
+.mobile-sidebar-footer > button {
+  width: 100%;
+  margin-top: 8px;
+}
+@media (min-width: 769px) {
+  .app-shell > .app-header .sidebar-utilities {
+    flex: 1;
+    min-height: min-content;
+  }
+  .sidebar-footer .sidebar-signout {
+    display: flex;
+    width: 100%;
+    justify-content: flex-start;
+    gap: 10px;
+    margin-top: 10px;
+    border-top: 1px solid var(--border);
+    border-radius: 0;
+    padding-top: 16px;
+    color: var(--muted-foreground);
+  }
+}
+@keyframes theme-pop {
+  0% {
+    transform: scale(0.8) rotate(-12deg);
+  }
+  65% {
+    transform: scale(1.12) rotate(4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0);
+  }
+}
+@keyframes theme-twinkle {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes details-enter {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -48%) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .appearance-switch *,
+  .result-details-modal {
+    animation: none !important;
+    transition: none !important;
+  }
+  .appearance-switch button:hover svg {
+    transform: none;
+  }
+}
+@media (min-width: 769px) {
+  .app-shell > .app-header {
+    gap: 12px;
+    padding-block: 20px 16px;
+  }
+  .app-shell > .app-header .brand {
+    margin-bottom: 8px;
+  }
+  .app-shell > .app-header .desktop-primary-nav {
+    gap: 4px;
+  }
+  .app-shell > .app-header .desktop-primary-nav button,
+  .app-shell > .app-header .sidebar-utilities > button {
+    min-height: 42px;
+    padding-block: 8px;
+  }
+  .app-shell > .app-header .header-actions {
+    padding-bottom: 12px;
+  }
+}
+.discount-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--foreground);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.discount-select-trigger:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+.discount-select-menu {
+  z-index: 90;
+  width: 210px;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px;
+  background: var(--card);
+  color: var(--foreground);
+  box-shadow: 0 12px 32px #0002;
+}
+.discount-custom {
+  display: grid;
+  gap: 8px;
+  padding: 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.discount-custom > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.discount-custom input {
+  width: 100%;
+  min-width: 0;
+  height: 38px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--background);
+  color: var(--foreground);
+  font: inherit;
+}
+.discount-custom input:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.discount-select-presets {
+  display: grid;
+}
+.discount-select-presets button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.discount-select-presets button:hover,
+.discount-select-presets button:focus-visible {
+  background: var(--muted);
+  outline: none;
+}
+.discount-select-presets button[aria-pressed="true"] {
+  background: #c3cdff;
+  color: #20243a;
+  font-weight: 700;
+}
+.discount-preset-check {
+  width: 16px;
+}
+
+.discount-select-menu {
+  width: 224px;
+  isolation: isolate;
+  box-shadow: 0 14px 40px rgb(0 0 0 / 0.28);
+}
+.discount-custom {
+  padding: 6px 4px 12px;
+  gap: 10px;
+}
+.discount-custom > label {
+  font-size: 11px;
+  color: var(--muted-foreground);
+}
+.discount-custom .discount-stepper {
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+  padding: 3px;
+}
+.discount-stepper button {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 5px;
+  background: var(--card);
+  color: var(--foreground);
+  cursor: pointer;
+}
+.discount-stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.discount-stepper button:hover:not(:disabled) {
+  background: var(--muted);
+}
+.discount-stepper button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+.discount-stepper svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  fill: none;
+  stroke-linecap: round;
+}
+.discount-custom .discount-stepper input {
+  appearance: textfield;
+  width: 100%;
+  height: 34px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 4px;
+  text-align: center;
+  background: transparent;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+}
+.discount-stepper input::-webkit-inner-spin-button,
+.discount-stepper input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.discount-stepper > span {
+  padding-right: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.discount-select-presets {
+  gap: 2px;
+}
+.discount-select-presets button {
+  min-height: 34px;
+  padding: 6px 12px;
+}

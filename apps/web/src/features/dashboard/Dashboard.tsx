@@ -7,7 +7,6 @@ import {
   type CartSource,
   type ScanRecord,
 } from "@better-buy/shared";
-import { DiscountFilter } from "./DiscountFilter";
 import "./shopping-workspace.css";
 import { AppHeader } from "./AppHeader";
 import { AppIcon, ProviderMark } from "./AppIcon";
@@ -731,11 +730,11 @@ export function Dashboard() {
                     اسکن تخفیف‌ها
                   </Button>
                 </header>
-                <DiscountFilter value={minDiscount} onChange={setMinDiscount} />
                 <DealShelf
                   filters={filters}
                   feeds={feeds}
                   minDiscount={minDiscount}
+                  onMinDiscount={setMinDiscount}
                   busy={data.busy}
                   historical={historical}
                   onOpenCart={openCart}

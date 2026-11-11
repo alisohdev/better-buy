@@ -1155,9 +1155,8 @@ test("saved feed supports search, sorting, inline discount filtering and accessi
     .click();
   await expect(page.locator(".deal-row")).toHaveCount(3);
   await chooseSelect(page, "مرتب‌سازی", "کمترین قیمت");
-  await page
-    .getByRole("combobox", { name: "حداقل تخفیف نتیجه‌ها" })
-    .selectOption("50");
+  await page.getByRole("button", { name: "حداقل تخفیف نتیجه‌ها" }).click();
+  await page.getByRole("button", { name: "۵۰٪", exact: true }).click();
   const detailTrigger = page.getByRole("button", {
     name: `جزئیات ${representative[0]!.title}`,
     exact: true,
@@ -1745,7 +1744,7 @@ test("infinite live feed loads every provider and shows the server total", async
   await expect(page.getByRole("heading", { name: /item 2/ })).toHaveCount(0);
 });
 
-test("shopping workspace has right sidebar and compact discount presets", async ({
+test("shopping workspace has right sidebar and compact result toolbar", async ({
   page,
 }, info) => {
   await mock(page, { scans: [run()], groups: representative });
@@ -1754,14 +1753,69 @@ test("shopping workspace has right sidebar and compact discount presets", async 
     page.getByRole("heading", { name: "پیشنهادهای امروز", exact: true })
   ).toBeVisible();
   await expect(page.locator('input[type="range"]')).toHaveCount(0);
-  const filter = page.locator(".compact-discount-filter");
-  await filter.getByRole("button", { name: "۵۰٪+", exact: true }).click();
+  await page.getByRole("button", { name: "جزئیات نتیجه", exact: true }).click();
+  const details = page.getByRole("dialog", {
+    name: "جزئیات نتیجه",
+    exact: true,
+  });
+  await expect(details).toBeVisible();
   await expect(
-    filter.getByRole("button", { name: "۵۰٪+", exact: true })
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(filter.getByRole("combobox")).toHaveValue("50");
-  await filter.getByRole("combobox").selectOption("35");
-  await expect(filter.getByRole("combobox")).toHaveValue("35");
+    details.getByText("فروشگاه بررسی‌شده", { exact: true })
+  ).toBeVisible();
+  await captureState(page, "result-details-modal", false);
+  await page.keyboard.press("Escape");
+  await expect(details).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "جزئیات نتیجه", exact: true })
+  ).toBeFocused();
+  const filter = page.locator(".compact-results-toolbar");
+  const discount = filter.getByRole("button", { name: "حداقل تخفیف نتیجه‌ها" });
+  await discount.click();
+  const presets = page.getByRole("group", { name: "تخفیف‌های پیشنهادی" });
+  await expect(presets.getByRole("button")).toHaveCount(7);
+  await presets.getByRole("button", { name: "۵۰٪", exact: true }).click();
+  await expect(discount).toContainText("۵۰٪");
+  await discount.click();
+  const custom = page.getByRole("spinbutton", { name: "درصد تخفیف دلخواه" });
+  await expect(page.locator(".discount-select-menu")).not.toHaveCSS(
+    "background-color",
+    "rgba(0, 0, 0, 0)"
+  );
+  await page
+    .getByRole("button", { name: "افزایش درصد تخفیف", exact: true })
+    .click();
+  await expect(custom).toHaveValue("51");
+  await page
+    .getByRole("button", { name: "کاهش درصد تخفیف", exact: true })
+    .click();
+  await expect(custom).toHaveValue("50");
+  await captureState(page, "discount-picker-surface", false);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(page.locator(".discount-select-menu")).toHaveCSS(
+    "background-color",
+    "rgb(32, 37, 45)"
+  );
+  await captureState(page, "discount-picker-dark", false);
+  await page.emulateMedia({ colorScheme: "light" });
+  await custom.fill("35");
+  await expect(discount).toContainText("۳۵٪");
+  await custom.press("ArrowUp");
+  await expect(custom).toHaveValue("36");
+  await expect(discount).toContainText("۳۶٪");
+  await custom.fill("90");
+  await custom.press("Tab");
+  await expect(custom).toHaveValue("80");
+  await page.keyboard.press("Escape");
+  await discount.click();
+  await custom.fill("35");
+  await page.keyboard.press("Escape");
+  await expect(page.locator(".personalized-note, .result-count")).toHaveCount(
+    0
+  );
+  const toolbar = await filter.boundingBox();
+  expect(toolbar?.height).toBeLessThan(
+    info.project.name === "desktop" ? 60 : 110
+  );
   if (info.project.name === "desktop") {
     const header = await page.locator(".app-header").boundingBox();
     const content = await page.locator(".workspace").boundingBox();
@@ -1793,6 +1847,17 @@ test("shopping workspace has right sidebar and compact discount presets", async 
     expect(await active.evaluate((el) => getComputedStyle(el).boxShadow)).toBe(
       "none"
     );
+    const appearance = page.locator(".sidebar-footer .appearance-switch");
+    await appearance.getByRole("button", { name: "تیره", exact: true }).click();
+    await expect(
+      appearance.getByRole("button", { name: "تیره", exact: true })
+    ).toHaveAttribute("aria-pressed", "true");
+    const footer = await page.locator(".sidebar-footer").boundingBox();
+    expect(footer).not.toBeNull();
+    if (footer) {
+      expect(footer.y + footer.height).toBeGreaterThan(650);
+      expect(footer.y + footer.height).toBeLessThanOrEqual(720);
+    }
     await page.locator(".header-actions .cart-trigger").click();
     await expect(
       page.locator('.desktop-primary-nav button[data-active="true"]')
