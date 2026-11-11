@@ -59,3 +59,5 @@ State-changing API requests require an allowlisted Origin or Referer. No wildcar
 6. Register, create a location and scan, logout/login, and confirm records remain owned by that user. Reset the password in another browser and verify the old session stops working.
 
 Automated browser tests simulate WebOTP, not actual modem/SMS delivery. Carrier delivery, template modification, Android prompts and iOS suggestions require these real-device tests.
+
+Login UX: an unknown phone returns a dedicated not-registered message and the UI offers registration with the entered phone retained. This intentionally reveals account existence at password login; phone and IP rate limits still apply. Recovery start responses remain indistinguishable.

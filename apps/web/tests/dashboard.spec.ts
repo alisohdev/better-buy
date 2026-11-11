@@ -1155,7 +1155,9 @@ test("saved feed supports search, sorting, inline discount filtering and accessi
     .click();
   await expect(page.locator(".deal-row")).toHaveCount(3);
   await chooseSelect(page, "مرتب‌سازی", "کمترین قیمت");
-  await page.getByRole("slider", { name: /حداقل تخفیف/ }).fill("50");
+  await page
+    .getByRole("combobox", { name: "حداقل تخفیف نتیجه‌ها" })
+    .selectOption("50");
   const detailTrigger = page.getByRole("button", {
     name: `جزئیات ${representative[0]!.title}`,
     exact: true,
@@ -1741,4 +1743,169 @@ test("infinite live feed loads every provider and shows the server total", async
     ).toBeVisible();
   await expect(page.getByText("۳ محصول", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: /item 2/ })).toHaveCount(0);
+});
+
+test("shopping workspace has right sidebar and compact discount presets", async ({
+  page,
+}, info) => {
+  await mock(page, { scans: [run()], groups: representative });
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "پیشنهادهای امروز", exact: true })
+  ).toBeVisible();
+  await expect(page.locator('input[type="range"]')).toHaveCount(0);
+  const filter = page.locator(".compact-discount-filter");
+  await filter.getByRole("button", { name: "۵۰٪+", exact: true }).click();
+  await expect(
+    filter.getByRole("button", { name: "۵۰٪+", exact: true })
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(filter.getByRole("combobox")).toHaveValue("50");
+  await filter.getByRole("combobox").selectOption("35");
+  await expect(filter.getByRole("combobox")).toHaveValue("35");
+  if (info.project.name === "desktop") {
+    const header = await page.locator(".app-header").boundingBox();
+    const content = await page.locator(".workspace").boundingBox();
+    expect(header).not.toBeNull();
+    expect(content).not.toBeNull();
+    if (header && content) {
+      expect(header.x).toBeGreaterThan(content.x);
+      expect(header.width).toBeLessThan(250);
+      expect(content.x + content.width).toBeLessThanOrEqual(header.x + 1);
+    }
+    await expect(
+      page
+        .locator(".desktop-primary-nav")
+        .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
+    ).toBeVisible();
+  } else {
+    await page
+      .getByRole("button", { name: "منوی برنامه", exact: true })
+      .click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("button", { name: "بستن منو", exact: true }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
+  if (info.project.name === "desktop") {
+    const active = page.locator(
+      '.desktop-primary-nav button[data-active="true"]'
+    );
+    await expect(active).toHaveCount(1);
+    expect(await active.evaluate((el) => getComputedStyle(el).boxShadow)).toBe(
+      "none"
+    );
+    await page.locator(".header-actions .cart-trigger").click();
+    await expect(
+      page.locator('.desktop-primary-nav button[data-active="true"]')
+    ).toHaveCount(0);
+    await page.getByRole("button", { name: "بستن سبد", exact: true }).click();
+    await expect(active).toHaveCount(1);
+    const basket = await page
+      .locator(".header-actions .cart-trigger")
+      .boundingBox();
+    const utilities = await page.locator(".sidebar-utilities").boundingBox();
+    if (basket && utilities)
+      expect(utilities.y - (basket.y + basket.height)).toBeLessThan(70);
+  }
+  await captureState(page, "shopping-sidebar-refresh", false);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await captureState(page, "shopping-sidebar-dark", false);
+  const overflowing = await page.evaluate(
+    () => document.documentElement.scrollWidth > window.innerWidth
+  );
+  expect(overflowing).toBe(false);
+  await page
+    .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
+    .last()
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "اسکن تخفیف‌ها", exact: true })
+  ).toBeVisible();
+  await expect(page.locator('input[type="range"]')).toHaveCount(0);
+});
+
+test("temporary history failure recovers automatically and unblocks scanning", async ({
+  page,
+}) => {
+  await mock(page);
+  let attempts = 0;
+  await page.route("**/api/scans", (r) => {
+    attempts++;
+    return attempts <= 3
+      ? r.fulfill({ status: 503, json: { error: "RESULT_READ_ERROR" } })
+      : r.fulfill({ json: { data: [] } });
+  });
+  await page.goto("/");
+  const scan = page
+    .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
+    .last();
+  await scan.click();
+  await expect(
+    page.getByRole("button", { name: "شروع اسکن", exact: true })
+  ).toBeDisabled();
+  await expect(
+    page.getByText("تاریخچه اسکن دریافت نشد", { exact: true })
+  ).toBeVisible({ timeout: 10000 });
+  await expect(
+    page.getByText("دریافت اطلاعات ناموفق بود؛ دوباره تلاش کنید.", {
+      exact: false,
+    })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "شروع اسکن", exact: true })
+  ).toBeEnabled({ timeout: 25000 });
+  await expect(
+    page.getByText("تاریخچه اسکن دریافت نشد", { exact: true })
+  ).toHaveCount(0);
+  expect(attempts).toBeGreaterThanOrEqual(4);
+});
+
+test("Fresh DigiKala history does not block scan setup", async ({ page }) => {
+  const fresh = run({ source: "digikalajet", status: "cancelled" });
+  const context = {
+    location: {
+      name: home.name,
+      latitude: home.latitude,
+      longitude: home.longitude,
+      revision: 1,
+    },
+    requestedThreshold: 15,
+    effectiveThreshold: 15,
+    policyVersion: "grocery-consumables-v1",
+    manifest: {
+      adapter: "digikala-fresh-supermarket",
+      contractVersion: 1,
+      feedKinds: ["fresh_campaign_carousels"],
+      digikalaFeeds: [{ id: "heavy_discount", kind: "carousel" }],
+      digikala: {
+        surface: "fresh_supermarket",
+        channel: "sd",
+        shipmentType: "scheduled",
+        shopId: "shop",
+        coordinatesHash: "hash",
+        categoryPolicy: "grocery-consumables-v1",
+      },
+    },
+    scopeHash: "hash",
+    eligibilityVersion: 1,
+    offerKeyVersion: 1,
+    coverage: "incomplete",
+  };
+  await mock(page);
+  await page.route("**/api/scans", (r) =>
+    r.fulfill({ json: { data: [{ ...fresh, context }] } })
+  );
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "پیشنهادهای امروز", exact: true })
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
+    .last()
+    .click();
+  await expect(
+    page.getByRole("button", { name: "شروع اسکن", exact: true })
+  ).toBeEnabled();
+  await expect(
+    page.getByText("تاریخچه اسکن دریافت نشد", { exact: true })
+  ).toHaveCount(0);
 });

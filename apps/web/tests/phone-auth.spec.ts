@@ -100,3 +100,27 @@ test("WebOTP rejection falls back to manual entry", async ({ page }) => {
   await page.getByLabel("کد تأیید شش رقمی").fill("123456");
   await expect(page.getByLabel("نام شما")).toBeVisible();
 });
+
+test("unknown phone offers registration and keeps the phone", async ({
+  page,
+}) => {
+  await mock(page);
+  await page.route("**/api/auth/sign-in/phone", (r) =>
+    r.fulfill({
+      status: 404,
+      json: { error: { message: "این شماره همراه هنوز ثبت‌نام نکرده است." } },
+    })
+  );
+  await page.goto("/");
+  await page.getByLabel("شماره همراه").fill("09123456789");
+  await page.getByLabel("رمز عبور", { exact: true }).fill("a long passphrase");
+  await page.getByRole("button", { name: "ورود", exact: true }).click();
+  await expect(page.locator(".phone-auth-error")).toContainText(
+    "ثبت‌نام نکرده"
+  );
+  await page.getByRole("button", { name: "ثبت‌نام با همین شماره" }).click();
+  await expect(page.getByLabel("شماره همراه")).toHaveValue("09123456789");
+  await expect(
+    page.getByRole("button", { name: "دریافت کد تأیید" })
+  ).toBeVisible();
+});

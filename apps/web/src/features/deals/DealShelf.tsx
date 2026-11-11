@@ -120,10 +120,11 @@ export function DealShelf({
           {hasResults && countReady && (
             <p aria-live="polite">{faNumber.format(totalCount)} محصول</p>
           )}
-          <h1 id="offers-title">{historical ? "نتیجه تاریخی" : "پیشنهادها"}</h1>
+          <h2 id="offers-title">
+            {historical ? "نتیجه تاریخی" : "تخفیف‌های مناسب شما"}
+          </h2>
           <p>
-            حداقل {faNumber.format(minDiscount)}٪ تخفیف ·{" "}
-            {feeds.map((feed) => sourceLabel(feed.source)).join(" و ")}
+            مقایسه قیمت فروشگاه‌ها · از {faNumber.format(minDiscount)}٪ تخفیف
           </p>
         </div>
         {hasResults && (
@@ -193,12 +194,6 @@ export function DealShelf({
             <p className="muted" role="status">
               {sourceLabel(source)} · دریافت نتیجه تازه انجام نشد؛ نتیجه موفق
               قبلی با زمان خودش نمایش داده می‌شود.
-            </p>
-          )}
-          {!historical && !ledger.scan && !busy && hasScan && (
-            <p className="provider-empty-note">
-              <ProviderMark source={source} />
-              هنوز نتیجه‌ای برای {sourceLabel(source)} در این موقعیت ندارید.
             </p>
           )}
         </div>

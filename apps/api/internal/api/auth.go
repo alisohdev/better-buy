@@ -73,6 +73,10 @@ func registerAuth(mux *http.ServeMux, service *auth.Service, devMode bool) {
 			if e != nil {
 				status := 400
 				message := auth.ErrInvalidCredentials.Error()
+				if errors.Is(e, auth.ErrNotRegistered) {
+					status = 404
+					message = e.Error()
+				}
 				if errors.Is(e, auth.ErrLimited) {
 					status = 429
 					message = e.Error()

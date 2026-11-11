@@ -219,7 +219,7 @@ export function OtpInput({
                         delay: Math.abs(center - i) * 0.03,
                       },
                     }}
-                    className="relative flex h-[58px] w-[40px] items-center justify-center rounded-2xl transition-colors duration-300"
+                    className="relative flex h-[58px] w-[40px] items-center justify-center rounded-lg transition-colors duration-300"
                     style={{
                       backgroundColor: isSuccess ? accent : "var(--otp-box)",
                       transitionDelay: isSuccess ? `${i * 50}ms` : "0ms",
@@ -239,7 +239,7 @@ export function OtpInput({
                           stiffness: 520,
                           damping: 38,
                         }}
-                        className="absolute inset-0 rounded-2xl"
+                        className="absolute inset-0 rounded-lg"
                         style={{
                           boxShadow: `inset 0 0 0 2px ${accent}, 0 0 0 5px ${accent}24`,
                         }}

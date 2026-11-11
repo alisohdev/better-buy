@@ -20,6 +20,7 @@ export function AuthScreen() {
   const [visible, setVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [notRegistered, setNotRegistered] = useState(false);
   const [now, setNow] = useState(Date.now());
   const generation = useRef(0);
   const gate = useRef(false);
@@ -34,6 +35,7 @@ export function AuthScreen() {
     webOTP.cancel();
     setFlow(next);
     setError("");
+    setNotRegistered(false);
     setPassword("");
     setConfirm("");
   }
@@ -79,7 +81,13 @@ export function AuthScreen() {
           phone: normalizeDigits(phone),
           password,
         });
-        if (result.error) setError(result.error.message);
+        setNotRegistered(result.error?.status === 404);
+        if (result.error)
+          setError(
+            result.error.status === 400 || result.error.status === 401
+              ? "شماره همراه یا رمز عبور درست نیست. اگر هنوز حساب ندارید، ابتدا ثبت‌نام کنید."
+              : result.error.message
+          );
       } else if (flow.kind === "details") {
         if (password !== confirm) {
           setError("رمزهای عبور یکسان نیستند.");
@@ -116,16 +124,63 @@ export function AuthScreen() {
             : "رمز عبور تغییر کرد";
   return (
     <main className="phone-auth" dir="rtl">
-      <section className="phone-auth-card">
+      <aside className="auth-story" aria-label="درباره بهتر بخر">
+        <a className="auth-wordmark" href="/">
+          بهتر بخر<span>Better Buy</span>
+        </a>
+        <div className="auth-story-copy">
+          <span className="auth-eyebrow">برای خریدهای هر روز</span>
+          <h2>
+            همان خرید.
+            <br />
+            با قیمت بهتر.
+          </h2>
+          <p>
+            تخفیف فروشگاه‌های اطرافتان را یک‌جا ببینید، مقایسه کنید و سبدتان را
+            هوشمندانه بچینید.
+          </p>
+        </div>
+        <div className="auth-receipt" aria-hidden="true">
+          <span>یک انتخاب بهتر</span>
+          <div>
+            <span>قیمت معمول</span>
+            <del>۵۰۰٬۰۰۰</del>
+          </div>
+          <div>
+            <span>با تخفیف</span>
+            <strong>۳۷۵٬۰۰۰ تومان</strong>
+          </div>
+          <footer>۲۵٪ کمتر برای همان خرید</footer>
+        </div>
+        <small>اسنپ‌مارکت · اکالا · سوپرمارکت دیجی‌کالا</small>
+      </aside>
+      <section className="phone-auth-card" data-step={flow.kind}>
         <header>
           <span className="phone-auth-brand">بهتر بخر</span>
+          <span className="auth-step-label">
+            {flow.kind === "login" ? "حساب شما" : "همراه شما، قدم‌به‌قدم"}
+          </span>
           <h1>{title}</h1>
-          <p>خریدهای روزمره، با انتخاب بهتر</p>
+          <p>
+            {flow.kind === "login"
+              ? "برای ادامه خرید، وارد حساب خود شوید."
+              : flow.kind === "phone" && flow.purpose === "registration"
+                ? "اول شماره همراهتان را تأیید می‌کنیم؛ بعد حساب می‌سازید."
+                : "فقط چند لحظه تا ادامه خرید فاصله دارید."}
+          </p>
         </header>
         {error && (
           <p role="alert" className="phone-auth-error">
             {error}
           </p>
+        )}
+        {notRegistered && flow.kind === "login" && (
+          <Button
+            className="auth-register-button"
+            onClick={() => navigate({ kind: "phone", purpose: "registration" })}
+          >
+            ثبت‌نام با همین شماره
+          </Button>
         )}
         {flow.kind === "otp" ? (
           <>
@@ -279,7 +334,7 @@ export function AuthScreen() {
           </form>
         )}
         {flow.kind === "login" ? (
-          <nav>
+          <nav aria-label="گزینه‌های ورود">
             <Button
               variant="link"
               onClick={() =>
@@ -288,8 +343,10 @@ export function AuthScreen() {
             >
               رمز عبور را فراموش کرده‌ام
             </Button>
+            <p className="auth-register-prompt">هنوز حساب ندارید؟</p>
             <Button
-              variant="link"
+              variant="outline"
+              className="auth-register-button"
               onClick={() =>
                 navigate({ kind: "phone", purpose: "registration" })
               }

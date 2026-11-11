@@ -1,0 +1,633 @@
+/* Shopping workspace: right navigation rail and a compact, product-first canvas. */
+.sidebar-section-label,
+.sidebar-cart-label {
+  display: none;
+}
+.sidebar-utilities {
+  display: none;
+}
+.shopping-page-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 0 0 24px;
+}
+.shopping-eyebrow {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.shopping-page-heading h1 {
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1.5;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  margin: 4px 0 8px;
+}
+.shopping-location {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+  cursor: pointer;
+  min-height: 32px;
+}
+.shopping-location svg {
+  width: 16px;
+  height: 16px;
+}
+.shopping-scan-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: 8px !important;
+  background: #c3cdff !important;
+  color: #20243a !important;
+  font-weight: 700 !important;
+  white-space: nowrap;
+}
+.compact-discount-filter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding: 0 0 18px;
+  margin: 0 0 20px;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+.discount-filter-caption {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.discount-presets {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+.discount-presets button {
+  min-height: 36px;
+  min-width: 46px;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: var(--muted-foreground);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+.discount-presets button[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+.discount-exact {
+  margin-inline-start: auto;
+}
+.discount-exact select {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--foreground);
+  background: var(--card);
+  max-width: 150px;
+  cursor: pointer;
+}
+.discount-presets button:focus-visible,
+.shopping-location:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+.app-shell .results-toolbar {
+  padding: 12px 0 20px;
+  border: 0;
+  background: transparent;
+  gap: 12px;
+}
+.app-shell .results-toolbar input,
+.app-shell .results-toolbar [data-slot="select-trigger"] {
+  border-radius: 8px;
+  min-height: 44px;
+  background: var(--card);
+}
+.app-shell .result-heading {
+  align-items: center;
+}
+.app-shell .provider-empty-note {
+  font-size: 12px;
+}
+@media (min-width: 769px) {
+  .app-shell {
+    --navigation-width: 224px;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 var(--navigation-width) 0 0 !important;
+    min-height: 100dvh;
+  }
+  .app-shell > .app-header,
+  .app-shell > .app-header:has(.cart-trigger) {
+    position: fixed;
+    inset: 0 0 0 auto;
+    inline-size: var(--navigation-width);
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    gap: 18px;
+    flex-wrap: nowrap;
+    padding: 28px 16px 24px;
+    box-sizing: border-box;
+    border: 0;
+    border-left: 1px solid var(--border);
+    background: var(--card);
+    z-index: 20;
+    overflow-y: auto;
+  }
+  .app-shell > .app-header .brand {
+    justify-content: flex-start;
+    min-height: 44px;
+    flex-shrink: 0;
+    margin: 0 0 24px;
+    gap: 10px;
+  }
+  .app-shell > .app-header .brand-mark {
+    background: #c3cdff;
+    color: #20243a;
+    border-radius: 10px;
+    inline-size: 38px;
+    block-size: 38px;
+  }
+  .app-shell > .app-header .desktop-primary-nav {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    width: 100%;
+  }
+  .app-shell > .app-header .desktop-primary-nav button,
+  .sidebar-utilities > button {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    min-height: 44px;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 13px;
+    color: var(--muted-foreground);
+    padding: 10px 12px;
+    text-align: start;
+  }
+  .app-shell > .app-header .desktop-primary-nav button svg {
+    width: 19px;
+    height: 19px;
+  }
+  .sidebar-section-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--muted-foreground);
+    padding: 0 12px 8px;
+    letter-spacing: 0;
+  }
+  .app-shell > .app-header > .header-actions {
+    display: block;
+    margin: 0;
+    padding: 0 0 18px;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    width: 100%;
+  }
+  .app-shell > .app-header .desktop-menu-trigger {
+    display: none !important;
+  }
+  .sidebar-utilities {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 0;
+  }
+  .sidebar-utilities > .sidebar-section-label {
+    padding-top: 12px;
+  }
+  .sidebar-utilities select {
+    font-family: inherit;
+    font-size: 12px;
+    min-height: 38px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--foreground);
+    background: var(--card);
+    padding: 6px 10px;
+    margin: 0 8px 8px;
+  }
+  .app-shell > .workspace {
+    max-width: 1160px;
+    min-width: 0;
+    padding: 36px clamp(24px, 3vw, 48px) 56px;
+    margin-inline: auto;
+  }
+  .app-shell .workspace-scan {
+    max-width: 1000px;
+  }
+  .app-shell > .mobile-bottom-nav {
+    display: none;
+  }
+  .app-shell > .app-header > .cart-write-notice {
+    max-width: 100%;
+    font-size: 11px;
+  }
+}
+@media (min-width: 769px) and (max-width: 1050px) {
+  .app-shell {
+    --navigation-width: 196px;
+  }
+  .app-shell > .app-header {
+    padding-inline: 12px;
+  }
+  .app-shell > .workspace {
+    padding-inline: 24px;
+  }
+  .sidebar-cart-label {
+    font-size: 10px;
+  }
+}
+@media (max-width: 768px) {
+  .app-shell > .app-header .sidebar-utilities,
+  .app-shell > .app-header .sidebar-section-label,
+  .app-shell > .app-header .sidebar-cart-label {
+    display: none;
+  }
+  .app-shell > .app-header,
+  .app-shell > .app-header:has(.cart-trigger) {
+    padding: 12px 16px;
+    gap: 12px;
+    flex-wrap: nowrap;
+    border-bottom: 1px solid var(--border);
+  }
+  .app-shell > .workspace {
+    padding-top: 24px;
+  }
+  .shopping-page-heading {
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .shopping-page-heading h1 {
+    font-size: 24px;
+  }
+  .shopping-eyebrow {
+    font-size: 11px;
+  }
+  .shopping-scan-action {
+    font-size: 12px;
+    padding-inline: 12px !important;
+  }
+  .shopping-scan-action svg {
+    width: 16px;
+  }
+  .compact-discount-filter {
+    gap: 8px;
+    padding-bottom: 14px;
+    margin-bottom: 16px;
+  }
+  .discount-presets {
+    gap: 2px;
+  }
+  .discount-presets button {
+    padding: 6px 8px;
+    min-width: 38px;
+  }
+  .discount-filter-caption {
+    flex-basis: 100%;
+    font-size: 11px;
+  }
+  .discount-exact select {
+    max-width: 118px;
+    padding: 6px;
+    font-size: 11px;
+  }
+}
+@media (hover: hover) {
+  .discount-presets button:hover {
+    background: var(--muted);
+  }
+  .sidebar-utilities > button:hover,
+  .app-shell > .app-header .desktop-primary-nav button:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .discount-presets button {
+    transition: none;
+  }
+}
+.app-shell .deal-section > .section-heading {
+  padding-bottom: 12px;
+  margin-bottom: 4px;
+  align-items: center;
+}
+.app-shell .deal-section > .section-heading h2 {
+  font-size: 18px;
+  font-weight: 750;
+  margin: 0 0 4px;
+  line-height: 1.6;
+}
+.app-shell .deal-section > .section-heading p {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  line-height: 1.8;
+  margin: 3px 0;
+}
+.app-shell .deal-row {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+  background: var(--card);
+  margin-bottom: 10px;
+  box-shadow: none;
+}
+.app-shell .deal-row .product-title {
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.8;
+}
+.app-shell .deal-row .product-image {
+  border-radius: 8px;
+  background: #fff;
+  object-fit: contain;
+}
+.app-shell .deal-row .product-store {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+.app-shell .deal-row .product-provider {
+  margin-bottom: 6px;
+}
+.app-shell .deal-row .discount {
+  border-radius: 5px;
+  background: var(--accent);
+  color: var(--foreground);
+  font-weight: 750;
+}
+.app-shell .deal-row .product-cart-add {
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+@media (max-width: 520px) {
+  .app-shell .deal-row {
+    padding: 14px 12px;
+  }
+  .app-shell .deal-row .product-title {
+    font-size: 14px;
+  }
+  .app-shell .deal-section > .section-heading h2 {
+    font-size: 16px;
+  }
+}
+
+.app-shell .personalized-note {
+  margin: 0 0 24px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+.app-shell .results-toolbar {
+  padding-bottom: 12px;
+  margin-bottom: 0;
+}
+@media (max-width: 768px) {
+  .app-shell > .app-header .brand-mark {
+    background: #c3cdff;
+    color: #20243a;
+  }
+  .app-shell .results-toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 132px;
+    gap: 10px;
+    align-items: end;
+  }
+  .app-shell .results-toolbar .search {
+    min-width: 0;
+  }
+  .app-shell .results-toolbar .sort-control {
+    min-width: 0;
+  }
+  .app-shell .results-toolbar label {
+    font-size: 11px;
+  }
+  .app-shell .results-toolbar input {
+    font-size: 14px;
+  }
+  .app-shell .results-toolbar [data-slot="select-trigger"] {
+    font-size: 11px;
+    padding-inline: 8px;
+  }
+  .shopping-page-heading {
+    margin-bottom: 16px;
+  }
+  .compact-discount-filter {
+    margin-bottom: 14px;
+  }
+  .app-shell .deal-section > .section-heading p {
+    font-size: 11px;
+  }
+  .app-shell .personalized-note {
+    font-size: 10px;
+  }
+  .app-shell .deal-section > .section-heading {
+    padding-bottom: 6px;
+  }
+}
+
+/* A single visual language for every sidebar action. */
+.cart-trigger-label {
+  display: none;
+}
+@media (min-width: 769px) {
+  .app-shell > .app-header .desktop-primary-nav {
+    gap: 6px;
+  }
+  .app-shell > .app-header .desktop-primary-nav button,
+  .app-shell > .app-header .sidebar-utilities > button,
+  .app-shell > .app-header .cart-trigger {
+    min-height: 46px;
+    height: auto;
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border: 0 !important;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.5;
+    background: transparent !important;
+    color: var(--muted-foreground);
+    box-shadow: none !important;
+    outline: none;
+    transition:
+      background-color 140ms ease,
+      color 140ms ease;
+  }
+  .app-shell > .app-header .desktop-primary-nav button svg,
+  .app-shell > .app-header .sidebar-utilities > button svg,
+  .app-shell > .app-header .cart-trigger svg {
+    width: 19px;
+    height: 19px;
+    flex: 0 0 19px;
+    opacity: 0.8;
+  }
+  .app-shell > .app-header .desktop-primary-nav button[data-active="true"],
+  .app-shell > .app-header .sidebar-utilities > button[data-active="true"],
+  .app-shell > .app-header .cart-trigger[data-state="open"] {
+    background: #c3cdff !important;
+    color: #20243a !important;
+    font-weight: 700;
+    box-shadow: none !important;
+  }
+  .app-shell > .app-header button[data-active="true"] svg {
+    opacity: 1;
+  }
+  .app-shell > .app-header .cart-trigger {
+    width: 100%;
+    position: relative;
+    white-space: normal;
+  }
+  .app-shell > .app-header .cart-trigger-label {
+    display: inline;
+    font-weight: inherit;
+  }
+  .app-shell > .app-header .cart-trigger-count {
+    position: static;
+    margin-inline-start: auto;
+    min-width: 23px;
+    width: auto;
+    height: 23px;
+    padding-inline: 6px;
+    border: 0;
+    border-radius: 5px;
+    background: var(--muted);
+    color: var(--foreground);
+    font-size: 11px;
+  }
+  .app-shell
+    > .app-header
+    .cart-trigger[data-state="open"]
+    .cart-trigger-count {
+    background: #20243a;
+    color: #c3cdff;
+  }
+  .app-shell > .app-header .sidebar-utilities {
+    gap: 6px;
+    margin: 0;
+  }
+  .sidebar-appearance {
+    padding: 16px 12px 18px;
+    display: grid;
+    gap: 10px;
+  }
+  .sidebar-appearance > span {
+    font-size: 11px;
+    color: var(--muted-foreground);
+  }
+  .sidebar-appearance > div {
+    display: flex;
+    gap: 3px;
+    background: var(--background);
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .sidebar-appearance button {
+    flex: 1;
+    min-width: 0;
+    min-height: 32px;
+    padding: 4px;
+    font-family: inherit;
+    font-size: 11px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted-foreground);
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+  .sidebar-appearance button[aria-pressed="true"] {
+    background: var(--card);
+    color: var(--foreground);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+    font-weight: 700;
+  }
+  .app-shell > .app-header .sidebar-utilities > .sidebar-signout {
+    border-top: 1px solid var(--border) !important;
+    border-radius: 0;
+    padding-top: 18px;
+    margin-top: 2px;
+    font-size: 12px;
+  }
+  .app-shell > .app-header button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 3px;
+  }
+}
+@media (hover: hover) and (min-width: 769px) {
+  .app-shell
+    > .app-header
+    .desktop-primary-nav
+    button:not([data-active="true"]):hover,
+  .app-shell
+    > .app-header
+    .sidebar-utilities
+    > button:not([data-active="true"]):hover,
+  .app-shell > .app-header .cart-trigger:not([data-state="open"]):hover {
+    background: var(--muted) !important;
+    color: var(--foreground);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-shell > .app-header button {
+    transition: none !important;
+  }
+}
+
+.mobile-side-menu nav button[data-active="true"] {
+  background: #c3cdff;
+  color: #20243a;
+  font-weight: 700;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.mobile-side-menu nav button {
+  min-height: 46px;
+  gap: 12px;
+  border-radius: 8px;
+}
+
+.scan-history-recovery {
+  max-width: 1064px;
+  margin: 20px auto 0;
+  padding-inline: 24px;
+}
+.scan-history-recovery .read-notice {
+  margin: 0;
+}

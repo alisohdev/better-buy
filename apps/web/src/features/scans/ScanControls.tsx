@@ -1,3 +1,4 @@
+import { DiscountFilter } from "../dashboard/DiscountFilter";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
@@ -98,32 +99,7 @@ export function ScanControls({
         </div>
       </fieldset>
 
-      <div className="discount-filter scan-discount-filter">
-        <div className="scan-discount-heading">
-          <span>محدوده تخفیف</span>
-          <output htmlFor="discount-filter">
-            {faNumber.format(minDiscount)}٪
-          </output>
-        </div>
-        <p>از {faNumber.format(minDiscount)}٪ به بالا</p>
-        <input
-          id="discount-filter"
-          type="range"
-          min={15}
-          max={80}
-          step={1}
-          value={minDiscount}
-          aria-valuetext={`${faNumber.format(minDiscount)} درصد و بیشتر`}
-          onChange={(event) => onMinDiscount(Number(event.target.value))}
-        />
-        <span className="range-limits" aria-hidden="true">
-          <span>۱۵٪</span>
-          <span>۸۰٪</span>
-        </span>
-        <small className="scan-filter-hint">
-          این فیلتر نتیجه‌ها را بدون اسکن دوباره به‌روز می‌کند.
-        </small>
-      </div>
+      <DiscountFilter value={minDiscount} onChange={onMinDiscount} />
 
       <div className="scan-setup-actions">
         <Button

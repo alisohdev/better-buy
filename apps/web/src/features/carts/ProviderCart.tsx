@@ -83,6 +83,7 @@ export function ProviderCart({
           aria-label={`سبد خرید، ${faNumber.format(rows.length)} کالا`}
         >
           <CartIcon />
+          <span className="cart-trigger-label">سبد خرید</span>
           <span className="cart-trigger-count" aria-hidden="true">
             {faNumber.format(rows.length)}
           </span>

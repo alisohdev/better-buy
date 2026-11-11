@@ -69,3 +69,9 @@ After an authorized rollout, confirm only one `better-buy-api` process is runnin
 Install the new release and run the Go migration before switching services. Stop the old HTTP and scan-worker units together when performing an authorized rollout, then start the single Go API unit. Verify the health route, sign-in, a queued scan, and the Caddy-served frontend before considering the rollout complete. This repository change does not perform the rollout or write to the production database.
 
 See [phone authentication](../../docs/phone-auth.md) for required SMS secrets, template approval, HTTPS, migration, and device acceptance tests. Admin remains denied until step-up assurance is implemented.
+
+### Frontend feature flags
+
+Set `NEXT_PUBLIC_DIGIKALA_SUPERMARKET_ENABLED=true` in the **build process environment** when DigiKala is enabled in production. The static Next.js export embeds this value; setting it only in the API systemd environment does not enable the frontend. Preserve all production `NEXT_PUBLIC_*` feature flags on every rebuild.
+
+Always build the frontend with `pnpm --filter @better-buy/web build` or root `pnpm build`. The web prebuild regenerates shared runtime validators. Calling `next build` directly can embed stale shared validators and reject valid DigiKala Fresh history.

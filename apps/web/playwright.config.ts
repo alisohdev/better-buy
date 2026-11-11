@@ -23,7 +23,7 @@ export default defineConfig({
   ],
   // Measure the shipped app: dev Strict Mode deliberately cancels/remounts reads.
   webServer: {
-    command: `pnpm exec next build && node scripts/serve-export.mjs`,
+    command: `pnpm build && node scripts/serve-export.mjs`,
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

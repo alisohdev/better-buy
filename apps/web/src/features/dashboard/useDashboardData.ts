@@ -1,6 +1,12 @@
 import { useCallback, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { locationsReadSchema, scansReadSchema } from "@better-buy/shared";
+import {
+  locationsReadSchema,
+  scansReadSchema,
+  type ScanRecord,
+} from "@better-buy/shared";
+import { recoveryInterval } from "../../lib/queryPolicy";
+import { RequestFailure } from "../../lib/api";
 import { api } from "../../lib/api";
 export function useDashboardData() {
   const locationsQuery = useQuery({
@@ -8,8 +14,16 @@ export function useDashboardData() {
     queryFn: ({ signal }) =>
       api("/api/locations", { signal }, locationsReadSchema.parse),
   });
-  const scansQuery = useQuery({
+  const scansQuery = useQuery<ScanRecord[]>({
     queryKey: ["scans"],
+    refetchInterval: (query) => {
+      const error = query.state.error;
+      if (!error) return false;
+      if (error instanceof RequestFailure && error.status === 429)
+        return Math.max(15_000, error.retryAfterMs ?? 0);
+      return recoveryInterval(error);
+    },
+    refetchOnWindowFocus: (query) => !!query.state.error,
     queryFn: ({ signal }) =>
       api("/api/scans", { signal }, scansReadSchema.parse),
   });

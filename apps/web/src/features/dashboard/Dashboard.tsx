@@ -7,6 +7,8 @@ import {
   type CartSource,
   type ScanRecord,
 } from "@better-buy/shared";
+import { DiscountFilter } from "./DiscountFilter";
+import "./shopping-workspace.css";
 import { AppHeader } from "./AppHeader";
 import { AppIcon, ProviderMark } from "./AppIcon";
 import { ReadNotice } from "./Primitives";
@@ -352,6 +354,15 @@ export function Dashboard() {
         onLocations={() => setLocationDialog("list")}
         onHistory={() => setView("history")}
         onHome={goHome}
+        onScan={() => {
+          setView("deals");
+          setSelection({ source: null, runId: null });
+          setWorkspaceSection("scan");
+        }}
+        scanning={view === "deals" && workspaceSection === "scan"}
+        wishlistOpen={wishlistOpen}
+        cartOpen={cartOpen}
+        locationsOpen={!!locationDialog}
         onWishlist={() => openOverlay("wishlist")}
         onNotifications={() => openOverlay("inbox")}
         onAdmin={adminAccess.data?.allowed ? () => setView("admin") : undefined}
@@ -384,6 +395,22 @@ export function Dashboard() {
           </>
         }
       />
+      {data.scansQuery.error && (
+        <div className="scan-history-recovery">
+          <ReadNotice
+            title="تاریخچه اسکن دریافت نشد"
+            retry={() => void data.scansQuery.refetch()}
+            busy={data.scansQuery.isFetching}
+          >
+            <span>{data.scansQuery.error.message}</span>
+            <span>
+              {" "}
+              برای جلوگیری از اسکن هم‌زمان، ابتدا وضعیت اسکن‌های حساب را دریافت
+              می‌کنیم.
+            </span>
+          </ReadNotice>
+        </div>
+      )}
       <WishlistPanel
         locations={data.locations}
         locationsReady={data.locationsQuery.isSuccess}
@@ -401,39 +428,6 @@ export function Dashboard() {
           <AdminDashboard onClose={goHome} />
         ) : (
           <>
-            {view === "deals" && (
-              <nav className="workspace-switcher" aria-label="بخش‌های خرید">
-                <button
-                  type="button"
-                  aria-current={
-                    workspaceSection === "offers" ? "page" : undefined
-                  }
-                  onClick={() => setWorkspaceSection("offers")}
-                >
-                  <AppIcon name="home" />
-                  پیشنهادها
-                </button>
-                <button
-                  type="button"
-                  aria-current={
-                    workspaceSection === "scan" ? "page" : undefined
-                  }
-                  onClick={() => {
-                    if (historical) setSelection({ source: null, runId: null });
-                    setWorkspaceSection("scan");
-                  }}
-                >
-                  <AppIcon name="scan" />
-                  اسکن تخفیف‌ها
-                  {active && (
-                    <span
-                      className="scan-active-dot"
-                      aria-label="در حال اسکن"
-                    />
-                  )}
-                </button>
-              </nav>
-            )}
             {view === "history" ? (
               <>
                 <Button
@@ -635,15 +629,6 @@ export function Dashboard() {
                       : "برای انتخاب موقعیت، دریافت دوباره را امتحان کنید."}
                   </ReadNotice>
                 )}
-                {data.scansQuery.error && (
-                  <ReadNotice
-                    title="تاریخچه اسکن دریافت نشد"
-                    retry={() => void data.scansQuery.refetch()}
-                    busy={data.scansQuery.isFetching}
-                  >
-                    وضعیت اسکن‌های حساب را دوباره بررسی کنید.
-                  </ReadNotice>
-                )}
                 {!valid && !data.busy && !data.locationsQuery.error && (
                   <ReadNotice title="موقعیت خارج از محدوده خدمات است">
                     فعلاً اسکن برای موقعیت‌های داخل تهران در دسترس است. موقعیت
@@ -720,33 +705,33 @@ export function Dashboard() {
                     </ReadNotice>
                   ) : null;
                 })}
-                <section
-                  className="results-discount-filter"
-                  aria-label="فیلتر نتیجه‌ها بر اساس تخفیف"
-                >
+                <header className="shopping-page-heading">
                   <div>
-                    <strong>حداقل تخفیف نتیجه‌ها</strong>
-                    <p>نتایج ذخیره‌شده فیلتر می‌شوند؛ اسکن دوباره لازم نیست.</p>
+                    <span className="shopping-eyebrow">
+                      خرید روزمره، با قیمت بهتر
+                    </span>
+                    <h1>پیشنهادهای امروز</h1>
+                    <button
+                      type="button"
+                      className="shopping-location"
+                      onClick={() => setLocationDialog("list")}
+                    >
+                      <AppIcon name="location" />
+                      <span>
+                        {selectedLocation?.name ?? "انتخاب موقعیت تحویل"}
+                      </span>
+                      <span aria-hidden="true">⌄</span>
+                    </button>
                   </div>
-                  <label htmlFor="results-discount-filter">
-                    <output htmlFor="results-discount-filter">
-                      {faNumber.format(minDiscount)}٪
-                    </output>
-                    <input
-                      id="results-discount-filter"
-                      type="range"
-                      min={15}
-                      max={80}
-                      step={1}
-                      value={minDiscount}
-                      aria-label="حداقل تخفیف نتیجه‌ها"
-                      aria-valuetext={`${faNumber.format(minDiscount)} درصد و بیشتر`}
-                      onChange={(event) =>
-                        setMinDiscount(Number(event.target.value))
-                      }
-                    />
-                  </label>
-                </section>
+                  <Button
+                    className="shopping-scan-action"
+                    onClick={() => setWorkspaceSection("scan")}
+                  >
+                    <AppIcon name="scan" />
+                    اسکن تخفیف‌ها
+                  </Button>
+                </header>
+                <DiscountFilter value={minDiscount} onChange={setMinDiscount} />
                 <DealShelf
                   filters={filters}
                   feeds={feeds}

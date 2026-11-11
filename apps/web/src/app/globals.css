@@ -190,8 +190,302 @@
   }
 }
 
-.nexus-otp:focus-within {
-  outline: 2px solid var(--ring);
-  outline-offset: 6px;
-  border-radius: 12px;
+/* Authentication: shopping receipt motif, with the form as the quiet working area. */
+.phone-auth {
+  grid-template-columns: minmax(0, 520px) minmax(0, 440px);
+  gap: clamp(40px, 7vw, 112px);
+  align-content: center;
+  padding: 48px;
+  max-width: 1200px;
+  margin-inline: auto;
+}
+.auth-story {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding-block: 16px;
+}
+.auth-wordmark {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--foreground);
+  text-decoration: none;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.auth-wordmark span {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  direction: ltr;
+}
+.auth-eyebrow,
+.auth-step-label {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.auth-story h2 {
+  font-size: clamp(38px, 4.5vw, 62px);
+  line-height: 1.5;
+  letter-spacing: -1.5px;
+  font-weight: 800;
+  margin: 14px 0;
+}
+.auth-story-copy p {
+  max-width: 370px;
+  font-size: 16px;
+  line-height: 2.1;
+  color: var(--muted-foreground);
+}
+.auth-receipt {
+  max-width: 340px;
+  padding: 24px;
+  background: #c3cdff;
+  color: #20243a;
+  border-radius: 4px 4px 16px 16px;
+  transform: rotate(-2deg);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.08);
+}
+.auth-receipt > span {
+  font-weight: 700;
+}
+.auth-receipt > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  font-size: 14px;
+}
+.auth-receipt del {
+  opacity: 0.65;
+}
+.auth-receipt footer {
+  border-top: 1px dashed #747fae;
+  margin-top: 20px;
+  padding-top: 16px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.auth-story > small {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.phone-auth-card {
+  max-width: 440px;
+  border: 0;
+  border-radius: 16px;
+  padding: 32px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--border);
+}
+.phone-auth-card header {
+  border: 0;
+  padding: 0;
+}
+.phone-auth-brand {
+  display: none;
+}
+.auth-step-label {
+  display: block;
+}
+.phone-auth-card h1 {
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+.phone-auth-card label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.phone-auth-card input {
+  border-radius: 8px;
+  font-size: 16px;
+  min-height: 50px;
+}
+.phone-auth-card fieldset {
+  gap: 14px;
+}
+.phone-auth-card button[type="submit"] {
+  min-height: 50px;
+  font-weight: 750;
+  font-size: 15px;
+}
+.phone-auth-card nav {
+  gap: 8px;
+}
+.phone-auth-card .auth-register-prompt {
+  text-align: center;
+  margin: 12px 0 0;
+  font-size: 13px;
+}
+.phone-auth-card .auth-register-button {
+  font-weight: 800;
+  font-size: 15px;
+  min-height: 50px;
+  border: 1px solid #c3cdff;
+  background: var(--accent);
+  color: var(--foreground);
+  text-decoration: none;
+}
+.phone-auth-card .phone-auth-error {
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--error-surface);
+  font-size: 13px;
+  margin: 0;
+}
+.phone-auth-card button {
+  touch-action: manipulation;
+  transition:
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 160ms ease;
+}
+.phone-auth-card button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+.phone-auth-card .nexus-otp input:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+.phone-auth-card .nexus-otp input {
+  border: 0;
+}
+.phone-auth-card .nexus-otp {
+  outline: none;
+}
+@media (max-width: 768px) {
+  .phone-auth {
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    min-height: 100dvh;
+    padding: 24px 20px 40px;
+    justify-content: center;
+  }
+  .auth-story {
+    padding: 0;
+    gap: 0;
+    width: 100%;
+    max-width: 440px;
+  }
+  .auth-story-copy,
+  .auth-receipt,
+  .auth-story > small {
+    display: none;
+  }
+  .auth-wordmark {
+    font-size: 25px;
+  }
+  .phone-auth-card {
+    padding: 28px 22px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .phone-auth-card h1 {
+    font-size: 23px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .phone-auth-card button {
+    transition: none;
+  }
+  .phone-auth-card button:active:not(:disabled) {
+    transform: none;
+  }
+}
+
+.mobile-side-menu-trigger {
+  display: none !important;
+}
+.mobile-side-menu {
+  position: fixed;
+  inset-block: 0;
+  right: 0;
+  z-index: 60;
+  width: min(340px, 88vw);
+  height: 100dvh;
+  padding: 24px 20px max(24px, env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: var(--card);
+  color: var(--foreground);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  box-shadow: -12px 0 40px rgb(0 0 0 / 0.15);
+}
+.mobile-menu-overlay {
+  z-index: 59;
+}
+.mobile-side-menu header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.mobile-side-menu header h2 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 0;
+}
+.mobile-side-menu nav {
+  display: grid;
+  gap: 4px;
+}
+.mobile-side-menu nav button {
+  justify-content: flex-start;
+  min-height: 48px;
+  gap: 12px;
+}
+.mobile-menu-theme {
+  border: 0;
+  border-top: 1px solid var(--border);
+  padding: 20px 0 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.mobile-menu-theme legend {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  padding: 0 0 12px;
+}
+.mobile-menu-theme label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+}
+.mobile-side-menu > button {
+  margin-top: auto;
+  min-height: 48px;
+}
+.mobile-side-menu[data-state="open"] {
+  animation: mobile-menu-enter 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@keyframes mobile-menu-enter {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@media (max-width: 768px) {
+  .desktop-menu-trigger {
+    display: none !important;
+  }
+  .mobile-side-menu-trigger {
+    display: inline-flex !important;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mobile-side-menu[data-state="open"] {
+    animation: none;
+  }
 }

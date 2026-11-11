@@ -19,6 +19,8 @@ import (
 )
 
 var ErrInvalidCredentials = errors.New("اطلاعات ورود یا کد تأیید معتبر نیست.")
+var ErrNotRegistered = errors.New("این شماره همراه هنوز ثبت‌نام نکرده است. برای ادامه حساب بسازید.")
+
 var ErrLimited = errors.New("درخواست‌ها محدود شده‌اند؛ کمی بعد دوباره تلاش کنید.")
 var ErrDelivery = errors.New("ارسال پیامک ممکن نشد؛ دوباره تلاش کنید.")
 
@@ -256,6 +258,9 @@ func (s *Service) SignIn(ctx context.Context, phone, password string) (Identity,
 	var id, name, hash string
 	e = s.db.QueryRowContext(ctx, `SELECT id,name,password_hash FROM "user" WHERE phone=? AND phoneVerified=1`, phone).Scan(&id, &name, &hash)
 	ok := verifyPassword(hash, password)
+	if errors.Is(e, sql.ErrNoRows) {
+		return Identity{}, ErrNotRegistered
+	}
 	if e != nil || !ok {
 		return Identity{}, ErrInvalidCredentials
 	}
