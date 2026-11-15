@@ -869,6 +869,25 @@ test("interactive guide waits for location save and explicit scan then finishes 
     .getByRole("button", { name: "پاک‌کردن جست‌وجو", exact: true })
     .click();
   await expect(search).toHaveValue("");
+  await page
+    .getByRole("button", { name: "حداقل تخفیف نتیجه‌ها", exact: true })
+    .click();
+  const stepper = page.locator(".discount-stepper");
+  await expect(stepper).toBeVisible();
+  const parent = (await stepper.boundingBox())!;
+  for (const name of ["کاهش درصد تخفیف", "افزایش درصد تخفیف"]) {
+    const button = stepper.getByRole("button", { name, exact: true });
+    const bounds = (await button.boundingBox())!;
+    expect(bounds.x).toBeGreaterThanOrEqual(parent.x);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(
+      parent.x + parent.width
+    );
+  }
+  await page.screenshot({
+    path: `../../.data/design-evidence/discount-stepper-${test.info().project.name}.png`,
+  });
+  await page.keyboard.press("Escape");
+
   await page.emulateMedia({ reducedMotion: "reduce" });
   await search.fill("شیر");
   await expect(page.locator(".results-search-icon")).toHaveCSS(

@@ -350,11 +350,7 @@ details > p {
   margin-block: 12px;
   font-size: 12px;
 }
-.deal-list {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-surface);
-  background: var(--card);
-}
+
 .deal-row {
   display: grid;
   grid-template-columns: 88px minmax(0, 1fr) minmax(150px, 230px);
