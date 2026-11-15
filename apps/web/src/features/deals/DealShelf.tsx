@@ -1,4 +1,4 @@
-import { TutorialHint, useTutorial } from "../dashboard/Tutorial";
+import { TutorialHint } from "../dashboard/Tutorial";
 import { DiscountSelect } from "../dashboard/DiscountSelect";
 import { useVisitor } from "../guest/VisitorProvider";
 import { useEffect, useRef } from "react";
@@ -60,7 +60,6 @@ export function DealShelf({
   historical: boolean;
   onOpenCart: (source: CartSource) => void;
 }) {
-  const tutorial = useTutorial();
   const { query, setQuery, sort, setSort, reset } = filters;
   const visitor = useVisitor();
   const wishlist = useWishlist();
@@ -266,8 +265,6 @@ export function DealShelf({
           )}
         </div>
       ))}
-      <TutorialHint at="search" />
-      <TutorialHint at="product" />
       <TutorialHint at="done" />
       {hasScan && (
         <div className="results-toolbar compact-results-toolbar">
@@ -277,10 +274,8 @@ export function DealShelf({
               type="search"
               aria-label="جست‌وجوی کالا یا فروشگاه"
               value={query}
-              data-tutorial-target={tutorial.step === "search"}
               onChange={(event) => {
                 setQuery(event.target.value);
-                if (event.target.value.trim()) tutorial.send("search-changed");
               }}
               placeholder="نام کالا یا فروشگاه"
             />

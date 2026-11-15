@@ -736,7 +736,7 @@ function tutorialRun(finishedAt: string): ScanRecord {
   };
 }
 
-test("interactive guide waits for location save, explicit scan, completion, search and product opening", async ({
+test("interactive guide waits for location save and explicit scan then finishes at results", async ({
   page,
 }) => {
   const state = await setup(page);
@@ -825,6 +825,11 @@ test("interactive guide waits for location save, explicit scan, completion, sear
     .getByRole("button", { name: "افزودن موقعیت تحویل", exact: true })
     .click();
   await expect(page.locator('[data-tutorial-step="map"]')).toBeVisible();
+  await page.getByRole("button", { name: "مرحله قبلی", exact: true }).click();
+  await expect(page.locator('[data-tutorial-step="location"]')).toBeVisible();
+  await page.getByRole("button", { name: "مرحله بعدی", exact: true }).click();
+  await expect(page.locator('[data-tutorial-step="map"]')).toBeVisible();
+
   await page.screenshot({
     path: `../../.data/design-evidence/tutorial-map-${test.info().project.name}.png`,
     fullPage: true,
@@ -855,18 +860,12 @@ test("interactive guide waits for location save, explicit scan, completion, sear
     timeout: 15000,
   });
   await page.getByRole("button", { name: "مشاهده نتایج", exact: true }).click();
-  await expect(page.locator('[data-tutorial-step="search"]')).toBeVisible();
-  await page
-    .getByRole("searchbox", { name: "جست‌وجوی کالا یا فروشگاه" })
-    .fill("شیر");
-  await expect(page.locator('[data-tutorial-step="product"]')).toBeVisible();
-  await page
-    .getByRole("button", { name: "جزئیات شیر", exact: true })
-    .first()
-    .click();
+  await expect(page.locator('[data-tutorial-step="done"]')).toBeVisible();
   await expect(
-    page.getByRole("dialog").locator('[data-tutorial-step="done"]')
-  ).toBeVisible();
+    page.locator(
+      '[data-tutorial-step="search"], [data-tutorial-step="product"]'
+    )
+  ).toHaveCount(0);
   await page.getByRole("button", { name: "پایان راهنما", exact: true }).click();
   await expect(page.locator(".tutorial-hint")).toHaveCount(0);
   await expect(page.locator(".tutorial-spotlight")).toHaveCount(0);

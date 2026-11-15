@@ -116,6 +116,18 @@ function DashboardContent() {
       setWishlistOpen(false);
     }
   }, [tutorial.step]);
+  useEffect(() => {
+    const target = tutorial.navigation?.step;
+    if (!target) return;
+    setView("deals");
+    if (target === "map" || target === "details") setLocationDialog("create");
+    else {
+      setLocationDialog(null);
+      setWorkspaceSection(
+        target === "location" || target === "done" ? "offers" : "scan"
+      );
+    }
+  }, [tutorial.navigation]);
   const selectedLocation = data.locations.find(
     (location) => location.id === data.selected
   );

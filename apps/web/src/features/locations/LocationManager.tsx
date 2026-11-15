@@ -28,7 +28,9 @@ export function LocationManager({
 }) {
   const tutorial = useTutorial();
   const [view, setView] = useState<LocationView>({ kind: initialView });
-  const [stage, setStage] = useState<LocationStage>("map");
+  const [stage, setStage] = useState<LocationStage>(
+    tutorial.step === "details" ? "details" : "map"
+  );
   const titleRef = useRef<HTMLHeadingElement>(null);
   const [returnFocusTo] = useState(() =>
     document.activeElement instanceof HTMLElement
@@ -46,7 +48,11 @@ export function LocationManager({
         tutorial.send("map-back");
       } else tutorial.send("map-confirmed");
     }
-  }, [view.kind, stage, tutorial.step]);
+  }, [view.kind, stage]);
+  useEffect(() => {
+    const target = tutorial.navigation?.step;
+    if (target === "map" || target === "details") setStage(target);
+  }, [tutorial.navigation]);
   const goBack = () => {
     if (view.kind === "create" && stage === "details") setStage("map");
     else if (view.kind !== "list" && stage === "map" && view.kind === "edit")

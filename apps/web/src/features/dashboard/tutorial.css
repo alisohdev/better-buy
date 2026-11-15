@@ -87,3 +87,21 @@
 .dark .tutorial-hint {
   background: #6941cf;
 }
+
+.tutorial-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.tutorial-navigation {
+  display: flex;
+  gap: 8px;
+}
+.tutorial-navigation button {
+  width: 44px;
+  padding: 0;
+}
+.tutorial-navigation button:disabled {
+  opacity: 0.45;
+}

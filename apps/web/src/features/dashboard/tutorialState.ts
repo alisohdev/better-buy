@@ -1,13 +1,5 @@
 export type TutorialStep =
-  | "location"
-  | "map"
-  | "details"
-  | "scan"
-  | "waiting"
-  | "results"
-  | "search"
-  | "product"
-  | "done";
+  "location" | "map" | "details" | "scan" | "waiting" | "results" | "done";
 export type TutorialEvent =
   | "location-opened"
   | "map-confirmed"
@@ -17,9 +9,7 @@ export type TutorialEvent =
   | "scan-started"
   | "scan-succeeded"
   | "scan-failed"
-  | "results-opened"
-  | "search-changed"
-  | "product-opened";
+  | "results-opened";
 
 export function tutorialTransition(
   step: TutorialStep | null,
@@ -35,9 +25,17 @@ export function tutorialTransition(
     details: { "map-back": "map", "location-saved": "scan" },
     scan: { "scan-started": "waiting" },
     waiting: { "scan-succeeded": "results", "scan-failed": "scan" },
-    results: { "results-opened": "search" },
-    search: { "search-changed": "product" },
-    product: { "product-opened": "done" },
+    results: { "results-opened": "done" },
   };
   return step ? (transitions[step]?.[event] ?? step) : null;
 }
+
+export const tutorialSteps: TutorialStep[] = [
+  "location",
+  "map",
+  "details",
+  "scan",
+  "waiting",
+  "results",
+  "done",
+];

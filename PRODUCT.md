@@ -25,7 +25,7 @@ The application uses a Go HTTP backend with SQLite and a static Next.js frontend
 ## Capabilities and Constraints
 
 - Scans start only after an explicit user action. Opening the app, signing in, and saving a location never start a scan. Entry opens the offer list when the selected location has a compatible successful scan from the current Tehran calendar day; otherwise it opens scan setup. A missing location opens location setup first.
-- The optional practical tutorial highlights real controls and waits for location confirmation and save, manual scan start and successful completion, viewing results, searching, and opening a product. It can be skipped at every step and restarted from Help.
+- The optional practical tutorial highlights real controls and waits for location confirmation and save, manual scan start and successful completion, viewing results, then completion. Previous and Next arrows revisit reached steps without starting scans. It can be skipped at every step and restarted from Help.
 - Guest exploration and manual scanning require no account. Guest identities and scan results are isolated and temporary (24-hour access), with always-on abuse limits. Wishlists, notifications, and saved carts require sign-in and explain why through contextual prompts.
 - Guest delivery locations remain in browser localStorage and restore into a new guest session. After sign-in, confirmed locations are imported idempotently into the account; failed imports retain the browser copy and expose retry. Existing account defaults are not replaced. Guest scan history itself is not imported.
 

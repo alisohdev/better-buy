@@ -10,6 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   tutorialTransition,
+  tutorialSteps,
   type TutorialEvent,
   type TutorialStep,
 } from "./tutorialState";
@@ -22,11 +23,46 @@ const TutorialContext = createContext<{
   start: () => void;
   send: (event: TutorialEvent) => void;
   dismiss: () => void;
-}>({ step: null, start: () => {}, send: () => {}, dismiss: () => {} });
+  navigation: { step: TutorialStep; id: number } | null;
+  previous: () => void;
+  next: () => void;
+  canPrevious: boolean;
+  canNext: boolean;
+}>({
+  step: null,
+  start: () => {},
+  send: () => {},
+  dismiss: () => {},
+  navigation: null,
+  previous: () => {},
+  next: () => {},
+  canPrevious: false,
+  canNext: false,
+});
 export const useTutorial = () => useContext(TutorialContext);
 
 export function TutorialProvider({ children }: { children: ReactNode }) {
   const [step, setStep] = useState<TutorialStep | null>(null);
+  const stepRef = useRef<TutorialStep | null>(null);
+  stepRef.current = step;
+  const [furthest, setFurthest] = useState(0);
+  const [navigation, setNavigation] = useState<{
+    step: TutorialStep;
+    id: number;
+  } | null>(null);
+  const reviewing = useRef(false);
+  const index = step ? tutorialSteps.indexOf(step) : -1;
+  const navigate = (direction: number) => {
+    const target = tutorialSteps[index + direction];
+    if (!target || index + direction > furthest) return;
+    reviewing.current = true;
+    stepRef.current = target;
+    setStep(target);
+    setNavigation((previous) => ({
+      step: target,
+      id: (previous?.id ?? 0) + 1,
+    }));
+  };
   useEffect(() => {
     try {
       if (!localStorage.getItem(storageKey)) setStep("location");
@@ -46,9 +82,31 @@ export function TutorialProvider({ children }: { children: ReactNode }) {
     <TutorialContext.Provider
       value={{
         step,
-        start: () => setStep("location"),
-        send: (event) =>
-          setStep((current) => tutorialTransition(current, event)),
+        start: () => {
+          reviewing.current = false;
+          setFurthest(0);
+          setStep("location");
+        },
+        navigation,
+        previous: () => navigate(-1),
+        next: () => navigate(1),
+        canPrevious: index > 0,
+        canNext: index >= 0 && index < furthest,
+        send: (event) => {
+          if (
+            reviewing.current &&
+            ["scan-succeeded", "scan-failed"].includes(event)
+          )
+            return;
+          reviewing.current = false;
+          const target = tutorialTransition(stepRef.current, event);
+          stepRef.current = target;
+          setStep(target);
+          if (target)
+            setFurthest((previous) =>
+              Math.max(previous, tutorialSteps.indexOf(target))
+            );
+        },
         dismiss,
       }}
     >
@@ -81,15 +139,7 @@ const copy: Record<TutorialStep, [string, string]> = {
   ],
   results: [
     "نتیجه آماده است",
-    "روی «مشاهده نتایج» بزنید تا با فهرست کالاها کار کنیم.",
-  ],
-  search: [
-    "یک کالا را جست‌وجو کنید",
-    "در کادر مشخص‌شده نام یک کالا مثل «شیر» را بنویسید. نتیجه‌ها با جست‌وجوی شما تغییر می‌کنند.",
-  ],
-  product: [
-    "یک محصول را باز کنید",
-    "روی نام یا تصویر یکی از کالاها بزنید تا جزئیات آن باز شود. اگر نتیجه‌ای نیست، جست‌وجو را پاک کنید یا حداقل تخفیف را کم کنید.",
+    "روی «مشاهده نتایج» بزنید تا پیشنهادهای این موقعیت را ببینید.",
   ],
   done: [
     "اولین بررسی شما انجام شد",
@@ -105,17 +155,6 @@ export function TutorialHint({ at }: { at: TutorialStep }) {
       ref.current?.scrollIntoView({ block: "nearest", behavior: "instant" });
   }, [visible]);
   if (!visible) return null;
-  const steps: TutorialStep[] = [
-    "location",
-    "map",
-    "details",
-    "scan",
-    "waiting",
-    "results",
-    "search",
-    "product",
-    "done",
-  ];
   return (
     <aside
       ref={ref}
@@ -125,14 +164,67 @@ export function TutorialHint({ at }: { at: TutorialStep }) {
     >
       <div role="status" aria-live="polite" aria-atomic="true">
         <span className="tutorial-progress" dir="ltr">
-          {steps.indexOf(at) + 1} / {steps.length}
+          {tutorialSteps.indexOf(at) + 1} / {tutorialSteps.length}
         </span>
         <strong>{copy[at][0]}</strong>
         <p>{copy[at][1]}</p>
       </div>
-      <Button type="button" variant="outline" onClick={tour.dismiss}>
-        {at === "done" ? "پایان راهنما" : "رد کردن راهنما"}
-      </Button>
+      <div className="tutorial-actions">
+        <div className="tutorial-navigation" aria-label="جابه‌جایی در راهنما">
+          <Button
+            type="button"
+            variant="outline"
+            aria-label="مرحله قبلی"
+            disabled={!tour.canPrevious}
+            onClick={tour.previous}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="m9 5 7 7-7 7"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            aria-label="مرحله بعدی"
+            title={
+              tour.canNext ? "مرحله بعدی" : "ابتدا کار این مرحله را انجام دهید"
+            }
+            disabled={!tour.canNext}
+            onClick={tour.next}
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <path
+                d="m15 5-7 7 7 7"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </Button>
+        </div>
+        <Button type="button" variant="outline" onClick={tour.dismiss}>
+          {at === "done" ? "پایان راهنما" : "رد کردن راهنما"}
+        </Button>
+      </div>
     </aside>
   );
 }

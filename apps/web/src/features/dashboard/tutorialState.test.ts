@@ -11,9 +11,7 @@ describe("interactive tutorial", () => {
     expect(tutorialTransition("scan", "scan-started")).toBe("waiting");
     expect(tutorialTransition("waiting", "results-opened")).toBe("waiting");
     expect(tutorialTransition("waiting", "scan-succeeded")).toBe("results");
-    expect(tutorialTransition("results", "results-opened")).toBe("search");
-    expect(tutorialTransition("search", "search-changed")).toBe("product");
-    expect(tutorialTransition("product", "product-opened")).toBe("done");
+    expect(tutorialTransition("results", "results-opened")).toBe("done");
   });
   it("supports cancellation, going back on the map, and failed scan retries", () => {
     expect(tutorialTransition("details", "map-back")).toBe("map");

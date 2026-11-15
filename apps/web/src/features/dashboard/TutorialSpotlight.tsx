@@ -10,9 +10,7 @@ const scopes: Record<TutorialStep, string> = {
   scan: ".scan-controls",
   waiting: ".scan-stage-running, .scan-feedback-list",
   results: ".scan-stage-complete",
-  search: ".results-toolbar",
-  product: ".results-toolbar, .deal-list, .result-error, .empty",
-  done: ".product-detail-dialog",
+  done: ".deal-section",
 };
 type Rect = { left: number; top: number; right: number; bottom: number };
 const pathRect = (r: Rect) =>
