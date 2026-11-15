@@ -361,8 +361,32 @@
 }
 .phone-auth-card nav {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.password-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 8px;
+}
+.phone-auth-card .auth-recovery-link {
+  min-height: 32px;
+  height: auto;
+  padding: 0;
+  font-size: 11px;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  font-weight: 400;
+}
+.phone-auth-card .auth-register-link {
+  padding-inline: 4px;
+  height: 44px;
+  font-weight: 700;
+  text-decoration: none;
 }
 .phone-auth-card button {
   min-height: 44px;
@@ -372,6 +396,8 @@
   min-height: 48px;
   font-weight: 700;
   font-size: 15px;
+  background: #6334c5;
+  color: #ffffff;
 }
 .phone-auth-card button[data-variant="link"] {
   color: var(--foreground);
@@ -385,7 +411,7 @@
 }
 .phone-auth-card .auth-register-prompt {
   text-align: center;
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 13px;
 }
 .phone-auth-card .auth-register-button {
@@ -399,7 +425,8 @@
 }
 .auth-guest-access {
   border-block-start: 1px solid var(--border);
-  padding-block-start: 16px;
+  padding-block-start: 8px;
+  margin-block-start: -12px;
 }
 .phone-auth-card .auth-guest-link {
   display: flex;
@@ -407,13 +434,14 @@
   min-block-size: 48px;
   justify-content: center;
   gap: 10px;
-  background: var(--accent);
-  color: var(--foreground);
-  font-weight: 700;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-weight: 400;
   text-decoration: none;
 }
 .phone-auth-card .auth-guest-link:hover {
-  background: var(--muted);
+  background: transparent;
+  color: var(--foreground);
 }
 .phone-auth-card .auth-guest-link:focus-visible {
   outline: 2px solid var(--ring);

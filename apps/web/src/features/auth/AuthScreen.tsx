@@ -299,7 +299,21 @@ export function AuthScreen() {
               )}
               {(flow.kind === "login" || flow.kind === "details") && (
                 <>
-                  <label htmlFor="auth-password">رمز عبور</label>
+                  <div className="password-label-row">
+                    <label htmlFor="auth-password">رمز عبور</label>
+                    {flow.kind === "login" && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        className="auth-recovery-link"
+                        onClick={() =>
+                          navigate({ kind: "phone", purpose: "password_reset" })
+                        }
+                      >
+                        رمز عبور را فراموش کرده‌ام
+                      </Button>
+                    )}
+                  </div>
                   <div className="password-input-wrap">
                     <Input
                       id="auth-password"
@@ -399,18 +413,10 @@ export function AuthScreen() {
         )}
         {flow.kind === "login" ? (
           <nav aria-label="گزینه‌های ورود">
+            <span className="auth-register-prompt">هنوز حساب ندارید؟</span>
             <Button
               variant="link"
-              onClick={() =>
-                navigate({ kind: "phone", purpose: "password_reset" })
-              }
-            >
-              رمز عبور را فراموش کرده‌ام
-            </Button>
-            <p className="auth-register-prompt">هنوز حساب ندارید؟</p>
-            <Button
-              variant="outline"
-              className="auth-register-button"
+              className="auth-register-link"
               onClick={() =>
                 navigate({ kind: "phone", purpose: "registration" })
               }
@@ -424,7 +430,7 @@ export function AuthScreen() {
           </Button>
         )}
         <div className="auth-guest-access">
-          <Button asChild variant="secondary" className="auth-guest-link">
+          <Button asChild variant="link" className="auth-guest-link">
             <a href="/">
               ادامه بدون ورود
               <svg
