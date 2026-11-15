@@ -48,16 +48,18 @@ export function VisitorProvider({
       value={{ isGuest, notify, requireAccount, signIn }}
     >
       {isGuest && (
-        <aside className="guest-banner" aria-label="حالت مهمان">
-          <div>
-            <strong>تخفیف‌های دلخواهتان را از دست ندهید</strong>
-            <p>
-              با ورود به حساب، کالاهای دلخواهتان را ذخیره کنید، از تخفیف‌هایشان
-              باخبر شوید و سبد خریدتان را برای بعد نگه دارید.
-            </p>
-          </div>
-          <Button onClick={signIn}>ورود یا ثبت‌نام</Button>
-        </aside>
+        <div className="guest-banner-slot">
+          <aside className="guest-banner" aria-label="حالت مهمان">
+            <div>
+              <strong>تخفیف‌های دلخواهتان را از دست ندهید</strong>
+              <p>
+                علاقه‌مندی‌ها، اعلان تخفیف و سبد خریدتان را با ورود به حساب نگه
+                دارید.
+              </p>
+            </div>
+            <Button onClick={signIn}>ورود یا ثبت‌نام</Button>
+          </aside>
+        </div>
       )}
       {children}
       <div className="guest-toast-region" aria-live="polite" aria-atomic="true">

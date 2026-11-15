@@ -951,3 +951,41 @@ test("dark guide clearly spotlights the location control and removes the blur on
   await expect(page.locator(".tutorial-spotlight")).toHaveCount(0);
   expect(state.starts).toBe(0);
 });
+
+test("guest sign-in banner is compact, fixed and clear of the workspace", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
+  await page.goto("/");
+  const banner = page.locator(".guest-banner");
+  await expect(banner).toHaveCSS("position", "fixed");
+  await expect(banner).toHaveCSS(
+    "height",
+    test.info().project.name === "mobile" ? "56px" : "64px"
+  );
+  await expect(banner).toHaveCSS("background-color", "rgb(99, 52, 197)");
+  await expect(page.locator(".onboarding")).toBeVisible();
+  const bannerBounds = await banner.boundingBox();
+  const contentBounds = await page.locator(".onboarding").boundingBox();
+  expect(contentBounds!.y).toBeGreaterThanOrEqual(bannerBounds!.height);
+  await page.evaluate(() => window.scrollTo(0, 400));
+  await expect.poll(async () => (await banner.boundingBox())!.y).toBe(0);
+  await expect(
+    banner.getByRole("button", { name: "ورود یا ثبت‌نام", exact: true })
+  ).toBeVisible();
+  await page.screenshot({
+    path: `../../.data/design-evidence/guest-banner-${test.info().project.name}.png`,
+  });
+  if (test.info().project.name === "mobile") {
+    await page.setViewportSize({ width: 320, height: 640 });
+    await expect(banner).toHaveCSS("height", "56px");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth
+      )
+    ).toBe(true);
+  }
+});
