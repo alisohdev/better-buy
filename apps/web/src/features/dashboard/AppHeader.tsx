@@ -4,7 +4,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Dialog, DropdownMenu } from "radix-ui";
 import { useTheme } from "next-themes";
 import { authClient } from "../../app/auth-client";
-import { Panel } from "./Primitives";
+import { useTutorial } from "./Tutorial";
 import { AppIcon } from "./AppIcon";
 import { cleanupPushBeforeSignOut } from "../alerts/push";
 import { useVisitor } from "../guest/VisitorProvider";
@@ -44,13 +44,13 @@ export function AppHeader({
   const { theme, setTheme } = useTheme();
   const [accountError, setAccountError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
-  const [helpOpen, setHelpOpen] = useState(false);
+  const tutorial = useTutorial();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileAction = (action: () => void) => {
     setMobileMenuOpen(false);
     requestAnimationFrame(action);
   };
-  const overlayActive = wishlistOpen || cartOpen || locationsOpen || helpOpen;
+  const overlayActive = wishlistOpen || cartOpen || locationsOpen;
   const menuTrigger = useRef<HTMLButtonElement | null>(null);
   const signOut = () => {
     if (visitor.isGuest) {
@@ -158,8 +158,8 @@ export function AppHeader({
           </Button>
           <Button
             variant="ghost"
-            data-active={helpOpen}
-            onClick={() => setHelpOpen(true)}
+            data-active={tutorial.step !== null}
+            onClick={() => tutorial.start()}
           >
             <AppIcon name="list" />
             راهنمای بهتر بخر
@@ -210,7 +210,7 @@ export function AppHeader({
                 مدیریت موقعیت‌ها
               </DropdownMenu.Item>
               <DropdownMenu.Item
-                onSelect={() => requestAnimationFrame(() => setHelpOpen(true))}
+                onSelect={() => requestAnimationFrame(() => tutorial.start())}
               >
                 راهنمای بهتر بخر
               </DropdownMenu.Item>
@@ -327,7 +327,7 @@ export function AppHeader({
                 </Button>
                 <Button
                   variant="ghost"
-                  onClick={() => mobileAction(() => setHelpOpen(true))}
+                  onClick={() => mobileAction(() => tutorial.start())}
                 >
                   راهنمای بهتر بخر
                 </Button>
@@ -357,33 +357,7 @@ export function AppHeader({
         </Dialog.Root>
         {feedback}
       </header>
-      <Panel
-        title="راهنمای بهتر بخر"
-        open={helpOpen}
-        onOpenChange={(open) => {
-          setHelpOpen(open);
-          if (!open) requestAnimationFrame(() => menuTrigger.current?.focus());
-        }}
-        trigger={<button type="button" hidden aria-label="راهنما" />}
-      >
-        <p>
-          موقعیت تحویل را ثبت کنید تا تخفیف‌ها پیدا شوند؛ سپس قیمت فروشگاه‌ها را
-          مقایسه کنید.
-        </p>
-        <p>
-          برای اسکن اسنپ‌مارکت و اکالا نیازی به ورود به فروشگاه نیست. ورود به
-          بهتر بخر برای نگهداری موقعیت‌ها و تاریخچه لازم است.
-        </p>
-        <p>
-          هر دو فروشگاه به‌صورت پیش‌فرض بررسی می‌شوند. حداقل تخفیف، نتیجه‌های
-          ذخیره‌شده را فیلتر می‌کند و با جابه‌جایی آن نیازی به اسکن دوباره نیست.
-        </p>
-        <p>قیمت و موجودی، مشاهده زمان اسکن است.</p>
-        <p>
-          اسکن تازه جت فعلاً غیرفعال است؛ نتیجه‌های قبلی در تاریخچه قابل
-          مشاهده‌اند.
-        </p>
-      </Panel>
+
       {accountError && (
         <p className="form-error" role="alert">
           {accountError}

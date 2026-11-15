@@ -695,3 +695,260 @@ test("failed location import keeps the browser copy and supports retry", async (
     )
   ).toBe(0);
 });
+
+function tutorialRun(finishedAt: string): ScanRecord {
+  return {
+    id: "tutorial-scan",
+    locationId: home.id,
+    locationName: home.name,
+    source: "snappmarket",
+    threshold: 15,
+    mode: "partial",
+    status: "succeeded",
+    createdAt: finishedAt,
+    startedAt: finishedAt,
+    finishedAt,
+    vendorCount: 1,
+    productCount: 1,
+    dealCount: 1,
+    errorCode: null,
+    errorMessage: null,
+    context: {
+      location: {
+        name: home.name,
+        latitude: home.latitude,
+        longitude: home.longitude,
+        revision: 1,
+      },
+      requestedThreshold: 15,
+      effectiveThreshold: 15,
+      policyVersion: "automatic-v1",
+      manifest: {
+        adapter: "snappmarket",
+        contractVersion: 1,
+        feedKinds: ["promotion"],
+      },
+      scopeHash: "tutorial",
+      eligibilityVersion: 1,
+      offerKeyVersion: 1,
+      coverage: "complete",
+    },
+  };
+}
+
+test("interactive guide waits for location save, explicit scan, completion, search and product opening", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  let failSave = true;
+  await page.route("**/api/locations", async (route) => {
+    if (route.request().method() !== "POST" || !failSave)
+      return route.fallback();
+    return route.fulfill({ status: 400, json: { error: "INVALID_INPUT" } });
+  });
+  let completed = false;
+  await page.route("**/api/scans/scan-*", async (route) => {
+    const run = state.scans.find(
+      (scan) =>
+        scan.id === new URL(route.request().url()).pathname.split("/").at(-1)
+    );
+    if (!run) return route.fallback();
+    const updated = completed
+      ? {
+          ...run,
+          ...tutorialRun(new Date().toISOString()),
+          id: run.id,
+          source: run.source,
+        }
+      : run;
+    Object.assign(run, updated);
+    return route.fulfill({ json: { data: updated } });
+  });
+  const offer = {
+    offerKey: "milk",
+    productVariationId: "milk",
+    vendorId: "store",
+    vendorTitle: "فروشگاه",
+    vendorCode: null,
+    priceRials: 100000,
+    discountRials: 50000,
+    finalPriceRials: 50000,
+    discountRatio: 50,
+    stock: 5,
+    state: "current",
+  };
+  await page.route("**/api/scans/*/products?*", (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          totalCount: 1,
+          observedAt: new Date().toISOString(),
+          coverageSummary: "complete",
+          baseline: { scanId: null, reason: "first_snapshot" },
+          nextCursor: null,
+          items: [
+            {
+              key: "milk",
+              scanId: "scan-snappmarket",
+              groupKeyVersion: 2,
+              title: "شیر",
+              image: null,
+              categoryTitle: "لبنیات",
+              priceRials: 100000,
+              discountRials: 50000,
+              finalPriceRials: 50000,
+              discountRatio: 50,
+              state: "current",
+              bestCurrentOffer: offer,
+              currentStoreOfferCount: 1,
+              conditionalOfferCount: 0,
+              diagnostics: [],
+              wishlistMatch: false,
+              cartQuantity: 0,
+            },
+          ],
+        },
+      },
+    })
+  );
+  await page.goto("/");
+  await expect(page.locator('[data-tutorial-step="location"]')).toBeVisible();
+  await expect(page.locator(".tutorial-spotlight")).toHaveCSS(
+    "backdrop-filter",
+    "blur(5px)"
+  );
+  await expect(page.locator(".tutorial-spotlight")).toHaveCSS(
+    "clip-path",
+    /path\(evenodd/
+  );
+  await page
+    .getByRole("button", { name: "افزودن موقعیت تحویل", exact: true })
+    .click();
+  await expect(page.locator('[data-tutorial-step="map"]')).toBeVisible();
+  await page.screenshot({
+    path: `../../.data/design-evidence/tutorial-map-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "تأیید موقعیت", exact: true }).click();
+  await expect(page.locator('[data-tutorial-step="details"]')).toBeVisible();
+  await page.getByLabel("نام مکان").fill("خانه مهمان");
+  await page.getByRole("button", { name: "ذخیره مکان", exact: true }).click();
+  await expect(page.locator(".location-editor [role=alert]")).toBeVisible();
+  await expect(page.locator('[data-tutorial-step="details"]')).toBeVisible();
+  expect(state.starts).toBe(0);
+  failSave = false;
+  await page.getByRole("button", { name: "ذخیره مکان", exact: true }).click();
+  await expect(page.locator('[data-tutorial-step="scan"]')).toBeVisible();
+  await page.screenshot({
+    path: `../../.data/design-evidence/tutorial-scan-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  expect(state.starts).toBe(0);
+  await page.getByRole("button", { name: "شروع اسکن", exact: true }).click();
+  await expect(page.locator('[data-tutorial-step="waiting"]')).toBeVisible();
+  await expect.poll(() => state.starts).toBe(2);
+  await expect(
+    page.getByRole("button", { name: "مشاهده نتایج", exact: true })
+  ).toHaveCount(0);
+  completed = true;
+  await expect(page.locator('[data-tutorial-step="results"]')).toBeVisible({
+    timeout: 15000,
+  });
+  await page.getByRole("button", { name: "مشاهده نتایج", exact: true }).click();
+  await expect(page.locator('[data-tutorial-step="search"]')).toBeVisible();
+  await page
+    .getByRole("searchbox", { name: "جست‌وجوی کالا یا فروشگاه" })
+    .fill("شیر");
+  await expect(page.locator('[data-tutorial-step="product"]')).toBeVisible();
+  await page
+    .getByRole("button", { name: "جزئیات شیر", exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("dialog").locator('[data-tutorial-step="done"]')
+  ).toBeVisible();
+  await page.getByRole("button", { name: "پایان راهنما", exact: true }).click();
+  await expect(page.locator(".tutorial-hint")).toHaveCount(0);
+  await expect(page.locator(".tutorial-spotlight")).toHaveCount(0);
+  await page.reload();
+  await expect(page.locator(".shopping-page-heading")).toBeVisible();
+  await expect(page.locator(".tutorial-hint")).toHaveCount(0);
+  expect(state.starts).toBe(2);
+});
+
+for (const age of [null, 2, 0]) {
+  test(`entry routing waits for manual scan; previous scan age ${age}`, async ({
+    page,
+  }) => {
+    const state = await setup(page);
+    state.guestLocations.push(home);
+    if (age !== null)
+      state.scans.push(
+        tutorialRun(new Date(Date.now() - age * 86400000).toISOString())
+      );
+    await page.addInitScript(() =>
+      localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+    );
+    await page.goto("/");
+    await expect(
+      page.locator(age === 0 ? ".shopping-page-heading" : ".scan-page")
+    ).toBeVisible();
+    expect(state.starts).toBe(0);
+  });
+}
+
+test("skipping the practical guide persists without starting a scan", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "رد کردن راهنما", exact: true })
+    .click();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "افزودن موقعیت تحویل", exact: true })
+  ).toBeVisible();
+  await expect(page.locator(".tutorial-hint")).toHaveCount(0);
+  expect(state.starts).toBe(0);
+});
+
+test("an explicit historical scan link opens its list without scanning", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  state.guestLocations.push(home);
+  state.scans.push(
+    tutorialRun(new Date(Date.now() - 2 * 86400000).toISOString())
+  );
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
+  await page.goto("/?scan=tutorial-scan");
+  await expect(page.locator(".shopping-page-heading")).toBeVisible();
+  expect(state.starts).toBe(0);
+});
+
+test("dark guide clearly spotlights the location control and removes the blur on skip", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  state.guestLocations.push(home);
+  state.scans.push(tutorialRun(new Date().toISOString()));
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/");
+  const hint = page.locator('[data-tutorial-step="location"]');
+  await expect(hint).toHaveCSS("background-color", "rgb(105, 65, 207)");
+  await expect(page.locator(".tutorial-spotlight")).toHaveCSS(
+    "backdrop-filter",
+    "blur(5px)"
+  );
+  await page.screenshot({
+    path: `../../.data/design-evidence/tutorial-dark-${test.info().project.name}.png`,
+  });
+  await hint
+    .getByRole("button", { name: "رد کردن راهنما", exact: true })
+    .click();
+  await expect(page.locator(".tutorial-spotlight")).toHaveCount(0);
+  expect(state.starts).toBe(0);
+});

@@ -1,3 +1,4 @@
+import { TutorialHint, useTutorial } from "../dashboard/Tutorial";
 import { DiscountFilter } from "../dashboard/DiscountFilter";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,7 @@ export function ScanControls({
   onStart: () => void;
   onLive: () => void;
 }) {
+  const tutorial = useTutorial();
   const providers: DealSource[] = digikalaSupermarketEnabled
     ? ["snappmarket", "okala", "digikalajet"]
     : ["snappmarket", "okala"];
@@ -101,8 +103,10 @@ export function ScanControls({
 
       <DiscountFilter value={minDiscount} onChange={onMinDiscount} />
 
+      <TutorialHint at="scan" />
       <div className="scan-setup-actions">
         <Button
+          data-tutorial-target={tutorial.step === "scan"}
           className="primary scan-button"
           disabled={blocked}
           onClick={onStart}

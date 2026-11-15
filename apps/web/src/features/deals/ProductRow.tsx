@@ -1,3 +1,4 @@
+import { TutorialHint, useTutorial } from "../dashboard/Tutorial";
 import { ProductDestination } from "./ProductDestination";
 import { useRef, useState } from "react";
 import { Dialog } from "radix-ui";
@@ -75,6 +76,7 @@ export function ProductRow({
   wishlistReady?: boolean;
   onFavorite?: () => void;
 }) {
+  const tutorial = useTutorial();
   const [broken, setBroken] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -286,7 +288,13 @@ export function ProductRow({
     </div>
   );
   return (
-    <Dialog.Root open={detailOpen} onOpenChange={setDetailOpen}>
+    <Dialog.Root
+      open={detailOpen}
+      onOpenChange={(open) => {
+        setDetailOpen(open);
+        if (open) tutorial.send("product-opened");
+      }}
+    >
       <article
         className={`deal-row ${group.state === "no_longer_present" ? "historical-offer" : ""}`}
       >
@@ -312,6 +320,7 @@ export function ProductRow({
               <button
                 type="button"
                 className="product-title"
+                data-tutorial-target={tutorial.step === "product"}
                 onClick={(event) => {
                   detailReturnFocus.current = event.currentTarget;
                 }}
@@ -381,6 +390,7 @@ export function ProductRow({
               </Button>
             </Dialog.Close>
           </header>
+          <TutorialHint at="done" />
           <div className="product-detail-overview">
             <div className="product-detail-image">{image}</div>
             <div className="product-detail-copy">

@@ -6,6 +6,7 @@ import type { LocationRecord } from "@better-buy/shared";
 import { LocationEditor, type LocationStage } from "./LocationEditor";
 import { LocationDeleteAction } from "./LocationDeleteAction";
 import { LocationAddress } from "./useLocationAddress";
+import { TutorialHint, useTutorial } from "../dashboard/Tutorial";
 import { AppIcon } from "../dashboard/AppIcon";
 import "./location-editor.css";
 
@@ -25,6 +26,7 @@ export function LocationManager({
   onClose: () => void;
   onSaved: (location?: LocationRecord) => void;
 }) {
+  const tutorial = useTutorial();
   const [view, setView] = useState<LocationView>({ kind: initialView });
   const [stage, setStage] = useState<LocationStage>("map");
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -37,6 +39,14 @@ export function LocationManager({
   useEffect(() => {
     titleRef.current?.focus({ preventScroll: true });
   }, [view.kind, stage]);
+  useEffect(() => {
+    if (view.kind === "create") {
+      if (stage === "map") {
+        tutorial.send("location-opened");
+        tutorial.send("map-back");
+      } else tutorial.send("map-confirmed");
+    }
+  }, [view.kind, stage, tutorial.step]);
   const goBack = () => {
     if (view.kind === "create" && stage === "details") setStage("map");
     else if (view.kind !== "list" && stage === "map" && view.kind === "edit")
@@ -117,7 +127,9 @@ export function LocationManager({
           </header>
           {view.kind === "list" ? (
             <>
+              <TutorialHint at="location" />
               <Button
+                data-tutorial-target={tutorial.step === "location"}
                 variant="outline"
                 className="location-add-button"
                 onClick={() => {

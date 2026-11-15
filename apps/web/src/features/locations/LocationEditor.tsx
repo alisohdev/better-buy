@@ -1,4 +1,5 @@
 "use client";
+import { TutorialHint, useTutorial } from "../dashboard/Tutorial";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +29,7 @@ export function LocationEditor({
   stage: LocationStage;
   onStageChange: (stage: LocationStage) => void;
 }) {
+  const tutorial = useTutorial();
   const [name, setName] = useState(location?.name ?? "");
   const [latitude, setLatitude] = useState(location?.latitude ?? 35.7);
   const [longitude, setLongitude] = useState(location?.longitude ?? 51.4);
@@ -106,6 +108,7 @@ export function LocationEditor({
           save({ name: name.trim(), latitude, longitude, isDefault });
       }}
     >
+      <TutorialHint at={stage === "map" ? "map" : "details"} />
       {stage === "map" ? (
         <>
           <div className="location-map-workspace">
@@ -246,7 +249,11 @@ export function LocationEditor({
             </p>
           )}
           <div className="location-flow-footer">
-            <Button type="submit" disabled={!valid}>
+            <Button
+              data-tutorial-target={tutorial.step === "map"}
+              type="submit"
+              disabled={!valid}
+            >
               تأیید موقعیت
             </Button>
           </div>
@@ -333,7 +340,11 @@ export function LocationEditor({
             </p>
           )}
           <div className="location-flow-footer">
-            <Button type="submit" disabled={pending || !valid || !name.trim()}>
+            <Button
+              data-tutorial-target={tutorial.step === "details"}
+              type="submit"
+              disabled={pending || !valid || !name.trim()}
+            >
               {pending ? "در حال ذخیره…" : "ذخیره مکان"}
             </Button>
           </div>

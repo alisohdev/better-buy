@@ -10,6 +10,8 @@ import {
   type ScanRecord,
 } from "@better-buy/shared";
 import "./shopping-workspace.css";
+import { TutorialProvider, TutorialHint, useTutorial } from "./Tutorial";
+import { initialWorkspace } from "./initialWorkspace";
 import { AppHeader } from "./AppHeader";
 import { AppIcon, ProviderMark } from "./AppIcon";
 import { ReadNotice } from "./Primitives";
@@ -37,13 +39,22 @@ import { useAdminAccess } from "../admin/useAdminAnalytics";
 import { useSearchAnalytics } from "../admin/useAnalytics";
 
 export function Dashboard() {
+  return (
+    <TutorialProvider>
+      <DashboardContent />
+    </TutorialProvider>
+  );
+}
+
+function DashboardContent() {
+  const tutorial = useTutorial();
   const visitor = useVisitor();
   const data = useDashboardData();
   const wishlist = useWishlistQuery();
   const adminAccess = useAdminAccess();
   const [view, setView] = useState<"deals" | "history" | "admin">("deals");
   const [workspaceSection, setWorkspaceSection] = useState<"offers" | "scan">(
-    "offers"
+    "scan"
   );
   const [cartOpen, setCartOpen] = useState(false);
 
@@ -96,10 +107,35 @@ export function Dashboard() {
     data.setSelected(run.locationId);
     setSelection({ source: run.source, runId: run.id });
     setView("deals");
+    setWorkspaceSection("offers");
   }, [data.scans, data.scansQuery.isSuccess, data.setSelected]);
+  useEffect(() => {
+    if (tutorial.step === "location") {
+      setView("deals");
+      setCartOpen(false);
+      setWishlistOpen(false);
+    }
+  }, [tutorial.step]);
   const selectedLocation = data.locations.find(
     (location) => location.id === data.selected
   );
+  const entryHandled = useRef(false);
+  useEffect(() => {
+    if (
+      entryHandled.current ||
+      !data.locationsQuery.isSuccess ||
+      !data.scansQuery.isSuccess
+    )
+      return;
+    entryHandled.current = true;
+    if (new URLSearchParams(window.location.search).has("scan")) return;
+    setWorkspaceSection(initialWorkspace(data.scans, selectedLocation));
+  }, [
+    data.locationsQuery.isSuccess,
+    data.scansQuery.isSuccess,
+    data.scans,
+    selectedLocation,
+  ]);
   const coordinateRevision = selectedLocation?.coordinateRevision ?? 1;
   const latestCompatible = (source: DealSource) =>
     data.scans
@@ -285,6 +321,7 @@ export function Dashboard() {
     !data.locationsQuery.data ||
     !data.scansQuery.data;
   const changeLocation = (id: string) => {
+    setScanAttemptBaseIds(null);
     data.setSelected(id);
     setSelection({ source: null, runId: null });
   };
@@ -301,6 +338,7 @@ export function Dashboard() {
   };
   const newScan = () => {
     if (blocked) return;
+    tutorial.send("scan-started");
     setScanAttemptBaseIds(new Set(data.scans.map((run) => run.id)));
     setSelection({ source: null, runId: null });
     setWorkspaceSection("scan");
@@ -330,6 +368,36 @@ export function Dashboard() {
       : scanAttemptBaseIds && freshSuccessfulRuns.length > 0
         ? "complete"
         : "ready";
+  useEffect(() => {
+    if (tutorial.step !== "waiting") return;
+    if (scanPageStage === "complete") tutorial.send("scan-succeeded");
+    else if (
+      !active &&
+      !submitting &&
+      !unresolved &&
+      scanAttemptBaseIds &&
+      (data.scans.some(
+        (run) =>
+          !scanAttemptBaseIds.has(run.id) &&
+          (run.status === "failed" || run.status === "cancelled")
+      ) ||
+        snappStart.error ||
+        okalaStart.error ||
+        digikalaStart.error)
+    )
+      tutorial.send("scan-failed");
+  }, [
+    tutorial,
+    scanPageStage,
+    active,
+    submitting,
+    unresolved,
+    scanAttemptBaseIds,
+    data.scans,
+    snappStart.error,
+    okalaStart.error,
+    digikalaStart.error,
+  ]);
   const completedProductCount = freshSuccessfulRuns.reduce(
     (total, run) => total + run.productCount,
     0
@@ -360,7 +428,9 @@ export function Dashboard() {
         </ReadNotice>
       )}
       <AppHeader
-        onLocations={() => setLocationDialog("list")}
+        onLocations={() =>
+          setLocationDialog(tutorial.step === "location" ? "create" : "list")
+        }
         onHistory={() => setView("history")}
         onHome={goHome}
         onScan={() => {
@@ -482,7 +552,11 @@ export function Dashboard() {
                   روی نقشه نشانی تحویل را پیدا کنید تا پیشنهادهای نزدیک شما را
                   بررسی کنیم.
                 </p>
-                <Button onClick={() => setLocationDialog("create")}>
+                <TutorialHint at="location" />
+                <Button
+                  data-tutorial-target={tutorial.step === "location"}
+                  onClick={() => setLocationDialog("create")}
+                >
                   افزودن موقعیت تحویل
                 </Button>
                 <p className="muted">
@@ -495,6 +569,17 @@ export function Dashboard() {
                 data-stage={scanPageStage}
                 aria-labelledby="scan-page-title"
               >
+                {tutorial.step === "location" && (
+                  <div>
+                    <TutorialHint at="location" />
+                    <Button
+                      data-tutorial-target
+                      onClick={() => setLocationDialog("create")}
+                    >
+                      افزودن موقعیت تحویل
+                    </Button>
+                  </div>
+                )}
                 <header className="scan-flow-header">
                   <Button
                     variant="ghost"
@@ -538,6 +623,8 @@ export function Dashboard() {
                     onLive={goHome}
                   />
                 )}
+                <TutorialHint at="waiting" />
+                <TutorialHint at="results" />
                 {scanPageStage === "running" && (
                   <section
                     className="scan-stage scan-stage-running"
@@ -612,7 +699,11 @@ export function Dashboard() {
                     <div className="scan-stage-actions">
                       <Button
                         className="primary"
-                        onClick={() => setWorkspaceSection("offers")}
+                        data-tutorial-target={tutorial.step === "results"}
+                        onClick={() => {
+                          tutorial.send("results-opened");
+                          setWorkspaceSection("offers");
+                        }}
                       >
                         <AppIcon name="list" />
                         مشاهده نتایج
@@ -711,13 +802,27 @@ export function Dashboard() {
                     </ReadNotice>
                   ) : null;
                 })}
+                <TutorialHint at="location" />
+                {tutorial.step === "scan" && (
+                  <div>
+                    <TutorialHint at="scan" />
+                    <Button onClick={() => setWorkspaceSection("scan")}>
+                      رفتن به تنظیمات اسکن
+                    </Button>
+                  </div>
+                )}
                 <header className="shopping-page-heading">
                   <div>
                     <h1>پیشنهادهای امروز</h1>
                     <button
                       type="button"
                       className="shopping-location"
-                      onClick={() => setLocationDialog("list")}
+                      data-tutorial-target={tutorial.step === "location"}
+                      onClick={() =>
+                        setLocationDialog(
+                          tutorial.step === "location" ? "create" : "list"
+                        )
+                      }
                     >
                       <AppIcon name="location" />
                       <span>
@@ -794,28 +899,24 @@ export function Dashboard() {
         <LocationManager
           locations={data.locations}
           initialView={locationDialog}
-          onClose={() => setLocationDialog(null)}
+          onClose={() => {
+            tutorial.send("location-closed");
+            setLocationDialog(null);
+          }}
           onSaved={(saved) => {
             if (saved) changeLocation(saved.id);
-            const firstCollection =
-              saved && data.locations.length === 0 && !active && !unresolved;
-            void data.load().then(() => {
-              if (firstCollection && saved) {
-                setSelection({ source: null, runId: null });
-                setView("deals");
-                setWorkspaceSection("scan");
-                for (const provider of providers)
-                  (provider === "okala"
-                    ? okalaStart
-                    : provider === "digikalajet"
-                      ? digikalaStart
-                      : snappStart
-                  ).start({
-                    locationId: saved.id,
-                    threshold: 15,
-                  });
-              }
-            });
+            if (saved && tutorial.step === "details") {
+              tutorial.send("location-saved");
+              setLocationDialog(null);
+              setView("deals");
+              setWorkspaceSection("scan");
+            }
+            if (saved && data.locations.length === 0) {
+              setSelection({ source: null, runId: null });
+              setView("deals");
+              setWorkspaceSection("scan");
+            }
+            void data.load();
           }}
         />
       )}

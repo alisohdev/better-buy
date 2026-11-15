@@ -1,0 +1,89 @@
+.tutorial-hint {
+  position: relative;
+  z-index: 1001;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  margin-block: 12px;
+  border: 0;
+  border-radius: 12px;
+  background: #5531b5;
+  color: #ffffff;
+  box-shadow: 0 12px 32px rgb(24 12 56 / 24%);
+  text-align: start;
+  scroll-margin-block: 24px;
+}
+.tutorial-hint strong {
+  display: block;
+  font-size: 18px;
+}
+.tutorial-hint p {
+  margin: 6px 0 0;
+  max-inline-size: 65ch;
+}
+.tutorial-progress {
+  display: block;
+  font-size: 12px;
+  margin-block-end: 4px;
+}
+.tutorial-hint button {
+  flex-shrink: 0;
+  min-height: 44px;
+}
+[data-tutorial-target="true"] {
+  outline: 4px solid #9b79ff;
+  outline-offset: 4px;
+}
+.location-editor > .tutorial-hint {
+  margin: 12px 16px;
+}
+@media (max-width: 520px) {
+  .tutorial-hint {
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+  }
+  .tutorial-hint button {
+    align-self: flex-end;
+  }
+}
+
+.location-editor > .tutorial-hint {
+  flex-shrink: 0;
+}
+.location-stage-map:has(> .tutorial-hint) {
+  overflow-y: auto;
+}
+
+.location-flow-footer [data-tutorial-target="true"] {
+  outline-offset: -3px;
+}
+
+.tutorial-hint button {
+  background: #ffffff;
+  color: #44218f;
+  border-color: #ffffff;
+  font-weight: 700;
+}
+.tutorial-hint button:hover {
+  background: #eee8ff;
+  color: #33176f;
+}
+.tutorial-hint button:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 4px;
+}
+.tutorial-spotlight {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+  background: rgb(12 9 25 / 48%);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+.dark .tutorial-hint {
+  background: #6941cf;
+}
