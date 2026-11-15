@@ -836,9 +836,12 @@ test("interactive guide waits for location save and explicit scan then finishes 
     fullPage: true,
   });
   expect(state.starts).toBe(0);
+  const providerCount = await page
+    .locator(".provider-checklist input:checked")
+    .count();
   await page.getByRole("button", { name: "شروع اسکن", exact: true }).click();
   await expect(page.locator('[data-tutorial-step="waiting"]')).toBeVisible();
-  await expect.poll(() => state.starts).toBe(2);
+  await expect.poll(() => state.starts).toBe(providerCount);
   await expect(
     page.getByRole("button", { name: "مشاهده نتایج", exact: true })
   ).toHaveCount(0);
@@ -883,7 +886,7 @@ test("interactive guide waits for location save and explicit scan then finishes 
   await page.reload();
   await expect(page.locator(".shopping-page-heading")).toBeVisible();
   await expect(page.locator(".tutorial-hint")).toHaveCount(0);
-  expect(state.starts).toBe(2);
+  expect(state.starts).toBe(providerCount);
 });
 
 for (const age of [null, 2, 0]) {
