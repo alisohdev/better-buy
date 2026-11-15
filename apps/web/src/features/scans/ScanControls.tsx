@@ -1,5 +1,4 @@
 import { TutorialHint, useTutorial } from "../dashboard/Tutorial";
-import { DiscountFilter } from "../dashboard/DiscountFilter";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +11,7 @@ import {
 import type { LocationRecord } from "@better-buy/shared";
 import type { DealSource } from "../dashboard/types";
 import { AppIcon, ProviderMark } from "../dashboard/AppIcon";
-import { faNumber, sourceLabel } from "../dashboard/format";
+import { sourceLabel } from "../dashboard/format";
 
 export const digikalaSupermarketEnabled =
   process.env.NEXT_PUBLIC_DIGIKALA_SUPERMARKET_ENABLED === "true";
@@ -21,28 +20,24 @@ export function ScanControls({
   locations,
   selected,
   selectedProviders,
-  minDiscount,
   blocked,
   submitting,
   hasSnapshot,
   historical,
   onLocation,
   onToggleProvider,
-  onMinDiscount,
   onStart,
   onLive,
 }: {
   locations: LocationRecord[];
   selected: string;
   selectedProviders: DealSource[];
-  minDiscount: number;
   blocked: boolean;
   submitting: boolean;
   hasSnapshot: boolean;
   historical: boolean;
   onLocation: (id: string) => void;
   onToggleProvider: (source: DealSource) => void;
-  onMinDiscount: (value: number) => void;
   onStart: () => void;
   onLive: () => void;
 }) {
@@ -100,8 +95,6 @@ export function ScanControls({
           })}
         </div>
       </fieldset>
-
-      <DiscountFilter value={minDiscount} onChange={onMinDiscount} />
 
       <TutorialHint at="scan" />
       <div className="scan-setup-actions">

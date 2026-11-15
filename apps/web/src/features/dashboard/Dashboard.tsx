@@ -614,7 +614,6 @@ function DashboardContent() {
                     locations={data.locations}
                     selected={data.selected}
                     selectedProviders={providers}
-                    minDiscount={minDiscount}
                     blocked={blocked}
                     submitting={submitting}
                     hasSnapshot={feeds.some((feed) => !!feed.ledger.scan)}
@@ -630,7 +629,6 @@ function DashboardContent() {
                           : [...previous, provider]
                       );
                     }}
-                    onMinDiscount={setMinDiscount}
                     onStart={newScan}
                     onLive={goHome}
                   />
