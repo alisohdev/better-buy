@@ -80,6 +80,22 @@ async function setup(page: Page) {
       }
       return route.fulfill({ json: { data: locations } });
     }
+    if (url.pathname.startsWith("/api/locations/")) {
+      const id = url.pathname.split("/").at(-1);
+      const locations = state.signedIn
+        ? state.memberLocations
+        : state.guestLocations;
+      if (method === "DELETE") {
+        const index = locations.findIndex((location) => location.id === id);
+        if (index >= 0) locations.splice(index, 1);
+        return route.fulfill({ status: 204 });
+      }
+      if (method === "PATCH") {
+        const location = locations.find((location) => location.id === id);
+        Object.assign(location!, route.request().postDataJSON());
+        return route.fulfill({ json: { data: location } });
+      }
+    }
     if (url.pathname === "/api/scans") {
       if (method === "POST") {
         state.starts++;
@@ -134,6 +150,368 @@ async function signIn(page: Page) {
   await page.getByLabel("رمز عبور", { exact: true }).fill("a long passphrase");
   await page.getByRole("button", { name: "ورود", exact: true }).click();
 }
+
+test("location editor handles long addresses and saves the current-location choice", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  const address =
+    "بزرگراه بسیج، افسریه شمالی، ناحیه ۵، منطقه ۱۵ شهر تهران، تهران، تهران، بخش مرکزی تهران";
+  await page.route("https://photon.komoot.io/api/**", (route) =>
+    route.fulfill({
+      json: {
+        features: [
+          {
+            properties: { name: address },
+            geometry: { coordinates: [51.4, 35.7] },
+          },
+          {
+            properties: {
+              name: "بزرگراه بسیج، قصر فیروزه، منطقه ۱۴ شهر تهران، تهران",
+            },
+            geometry: { coordinates: [51.41, 35.71] },
+          },
+        ],
+      },
+    })
+  );
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "افزودن موقعیت تحویل", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog", {
+    name: "انتخاب آدرس",
+    exact: true,
+  });
+  const back = dialog
+    .locator("header")
+    .getByRole("button", { name: "بازگشت به موقعیت‌ها" });
+  await expect(back).toBeVisible();
+  const backBox = await back.boundingBox();
+  expect(backBox?.width).toBe(44);
+  expect(backBox?.height).toBe(44);
+  await expect(back).toHaveCSS("border-top-width", "1px");
+  const normalBackground = await back.evaluate(
+    (element) => getComputedStyle(element).backgroundColor
+  );
+  await back.hover();
+  await expect
+    .poll(() =>
+      back.evaluate((element) => getComputedStyle(element).backgroundColor)
+    )
+    .not.toBe(normalBackground);
+  await expect(dialog.getByLabel("نام مکان")).toHaveCount(0);
+  const workspace = await dialog
+    .locator(".location-map-workspace")
+    .boundingBox();
+  const canvas = await dialog.locator(".maplibre-map").boundingBox();
+  expect(
+    Math.abs((workspace?.height ?? 0) - (canvas?.height ?? 0))
+  ).toBeLessThan(2);
+  if (test.info().project.name === "mobile") {
+    const bounds = await dialog.boundingBox();
+    expect(
+      Math.abs(
+        (bounds?.y ?? 0) + (bounds?.height ?? 0) - page.viewportSize()!.height
+      )
+    ).toBeLessThan(2);
+    await expect(dialog).toHaveCSS("transform", "none");
+  }
+  await dialog.getByLabel("جست‌وجوی نشانی در تهران").fill("افسریه");
+  await expect(
+    dialog.getByRole("button", { name: "جست‌وجو", exact: true })
+  ).toHaveCount(0);
+  await expect(dialog.locator("details.location-map-section")).toHaveCount(0);
+  const result = dialog.getByRole("button", { name: address, exact: true });
+  expect(
+    await result.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth
+    )
+  ).toBe(true);
+  await result.click();
+  await expect(result).toHaveCount(0);
+  await dialog.screenshot({
+    path: `../../.data/design-evidence/address-map-${test.info().project.name}.png`,
+  });
+  await dialog
+    .getByRole("button", { name: "تأیید موقعیت", exact: true })
+    .click();
+  const details = page.getByRole("dialog", {
+    name: "جزئیات آدرس",
+    exact: true,
+  });
+  await details.getByLabel("نام مکان").fill("خانه تازه");
+  await details.getByRole("button", { name: "تغییر موقعیت روی نقشه" }).click();
+  await page.getByRole("button", { name: "تأیید موقعیت", exact: true }).click();
+  await expect(details.getByLabel("نام مکان")).toHaveValue("خانه تازه");
+  await expect(details.locator(".location-map")).toHaveAttribute(
+    "data-map-ready",
+    "true",
+    { timeout: 30000 }
+  );
+  const checkbox = details.getByRole("checkbox", {
+    name: "موقعیت کنونی من",
+    exact: true,
+  });
+  await details.locator('label[for="default-location"]').click();
+  await expect(checkbox).toBeChecked();
+  await checkbox.focus();
+  await page.keyboard.press("Space");
+  await expect(checkbox).not.toBeChecked();
+  await page.keyboard.press("Space");
+  await expect(checkbox).toBeChecked();
+  const box = await checkbox.boundingBox();
+  expect(box?.width).toBe(20);
+  expect(box?.height).toBe(20);
+  await details.screenshot({
+    path: `../../.data/design-evidence/location-editor-${test.info().project.name}.png`,
+  });
+  await details.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  await details.screenshot({
+    path: `../../.data/design-evidence/location-editor-search-${test.info().project.name}.png`,
+  });
+  await details
+    .getByRole("button", { name: "ذخیره مکان", exact: true })
+    .click();
+  await expect(details).toHaveCount(0);
+  expect(state.guestLocations[0]).toMatchObject({
+    name: "خانه تازه",
+    latitude: 35.7,
+    longitude: 51.4,
+    isDefault: true,
+  });
+});
+
+test("map flow supports browser location and panning the fixed pin", async ({
+  page,
+  context,
+}) => {
+  const state = await setup(page);
+  await context.grantPermissions(["geolocation"]);
+  await context.setGeolocation({ latitude: 35.76, longitude: 51.42 });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "افزودن موقعیت تحویل", exact: true })
+    .click();
+  await page.getByRole("button", { name: "موقعیت من", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "موقعیت من", exact: true })
+  ).toBeEnabled();
+  const map = page.locator(".location-map-workspace .maplibre-map");
+  const bounds = (await map.boundingBox())!;
+  await page.mouse.move(
+    bounds.x + bounds.width * 0.75,
+    bounds.y + bounds.height * 0.7
+  );
+  await page.mouse.down();
+  await page.mouse.move(
+    bounds.x + bounds.width * 0.5,
+    bounds.y + bounds.height * 0.6,
+    { steps: 15 }
+  );
+  await page.mouse.up();
+  await page.waitForTimeout(800);
+  await page.getByRole("button", { name: "تأیید موقعیت", exact: true }).click();
+  await page.getByLabel("نام مکان").fill("موقعیت جدید");
+  await page.getByRole("button", { name: "ذخیره مکان", exact: true }).click();
+  await expect.poll(() => state.guestLocations.length).toBe(1);
+  expect(state.guestLocations[0].latitude).not.toBe(35.76);
+  expect(state.guestLocations[0].longitude).not.toBe(51.42);
+  expect(state.guestLocations[0].latitude).not.toBe(35.7);
+});
+
+test("saved locations resolve map addresses and restore cached addresses after refresh", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  state.guestLocations = [home];
+  let lookups = 0;
+  await page.route("https://photon.komoot.io/reverse?**", async (route) => {
+    lookups++;
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get("lat")).toBe(String(home.latitude));
+    expect(url.searchParams.get("lon")).toBe(String(home.longitude));
+    expect(url.searchParams.get("lang")).toBe("default");
+    await route.fulfill({
+      json: {
+        features: [
+          {
+            properties: {
+              city: "تهران",
+              district: "قائم چیتگر",
+              street: "بلوار دهیمر",
+              housenumber: "۱۲",
+            },
+          },
+        ],
+      },
+    });
+  });
+  await page.goto("/");
+  await page.locator(".shopping-location").click();
+  const row = page.getByRole("button", {
+    name: "انتخاب " + home.name,
+    exact: true,
+  });
+  await expect(row).toContainText("تهران، قائم چیتگر، بلوار دهیمر، ۱۲");
+  await expect(row).toHaveCSS("justify-content", "space-between");
+  await expect(row.locator("small")).toHaveCSS("text-align", "start");
+  expect(
+    await row.evaluate((element) => element.scrollWidth <= element.clientWidth)
+  ).toBe(true);
+  const textBounds = (await row.locator("small").boundingBox())!;
+  const editBounds = (await page
+    .getByRole("button", { name: "ویرایش " + home.name, exact: true })
+    .boundingBox())!;
+  expect(textBounds.x).toBeGreaterThanOrEqual(editBounds.x + editBounds.width);
+  await page.getByRole("dialog").screenshot({
+    path: `../../.data/design-evidence/address-list-${test.info().project.name}.png`,
+  });
+  await page.reload();
+  await page.locator(".shopping-location").click();
+  await expect(row).toContainText("تهران، قائم چیتگر، بلوار دهیمر، ۱۲");
+  expect(lookups).toBe(1);
+});
+
+test("saved address list edits details, cancels deletion and confirms deletion", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  state.guestLocations = [home];
+  await page.goto("/");
+  await page.locator(".shopping-location").click();
+  const list = page.getByRole("dialog", {
+    name: "موقعیت‌های تحویل",
+    exact: true,
+  });
+  await expect(
+    list.getByRole("button", { name: "انتخاب " + home.name })
+  ).toBeVisible();
+  await list.getByRole("button", { name: "ویرایش " + home.name }).click();
+  const details = page.getByRole("dialog", {
+    name: "جزئیات آدرس",
+    exact: true,
+  });
+  await expect(details.getByLabel("نام مکان")).toHaveValue(home.name);
+  await expect(details.getByLabel("جست‌وجوی نشانی در تهران")).toHaveCount(0);
+  await details.getByLabel("نام مکان").fill("خانه ویرایش‌شده");
+  await details
+    .getByRole("button", { name: "ذخیره مکان", exact: true })
+    .click();
+  await expect(list).toBeVisible();
+  await list.getByRole("button", { name: "حذف خانه ویرایش‌شده" }).click();
+  const confirmation = page.getByRole("alertdialog");
+  await confirmation.getByRole("button", { name: "انصراف" }).click();
+  expect(state.guestLocations).toHaveLength(1);
+  await list.getByRole("button", { name: "حذف خانه ویرایش‌شده" }).click();
+  await confirmation.getByRole("button", { name: "حذف همیشگی" }).click();
+  await expect.poll(() => state.guestLocations.length).toBe(0);
+  await expect(confirmation).toHaveCount(0);
+  await expect(list).toBeVisible();
+});
+
+test("address autocomplete debounces, requires three characters, and cancels stale requests", async ({
+  page,
+}) => {
+  await setup(page);
+  const requests: { query: string; at: number }[] = [];
+  const aborted: string[] = [];
+  page.on("requestfailed", (request) => {
+    if (request.url().includes("photon.komoot.io"))
+      aborted.push(new URL(request.url()).searchParams.get("q") ?? "");
+  });
+  await page.route("https://photon.komoot.io/api/**", async (route) => {
+    const query = new URL(route.request().url()).searchParams.get("q") ?? "";
+    requests.push({ query, at: Date.now() });
+    if (query === "ونک")
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+    await route
+      .fulfill({
+        json: {
+          features: [
+            {
+              properties: { name: query },
+              geometry: { coordinates: [51.4, 35.7] },
+            },
+          ],
+        },
+      })
+      .catch(() => {});
+  });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "افزودن موقعیت تحویل", exact: true })
+    .click();
+  const input = page.getByLabel("جست‌وجوی نشانی در تهران");
+  await input.fill("ون");
+  await page.waitForTimeout(600);
+  expect(requests).toHaveLength(0);
+  await input.fill("ونکا");
+  await page.waitForTimeout(250);
+  await input.fill("ونک");
+  await page.waitForTimeout(250);
+  expect(requests).toHaveLength(0);
+  await expect.poll(() => requests.length).toBe(1);
+  expect(requests[0].query).toBe("ونک");
+  await input.fill("تجریش");
+  await expect.poll(() => aborted).toContain("ونک");
+  await expect(
+    page.getByRole("button", { name: "تجریش", exact: true })
+  ).toBeVisible();
+  expect(requests[1].at - requests[0].at).toBeGreaterThanOrEqual(500);
+  await expect(
+    page.getByRole("button", { name: "ونک", exact: true })
+  ).toHaveCount(0);
+  await input.press("Enter");
+  await expect(page.getByRole("dialog")).toBeVisible();
+});
+
+test("location map uses matching themes and keeps the canvas when appearance changes", async ({
+  page,
+}) => {
+  test.setTimeout(90000);
+  await setup(page);
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "افزودن موقعیت تحویل", exact: true })
+    .click();
+  const map = page.getByRole("region", { name: "نقشه انتخاب موقعیت در تهران" });
+  await expect(map).toHaveAttribute("data-map-theme", "light");
+  await expect(map).toHaveAttribute("data-map-ready", "true", {
+    timeout: 60000,
+  });
+  await expect(map.locator(".location-map-status")).not.toHaveClass(
+    /is-warning/
+  );
+  const canvas = await map.locator("canvas").elementHandle();
+  await map.screenshot({
+    path: `../../.data/design-evidence/map-light-${test.info().project.name}.png`,
+  });
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect(map).toHaveAttribute("data-map-theme", "dark");
+  await expect(map).toHaveAttribute("data-map-ready", "true", {
+    timeout: 30000,
+  });
+  expect(await canvas?.evaluate((element) => element.isConnected)).toBe(true);
+  await expect(map.locator(".location-fixed-pin")).toBeVisible();
+  await map.screenshot({
+    path: `../../.data/design-evidence/map-dark-${test.info().project.name}.png`,
+  });
+  const requests = await page.evaluate(() =>
+    performance.getEntriesByType("resource").map((entry) => entry.name)
+  );
+  expect(
+    requests.filter((url) => url.includes("openfreemap.org/styles/"))
+  ).toEqual([]);
+  expect(
+    requests.filter(
+      (url) => url.includes("openfreemap.org") && url.includes("sprite")
+    )
+  ).toEqual([]);
+});
 
 test("guest bootstrap failure offers recovery instead of forcing login", async ({
   page,
@@ -254,6 +632,7 @@ test("guest location survives refresh and imports once after login", async ({
   await page
     .getByRole("button", { name: "افزودن موقعیت تحویل", exact: true })
     .click();
+  await page.getByRole("button", { name: "تأیید موقعیت", exact: true }).click();
   await page.getByLabel("نام مکان", { exact: true }).fill(home.name);
   await page.getByRole("button", { name: "ذخیره مکان", exact: true }).click();
   await expect.poll(() => state.guestLocations.length).toBe(1);

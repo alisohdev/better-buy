@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
+import { createLocationMapStyle } from "../features/locations/mapStyle";
+import "../features/locations/location-map.css";
 import {
   Map as MapLibreMap,
   Marker,
@@ -15,7 +18,6 @@ const TEHRAN_BOUNDS: [[number, number], [number, number]] = [
   [TEHRAN_BOUNDARY.minLongitude, TEHRAN_BOUNDARY.minLatitude],
   [TEHRAN_BOUNDARY.maxLongitude, TEHRAN_BOUNDARY.maxLatitude],
 ];
-const OPENFREEMAP_STYLE = "https://tiles.openfreemap.org/styles/positron";
 const DEFAULT_ZOOM = 13;
 const SELECTED_POINT_ZOOM = 14;
 
@@ -29,11 +31,20 @@ export default function LocationMap({
   latitude,
   longitude,
   onChange,
+  centerOnMove = false,
 }: {
   latitude: number;
   longitude: number;
   onChange: (point: LocationPoint) => void;
+  centerOnMove?: boolean;
 }) {
+  const { resolvedTheme } = useTheme();
+  const dark = resolvedTheme === "dark";
+  const themeRef = useRef(dark);
+  themeRef.current = dark;
+  const appliedTheme = useRef(dark);
+  const centerOnMoveRef = useRef(centerOnMove);
+  centerOnMoveRef.current = centerOnMove;
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const markerRef = useRef<Marker | null>(null);
@@ -48,6 +59,16 @@ export default function LocationMap({
   const callbacksRef = useRef({ onChange, onOutsidePick: () => {} });
   const [outsideNotice, setOutsideNotice] = useState(false);
   const [basemapUnavailable, setBasemapUnavailable] = useState(false);
+  const [mapReady, setMapReady] = useState(false);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || appliedTheme.current === dark) return;
+    appliedTheme.current = dark;
+    setMapReady(false);
+    setBasemapUnavailable(false);
+    map.setStyle(createLocationMapStyle(dark), { diff: true });
+  }, [dark]);
 
   useEffect(() => {
     callbacksRef.current = {
@@ -74,12 +95,11 @@ export default function LocationMap({
 
     let map: MapLibreMap;
     try {
-      const themeColor =
-        getComputedStyle(container).getPropertyValue("--primary").trim() ||
-        "#9a3412";
       map = new MapLibreMap({
         container,
-        style: OPENFREEMAP_STYLE,
+        style: createLocationMapStyle(themeRef.current),
+        pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
+        renderWorldCopies: false,
         center: [pointRef.current.lng, pointRef.current.lat],
         zoom: initialZoomRef.current,
         minZoom: 10,
@@ -91,11 +111,14 @@ export default function LocationMap({
         attributionControl: { compact: true },
       });
       mapRef.current = map;
+      appliedTheme.current = themeRef.current;
       map.addControl(new NavigationControl({ showCompass: false }), "top-left");
 
+      const markerElement = document.createElement("div");
+      markerElement.className = "location-map-marker";
       const marker = new Marker({
-        anchor: "bottom",
-        color: themeColor,
+        element: markerElement,
+        anchor: "center",
         draggable: true,
       })
         .setLngLat([pointRef.current.lng, pointRef.current.lat])
@@ -127,48 +150,28 @@ export default function LocationMap({
         }
         handlePick(next);
       };
-      const handleMapError = () => setBasemapUnavailable(true);
-      const handleMapLoad = () => {
-        map.addSource("tehran-boundary", {
-          type: "geojson",
-          data: {
-            type: "Feature",
-            properties: {},
-            geometry: {
-              type: "LineString",
-              coordinates: [
-                [TEHRAN_BOUNDARY.minLongitude, TEHRAN_BOUNDARY.minLatitude],
-                [TEHRAN_BOUNDARY.maxLongitude, TEHRAN_BOUNDARY.minLatitude],
-                [TEHRAN_BOUNDARY.maxLongitude, TEHRAN_BOUNDARY.maxLatitude],
-                [TEHRAN_BOUNDARY.minLongitude, TEHRAN_BOUNDARY.maxLatitude],
-                [TEHRAN_BOUNDARY.minLongitude, TEHRAN_BOUNDARY.minLatitude],
-              ],
-            },
-          },
-        });
-        map.addLayer({
-          id: "tehran-boundary",
-          type: "line",
-          source: "tehran-boundary",
-          layout: { "line-cap": "round", "line-join": "round" },
-          paint: {
-            "line-color": themeColor,
-            "line-width": 2,
-            "line-dasharray": [2, 2],
-          },
-        });
-        setBasemapUnavailable(false);
+      const handleMoveEnd = (event: { originalEvent?: unknown }) => {
+        if (!centerOnMoveRef.current || !event.originalEvent) return;
+        const center = map.getCenter();
+        handlePick({ lat: center.lat, lng: center.lng });
       };
+      const handleMapError = () => setBasemapUnavailable(true);
+      const handleMapLoad = () => setBasemapUnavailable(false);
+      const handleMapIdle = () => setMapReady(true);
 
       map.on("click", handleMapClick);
       map.on("error", handleMapError);
-      map.once("load", handleMapLoad);
+      map.on("style.load", handleMapLoad);
+      map.on("idle", handleMapIdle);
+      map.on("moveend", handleMoveEnd);
       marker.on("dragend", handleMarkerDragEnd);
 
       return () => {
         map.off("click", handleMapClick);
         map.off("error", handleMapError);
-        map.off("load", handleMapLoad);
+        map.off("style.load", handleMapLoad);
+        map.off("idle", handleMapIdle);
+        map.off("moveend", handleMoveEnd);
         marker.off("dragend", handleMarkerDragEnd);
         marker.remove();
         map.remove();
@@ -194,11 +197,26 @@ export default function LocationMap({
 
   return (
     <div
-      className="location-map"
+      className={`location-map${centerOnMove ? " location-map-center-pin" : ""}`}
       role="region"
+      data-map-theme={dark ? "dark" : "light"}
+      data-map-ready={mapReady}
       aria-label="نقشه انتخاب موقعیت در تهران"
     >
       <div ref={containerRef} className="maplibre-map" />
+      {centerOnMove && (
+        <div className="location-fixed-pin" aria-hidden="true">
+          <svg viewBox="0 0 24 32">
+            <path
+              d="M12 30S2 18 2 11a10 10 0 0 1 20 0c0 7-10 19-10 19Z"
+              fill="var(--ring)"
+              stroke="var(--card)"
+              strokeWidth="2"
+            />
+            <circle cx="12" cy="11" r="3" fill="var(--card)" />
+          </svg>
+        </div>
+      )}
       <p
         className={`location-map-status${showOutsideNotice || basemapUnavailable ? " is-warning" : ""}`}
         role="status"

@@ -10,6 +10,7 @@ const root = path.resolve(
 const types = {
   ".html": "text/html",
   ".js": "application/javascript",
+  ".mjs": "application/javascript",
   ".css": "text/css",
   ".txt": "text/plain",
   ".json": "application/json",

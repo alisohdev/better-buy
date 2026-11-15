@@ -172,6 +172,18 @@ async function mock(
     retailerRequests: [] as string[],
     statusReads: 0,
   };
+  await page.route("https://photon.komoot.io/api/**", (route) =>
+    route.fulfill({
+      json: {
+        features: [
+          {
+            properties: { name: "میدان ونک", city: "تهران" },
+            geometry: { coordinates: [51.41, 35.75] },
+          },
+        ],
+      },
+    })
+  );
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
@@ -462,24 +474,22 @@ test("first visit creates a location from address search and maps the selected r
     .getByRole("button", { name: "افزودن موقعیت تحویل" })
     .click();
   const dialog = page.getByRole("dialog", {
-    name: "افزودن موقعیت تحویل",
+    name: "انتخاب آدرس",
     exact: true,
   });
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel("نام مکان").fill("خانه تازه");
   await dialog.getByLabel("جست‌وجوی نشانی در تهران").fill("ونک");
-  await dialog.getByRole("button", { name: "جست‌وجو", exact: true }).click();
   await dialog.getByRole("button", { name: "میدان ونک، تهران" }).click();
-  await expect(dialog.getByLabel("جست‌وجوی نشانی در تهران")).toHaveValue(
-    "میدان ونک، تهران"
-  );
-  await expect(dialog.locator(".maplibre-map")).toBeVisible();
+  await dialog.getByRole("button", { name: "تأیید موقعیت" }).click();
+  const details = page.getByRole("dialog", { name: "جزئیات آدرس" });
+  await details.getByLabel("نام مکان").fill("خانه تازه");
+  await expect(details.locator(".maplibre-map")).toBeVisible();
   await expect(
-    dialog.getByRole("button", { name: "ذخیره مکان" })
+    details.getByRole("button", { name: "ذخیره مکان" })
   ).toBeEnabled();
   await captureState(page, "address-selected");
-  await dialog.getByRole("button", { name: "ذخیره مکان" }).click();
-  await expect(dialog).toHaveCount(0);
+  await details.getByRole("button", { name: "ذخیره مکان" }).click();
+  await expect(details).toHaveCount(0);
   await expect(page.getByLabel("موقعیت تحویل", { exact: true })).toContainText(
     "خانه تازه"
   );
@@ -514,39 +524,40 @@ test("address search lets users choose a result and refine the map location", as
   page,
 }) => {
   const state = await mock(page);
-  await page.route("https://nominatim.openstreetmap.org/search**", (route) =>
+  await page.route("https://photon.komoot.io/api/**", (route) =>
     route.fulfill({
-      json: [
-        {
-          display_name: "میدان ونک، تهران",
-          lat: "35.75",
-          lon: "51.41",
-        },
-        {
-          display_name: "میدان تجریش، تهران",
-          lat: "35.8",
-          lon: "51.43",
-        },
-      ],
+      json: {
+        features: [
+          {
+            properties: { name: "میدان ونک", city: "تهران" },
+            geometry: { coordinates: [51.41, 35.75] },
+          },
+          {
+            properties: { name: "میدان تجریش", city: "تهران" },
+            geometry: { coordinates: [51.43, 35.8] },
+          },
+        ],
+      },
     })
   );
   await page.goto("/");
-  await openMenuItem(page, "مدیریت موقعیت‌ها");
+  await page.locator(".shopping-location").click();
   await page.getByRole("button", { name: "ویرایش خانه" }).click();
-  const dialog = page.getByRole("dialog", { name: "ویرایش مکان", exact: true });
+  await page.getByRole("button", { name: "تغییر موقعیت روی نقشه" }).click();
+  const dialog = page.getByRole("dialog", { name: "انتخاب آدرس", exact: true });
   await dialog.getByLabel("جست‌وجوی نشانی در تهران").fill("میدان");
-  await dialog.getByRole("button", { name: "جست‌وجو", exact: true }).click();
 
   const selectedResult = dialog.getByRole("button", {
     name: "میدان تجریش، تهران",
   });
   await selectedResult.click();
-  await expect(selectedResult).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    dialog.getByRole("button", { name: "میدان ونک، تهران" })
-  ).toBeVisible();
+  await expect(selectedResult).toHaveCount(0);
   await expect(dialog.locator(".maplibre-map")).toBeVisible();
-  await dialog.getByRole("button", { name: "ذخیره مکان" }).click();
+  await dialog.getByRole("button", { name: "تأیید موقعیت" }).click();
+  await page
+    .getByRole("dialog", { name: "جزئیات آدرس" })
+    .getByRole("button", { name: "ذخیره مکان" })
+    .click();
   await expect(dialog).toHaveCount(0);
   expect(state.locations[0]?.latitude).toBe(35.8);
   expect(state.locations[0]?.longitude).toBe(51.43);
@@ -1727,7 +1738,7 @@ test("map selection stays usable when the visual tile service fails", async ({
     route.abort()
   );
   await page.goto("/");
-  await openMenuItem(page, "مدیریت موقعیت‌ها");
+  await page.locator(".shopping-location").click();
   await page.getByRole("button", { name: "ویرایش خانه" }).click();
   const dialog = page.getByRole("dialog", { name: "ویرایش مکان", exact: true });
   await expect(dialog.locator(".maplibre-map")).toBeVisible();
