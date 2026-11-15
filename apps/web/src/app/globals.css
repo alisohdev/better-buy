@@ -279,8 +279,53 @@
   font-size: 16px;
   caret-color: var(--foreground);
 }
-.phone-auth-card input::placeholder {
+.password-input-wrap {
+  position: relative;
+}
+.phone-auth-card .password-input-wrap input {
+  padding-right: 52px;
+}
+.phone-auth-card .password-eye-toggle {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  width: 44px;
+  height: 44px;
   color: var(--muted-foreground);
+}
+.phone-auth-card .password-eye-toggle[aria-pressed="true"] {
+  color: var(--foreground);
+}
+.password-eye-lid {
+  transform-origin: 12px 12px;
+}
+.password-eye.is-blinking .password-eye-lid {
+  animation: password-eye-blink 320ms ease-in-out;
+}
+@keyframes password-eye-blink {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  45% {
+    transform: scaleY(0.12);
+  }
+  75% {
+    transform: scaleY(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .password-eye.is-blinking .password-eye-lid {
+    animation: none;
+  }
+}
+.phone-auth-card input::placeholder {
+  color: #90949e;
+  opacity: 0.72;
+  font-weight: 400;
+}
+.dark .phone-auth-card input::placeholder {
+  color: #a4a7af;
 }
 .phone-auth-card nav {
   display: flex;

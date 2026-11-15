@@ -1025,3 +1025,39 @@ test("continue without login sits inside the auth card and opens guest browsing"
   await expect(page.locator(".onboarding")).toBeVisible();
   expect(state.starts).toBe(0);
 });
+
+test("password eye toggles inside the input without submitting and respects reduced motion", async ({
+  page,
+}) => {
+  await setup(page);
+  await page.goto("/?page=login");
+  const input = page.getByLabel("رمز عبور", { exact: true });
+  await input.fill("a long passphrase");
+  const eye = page.getByRole("button", { name: "نمایش رمز", exact: true });
+  await expect(eye).toHaveAttribute("aria-pressed", "false");
+  const inputBox = (await input.boundingBox())!;
+  const eyeBox = (await eye.boundingBox())!;
+  expect(eyeBox.x).toBeGreaterThan(inputBox.x);
+  expect(eyeBox.x + eyeBox.width).toBeLessThanOrEqual(
+    inputBox.x + inputBox.width
+  );
+  await eye.click();
+  await expect(input).toHaveAttribute("type", "text");
+  await expect(input).toHaveValue("a long passphrase");
+  await expect(
+    page.getByRole("button", { name: "پنهان کردن رمز", exact: true })
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page
+    .getByRole("button", { name: "پنهان کردن رمز", exact: true })
+    .click();
+  await expect(input).toHaveAttribute("type", "password");
+  await expect(page.locator(".password-eye-lid")).toHaveCSS(
+    "animation-name",
+    "none"
+  );
+  await page.screenshot({
+    path: `../../.data/design-evidence/password-eye-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+});

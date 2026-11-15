@@ -19,6 +19,7 @@ export function AuthScreen() {
   const [confirm, setConfirm] = useState("");
   const [name, setName] = useState("");
   const [visible, setVisible] = useState(false);
+  const [eyeAnimation, setEyeAnimation] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [notRegistered, setNotRegistered] = useState(false);
@@ -298,9 +299,10 @@ export function AuthScreen() {
               )}
               {(flow.kind === "login" || flow.kind === "details") && (
                 <>
-                  <label>
-                    رمز عبور
+                  <label htmlFor="auth-password">رمز عبور</label>
+                  <div className="password-input-wrap">
                     <Input
+                      id="auth-password"
                       dir="ltr"
                       type={visible ? "text" : "password"}
                       autoComplete={
@@ -314,15 +316,53 @@ export function AuthScreen() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
-                  </label>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    aria-pressed={visible}
-                    onClick={() => setVisible(!visible)}
-                  >
-                    {visible ? "پنهان کردن رمز" : "نمایش رمز"}
-                  </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="password-eye-toggle"
+                      aria-label={visible ? "پنهان کردن رمز" : "نمایش رمز"}
+                      aria-pressed={visible}
+                      aria-controls="auth-password"
+                      onClick={() => {
+                        setVisible(!visible);
+                        setEyeAnimation((value) => value + 1);
+                      }}
+                    >
+                      <svg
+                        key={eyeAnimation}
+                        className={
+                          eyeAnimation
+                            ? "password-eye is-blinking"
+                            : "password-eye"
+                        }
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <g className="password-eye-lid">
+                          <path
+                            d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinejoin="round"
+                          />
+                          <circle cx="12" cy="12" r="3" fill="currentColor" />
+                          <circle cx="13" cy="11" r="0.8" fill="var(--card)" />
+                        </g>
+                        {!visible && (
+                          <path
+                            d="m4 4 16 16"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                          />
+                        )}
+                      </svg>
+                    </Button>
+                  </div>
                   {flow.kind === "details" && (
                     <>
                       <p>
