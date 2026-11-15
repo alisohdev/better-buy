@@ -723,7 +723,20 @@ export function Dashboard() {
                       <span>
                         {selectedLocation?.name ?? "انتخاب موقعیت تحویل"}
                       </span>
-                      <span aria-hidden="true">⌄</span>
+                      <svg
+                        className="shopping-location-chevron"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        aria-hidden="true"
+                      >
+                        <path
+                          d="m7 10 5 5 5-5"
+                          stroke="currentColor"
+                          strokeWidth="1.8"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
                     </button>
                   </div>
                   <Button

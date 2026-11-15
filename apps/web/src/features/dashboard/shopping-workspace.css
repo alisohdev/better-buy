@@ -50,6 +50,11 @@
   height: 20px;
   flex-shrink: 0;
 }
+.shopping-location .shopping-location-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--muted-foreground);
+}
 .shopping-scan-action {
   display: inline-flex;
   align-items: center;
