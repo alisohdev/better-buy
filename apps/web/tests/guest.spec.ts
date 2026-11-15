@@ -573,7 +573,7 @@ test("guest notification deep links explain sign-in without fetching private dat
   expect(state.protectedRequests).toEqual([]);
 });
 
-test("guests explore, restore browser location, scan and get account prompts without private requests", async ({
+test("guests restore browser location and start manual scans without private requests", async ({
   page,
 }) => {
   const state = await setup(page);
@@ -587,22 +587,13 @@ test("guests explore, restore browser location, scan and get account prompts wit
     "تخفیف‌های دلخواهتان را از دست ندهید"
   );
   await expect(page.locator(".guest-banner")).toContainText(
-    "سبد خریدتان را برای بعد نگه دارید"
+    "علاقه‌مندی‌ها، اعلان تخفیف"
   );
   await expect(page.locator(".guest-banner")).not.toContainText(
     /مرورگر|۲۴ ساعت/
   );
-  await expect(
-    page.getByRole("heading", { name: "پیشنهادهای امروز", exact: true })
-  ).toBeVisible();
+  await expect(page.locator(".scan-page")).toBeVisible();
   expect(state.guestLocations).toHaveLength(1);
-  await page
-    .getByRole("button", { name: "علاقه‌مندی‌ها", exact: true })
-    .last()
-    .click();
-  await expect(page.locator(".guest-toast")).toContainText("وارد حساب");
-  await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.getByRole("button", { name: "بستن پیام" }).click();
   await page
     .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
     .last()
@@ -989,3 +980,29 @@ test("guest sign-in banner is compact, fixed and clear of the workspace", async 
     ).toBe(true);
   }
 });
+
+for (const feature of ["علاقه‌مندی‌ها", "اعلان‌ها", "سبد خرید"]) {
+  test(`guest ${feature} opens login directly without account requests`, async ({
+    page,
+  }) => {
+    const state = await setup(page);
+    await page.addInitScript(() =>
+      localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+    );
+    await page.goto("/");
+    await expect(page.locator(".onboarding")).toBeVisible();
+    const mobile = test.info().project.name === "mobile";
+    const trigger =
+      feature === "سبد خرید" && !mobile
+        ? page.locator(".cart-trigger")
+        : page
+            .locator(mobile ? ".mobile-bottom-nav" : ".desktop-primary-nav")
+            .getByRole("button", { name: feature, exact: true });
+    await trigger.click();
+    await expect(page).toHaveURL(/page=login/);
+    await expect(page.getByLabel("شماره همراه")).toBeVisible();
+    await expect(page.locator(".guest-toast")).toHaveCount(0);
+    expect(state.protectedRequests).toEqual([]);
+    expect(state.starts).toBe(0);
+  });
+}

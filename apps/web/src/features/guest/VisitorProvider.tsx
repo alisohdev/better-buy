@@ -36,11 +36,9 @@ export function VisitorProvider({
     const timer = window.setTimeout(() => setNotice(null), 8000);
     return () => window.clearTimeout(timer);
   }, [notice]);
-  const requireAccount = (feature: string) => {
+  const requireAccount = (_feature: string) => {
     if (!isGuest) return true;
-    notify(
-      `برای ${feature} و نگهداری اطلاعات، وارد حساب خود شوید. موقعیت مهمان پس از ورود به حساب افزوده می‌شود.`
-    );
+    signIn();
     return false;
   };
   return (
