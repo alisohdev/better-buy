@@ -292,29 +292,61 @@
   width: 44px;
   height: 44px;
   color: var(--muted-foreground);
+  background: transparent !important;
+  border: 0;
+  box-shadow: none;
+}
+.phone-auth-card .password-eye-toggle:hover,
+.phone-auth-card .password-eye-toggle:active {
+  background: transparent !important;
+  transform: none;
+}
+.phone-auth-card .password-eye-toggle svg {
+  width: 24px;
+  height: 24px;
 }
 .phone-auth-card .password-eye-toggle[aria-pressed="true"] {
   color: var(--foreground);
 }
 .password-eye-lid {
-  transform-origin: 12px 12px;
+  transform-box: fill-box;
+  transform-origin: center;
 }
 .password-eye.is-blinking .password-eye-lid {
-  animation: password-eye-blink 320ms ease-in-out;
+  animation: password-eye-blink 700ms ease-in-out;
+}
+.password-eye.is-blinking {
+  animation: password-eye-bounce 700ms ease-in-out;
 }
 @keyframes password-eye-blink {
   0%,
+  20%,
+  65%,
   100% {
     transform: scaleY(1);
   }
-  45% {
-    transform: scaleY(0.12);
+  35%,
+  48% {
+    transform: scaleY(0.06);
   }
-  75% {
-    transform: scaleY(1.08);
+  80% {
+    transform: scaleY(1.12);
+  }
+}
+@keyframes password-eye-bounce {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  20% {
+    transform: rotate(-10deg) scale(1.12);
+  }
+  65% {
+    transform: rotate(8deg) scale(1.08);
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  .password-eye.is-blinking,
   .password-eye.is-blinking .password-eye-lid {
     animation: none;
   }

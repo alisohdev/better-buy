@@ -1041,7 +1041,17 @@ test("password eye toggles inside the input without submitting and respects redu
   expect(eyeBox.x + eyeBox.width).toBeLessThanOrEqual(
     inputBox.x + inputBox.width
   );
+  await expect(eye).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await eye.click();
+  await expect(page.locator(".password-eye-lid")).toHaveCSS(
+    "animation-name",
+    "password-eye-blink"
+  );
+  await expect(page.locator(".password-eye")).toHaveCSS(
+    "animation-duration",
+    "0.7s"
+  );
   await expect(input).toHaveAttribute("type", "text");
   await expect(input).toHaveValue("a long passphrase");
   await expect(
