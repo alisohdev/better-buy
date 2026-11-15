@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { OtpInput } from "@/components/otp-input";
 import { authClient, type OTPPurpose } from "@/app/auth-client";
 import { normalizeDigits, useWebOTP } from "./useWebOTP";
+import Image from "next/image";
 type Flow =
   | { kind: "login" }
   | { kind: "phone"; purpose: OTPPurpose }
@@ -128,45 +129,68 @@ export function AuthScreen() {
         <a className="auth-wordmark" href="/">
           بهتر بخر<span>Better Buy</span>
         </a>
-        <div className="auth-story-copy">
-          <span className="auth-eyebrow">برای خریدهای هر روز</span>
-          <h2>
-            همان خرید.
-            <br />
-            با قیمت بهتر.
-          </h2>
+        <div className="auth-introduction">
+          <h2>خریدهای همیشگی، انتخاب‌های بهتر.</h2>
           <p>
-            تخفیف فروشگاه‌های اطرافتان را یک‌جا ببینید، مقایسه کنید و سبدتان را
-            هوشمندانه بچینید.
+            تخفیف فروشگاه‌های اطرافتان را مقایسه کنید و پیشنهادهای مناسب سبدتان
+            را پیدا کنید.
           </p>
         </div>
-        <div className="auth-receipt" aria-hidden="true">
-          <span>یک انتخاب بهتر</span>
-          <div>
-            <span>قیمت معمول</span>
-            <del>۵۰۰٬۰۰۰</del>
-          </div>
-          <div>
-            <span>با تخفیف</span>
-            <strong>۳۷۵٬۰۰۰ تومان</strong>
-          </div>
-          <footer>۲۵٪ کمتر برای همان خرید</footer>
+        <figure className="auth-receipt" aria-label="نمونه فهرست خرید">
+          <figcaption>نمونه فهرست خرید</figcaption>
+          <ul>
+            <li>
+              <span>شیر</span>
+              <span>یک پاکت</span>
+            </li>
+            <li>
+              <span>پنیر</span>
+              <span>یک بسته</span>
+            </li>
+            <li>
+              <span>بیسکویت</span>
+              <span>یک بسته</span>
+            </li>
+            <li>
+              <span>چیپس</span>
+              <span>یک بسته</span>
+            </li>
+          </ul>
+          <p>همان خرید، با انتخاب بهتر.</p>
+        </figure>
+        <div className="auth-supported-stores">
+          <span>مقایسه پیشنهادهای</span>
+          <Image
+            src="/providers/snappmarket.png"
+            alt="اسنپ‌مارکت"
+            width={88}
+            height={32}
+            unoptimized
+          />
+          <Image
+            src="/providers/okala.png"
+            alt="اکالا"
+            width={64}
+            height={32}
+            unoptimized
+          />
         </div>
-        <small>اسنپ‌مارکت · اکالا · سوپرمارکت دیجی‌کالا</small>
       </aside>
       <section className="phone-auth-card" data-step={flow.kind}>
         <header>
-          <span className="phone-auth-brand">بهتر بخر</span>
-          <span className="auth-step-label">
-            {flow.kind === "login" ? "حساب شما" : "همراه شما، قدم‌به‌قدم"}
-          </span>
           <h1>{title}</h1>
           <p>
             {flow.kind === "login"
               ? "برای ادامه خرید، وارد حساب خود شوید."
               : flow.kind === "phone" && flow.purpose === "registration"
                 ? "اول شماره همراهتان را تأیید می‌کنیم؛ بعد حساب می‌سازید."
-                : "فقط چند لحظه تا ادامه خرید فاصله دارید."}
+                : flow.kind === "phone"
+                  ? "شماره همراه حساب خود را وارد کنید."
+                  : flow.kind === "details"
+                    ? "اطلاعات زیر را تکمیل کنید."
+                    : flow.kind === "otp"
+                      ? "کد تأیید پیامک‌شده را وارد کنید."
+                      : "اکنون می‌توانید با رمز جدید وارد شوید."}
           </p>
         </header>
         {error && (

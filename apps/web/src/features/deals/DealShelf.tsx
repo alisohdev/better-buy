@@ -1,4 +1,5 @@
 import { DiscountSelect } from "../dashboard/DiscountSelect";
+import { useVisitor } from "../guest/VisitorProvider";
 import { useEffect, useRef } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ export function DealShelf({
   onOpenCart: (source: CartSource) => void;
 }) {
   const { query, setQuery, sort, setSort, reset } = filters;
+  const visitor = useVisitor();
   const wishlist = useWishlist();
   const savedItems = wishlist.query.data?.items ?? [];
   const visible = feeds
@@ -368,7 +370,9 @@ export function DealShelf({
                       inWishlist={!!saved}
                       favoritePending={favoritePending}
                       wishlistWritePending={wishlist.mutation.isPending}
-                      wishlistReady={wishlist.query.isSuccess}
+                      wishlistReady={
+                        visitor.isGuest || wishlist.query.isSuccess
+                      }
                       onFavorite={() => {
                         if (saved)
                           wishlist.mutation.mutate({

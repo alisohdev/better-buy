@@ -1,4 +1,5 @@
 import { ProductDestination } from "./ProductDestination";
+import { useVisitor } from "../guest/VisitorProvider";
 import { useQuery } from "@tanstack/react-query";
 import { displayToman, productGroupSchema } from "@better-buy/shared";
 import { api } from "../../lib/api";
@@ -15,6 +16,7 @@ export function ProductDetailPage({
   scanId: string;
   productKey: string;
 }) {
+  const visitor = useVisitor();
   const wishlist = useWishlist();
   const query = useQuery({
     queryKey: ["product-detail", scanId, productKey],
@@ -115,7 +117,8 @@ export function ProductDetailPage({
               <Button
                 variant="outline"
                 disabled={
-                  !wishlist.query.isSuccess || wishlist.mutation.isPending
+                  (!visitor.isGuest && !wishlist.query.isSuccess) ||
+                  wishlist.mutation.isPending
                 }
                 onClick={() =>
                   saved

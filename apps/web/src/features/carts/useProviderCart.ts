@@ -7,6 +7,7 @@ import {
   type CartSource,
 } from "@better-buy/shared";
 import { api } from "../../lib/api";
+import { useVisitor } from "../guest/VisitorProvider";
 
 export type CartProvider = CartSource;
 
@@ -30,11 +31,12 @@ export function useProviderCart({
   coordinateRevision: number;
   enabled?: boolean;
 }) {
+  const visitor = useVisitor();
   const client = useQueryClient();
   const queryKey = cartQueryKey(source, locationId, scanId, coordinateRevision);
   const cart = useQuery({
     queryKey,
-    enabled: enabled && !!locationId,
+    enabled: !visitor.isGuest && enabled && !!locationId,
     queryFn: ({ signal }) => {
       const params = new URLSearchParams({ locationId });
       return api<CartResponse>(
@@ -82,18 +84,24 @@ export function useProviderCart({
   return {
     cart,
     byKey,
-    add: (key: string) =>
-      write.mutate({ source, scanId, key, add: true, quantity: 1 }),
-    setQuantity: (key: string, quantity: number, onSettled?: () => void) =>
-      write.mutate(
-        { source, scanId: null, key, quantity },
-        { onSettled: () => onSettled?.() }
-      ),
-    remove: (key: string, onSettled?: () => void) =>
-      write.mutate(
-        { source, scanId: null, key, remove: true },
-        { onSettled: () => onSettled?.() }
-      ),
+    add: (key: string) => {
+      if (visitor.requireAccount("نگهداری سبد خرید"))
+        write.mutate({ source, scanId, key, add: true, quantity: 1 });
+    },
+    setQuantity: (key: string, quantity: number, onSettled?: () => void) => {
+      if (visitor.requireAccount("نگهداری سبد خرید"))
+        write.mutate(
+          { source, scanId: null, key, quantity },
+          { onSettled: () => onSettled?.() }
+        );
+    },
+    remove: (key: string, onSettled?: () => void) => {
+      if (visitor.requireAccount("نگهداری سبد خرید"))
+        write.mutate(
+          { source, scanId: null, key, remove: true },
+          { onSettled: () => onSettled?.() }
+        );
+    },
     writingKey: write.variables?.source === source ? write.variables.key : null,
     writePending: write.variables?.source === source && write.isPending,
     writeError: write.variables?.source === source ? write.error : null,

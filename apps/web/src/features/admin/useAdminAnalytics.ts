@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../../lib/api";
+import { useVisitor } from "../guest/VisitorProvider";
 import {
   parseAdminAccess,
   parseAdminOverview,
@@ -8,7 +9,9 @@ import {
 } from "./contracts";
 
 export function useAdminAccess() {
+  const { isGuest } = useVisitor();
   return useQuery({
+    enabled: !isGuest,
     queryKey: ["admin", "access"],
     queryFn: ({ signal }) =>
       api("/api/admin/access", { signal }, parseAdminAccess),

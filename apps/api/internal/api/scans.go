@@ -20,7 +20,7 @@ type scanRequest struct {
 }
 
 func registerScans(mux *http.ServeMux, db *sql.DB, cfg config.Config, service *auth.Service, queue *scans.Queue) {
-	mux.Handle("GET /api/scans", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/scans", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID := requestIdentity(r).User.ID
 		if values, ok := r.URL.Query()["intent"]; ok {
 			key := ""
@@ -69,7 +69,7 @@ func registerScans(mux *http.ServeMux, db *sql.DB, cfg config.Config, service *a
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"data": items})
 	})))
-	mux.Handle("GET /api/scans/{id}", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/scans/{id}", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		item, err := queue.Get(r.Context(), requestIdentity(r).User.ID, r.PathValue("id"))
 		if err != nil {
 			writeScanError(w, queue, r, requestIdentity(r).User.ID, err)
@@ -77,7 +77,7 @@ func registerScans(mux *http.ServeMux, db *sql.DB, cfg config.Config, service *a
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"data": item})
 	})))
-	mux.Handle("POST /api/scans/{id}/cancel", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("POST /api/scans/{id}/cancel", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		item, err := queue.Cancel(r.Context(), requestIdentity(r).User.ID, r.PathValue("id"))
 		if err != nil {
 			writeScanError(w, queue, r, requestIdentity(r).User.ID, err)
@@ -85,7 +85,7 @@ func registerScans(mux *http.ServeMux, db *sql.DB, cfg config.Config, service *a
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"data": item})
 	})))
-	mux.Handle("POST /api/scans", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("POST /api/scans", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var input scanRequest
 		if !decodeJSONBody(w, r, &input) || input.LocationID == nil {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "INVALID_INPUT"})

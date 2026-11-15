@@ -1,14 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../../lib/api";
 import { parseNotifications, parseWishlist } from "./contracts";
+import { useVisitor } from "../guest/VisitorProvider";
 
 export function useWishlistQuery() {
+  const { isGuest } = useVisitor();
   return useQuery({
+    enabled: !isGuest,
     queryKey: ["wishlist"],
     queryFn: ({ signal }) => api("/api/wishlist", { signal }, parseWishlist),
   });
 }
 export function useWishlist() {
+  const visitor = useVisitor();
   const client = useQueryClient();
   const query = useWishlistQuery();
   const mutation = useMutation({
@@ -43,7 +47,16 @@ export function useWishlist() {
     },
     onSuccess: () => client.invalidateQueries({ queryKey: ["wishlist"] }),
   });
-  return { query, mutation };
+  return {
+    query,
+    mutation: {
+      ...mutation,
+      mutate: (...args: Parameters<typeof mutation.mutate>) => {
+        if (visitor.requireAccount("ذخیره علاقه‌مندی‌ها"))
+          mutation.mutate(...args);
+      },
+    },
+  };
 }
 export function useInbox() {
   const client = useQueryClient();

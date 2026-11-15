@@ -1,5 +1,17 @@
 # Better Buy design system
 
+## Enhancement pass (2026-11-15)
+
+Guest mode opens the same working interface by default. A benefit-led top banner invites sign-in to save favorite items, follow their discounts, and keep a cart for later, without browser-storage or retention jargon. Contextual, dismissible live-region notices accompany guest scanning and account-only actions. The banner leaves room for the existing desktop sidebar and stacks above mobile content. Notices clear after eight seconds, retain an explicit close action, and never steal keyboard focus. Account-only actions offer the same sign-in label rather than dead or silently disabled controls. Location-import failures remain inline with a retry action; successful imports are announced. Explicit login keeps an accessible link back to guest browsing.
+
+The current implementation retains its lavender identity, local IRANSansX typography, RTL reading order, routes, and navigation. The brief is refinement with character, not removal of visual interest. Design variance is 6, motion intensity 4, and visual density 4 for sign-in; the working interface remains more compact.
+
+Authentication pairs a concise shopping introduction and a lavender shopping-list receipt with a working form. The receipt is explicitly labelled as a sample and lists supermarket staples (milk, cheese, biscuits, and chips), without invented prices or savings claims. Its restrained tilt, perforated edge, and dashed separators provide paper detail rather than a fake product preview. Desktop uses an asymmetric split; mobile keeps the brand and short introduction above the form and omits the receipt to preserve immediate access. Lavender, neutral surfaces, and local typography carry through both themes. The receipt has paper-like 4px corners, forms use 16px corners, and controls use the existing control token.
+
+Running scans have a compact searching symbol and a real progress track with completed/total counts. Unknown totals use an explicitly indeterminate searching track without a numeric value, not a fabricated percentage. Completion gets a brief check-mark arrival, while provider counts, results actions, and recovery stay visible. Scan activity communicates ongoing work; completion movement confirms the state change. These effects animate only transform and opacity and become static under reduced motion. Existing product photography and all operational behavior remain.
+
+The older audit and token table below describe a previous design revision and are not an exact inventory of the current sidebar layout or lavender tokens.
+
 Better Buy is a Persian RTL grocery-offer comparison tool. The design is a compact utility: location, retailer, one scan action, and saved observations. The existing «ب» identity mark and Better Buy name remain. Local IRANSansX FaNum remains the only font family. There is no marketing hero, decorative photography, animated scanning machinery, or permanent navigation rail.
 
 ## Direction and audit

@@ -7,6 +7,7 @@ import { authClient } from "../../app/auth-client";
 import { Panel } from "./Primitives";
 import { AppIcon } from "./AppIcon";
 import { cleanupPushBeforeSignOut } from "../alerts/push";
+import { useVisitor } from "../guest/VisitorProvider";
 
 export function AppHeader({
   onLocations,
@@ -39,6 +40,7 @@ export function AppHeader({
   actions?: ReactNode;
   feedback?: ReactNode;
 }) {
+  const visitor = useVisitor();
   const { theme, setTheme } = useTheme();
   const [accountError, setAccountError] = useState("");
   const [signingOut, setSigningOut] = useState(false);
@@ -51,6 +53,10 @@ export function AppHeader({
   const overlayActive = wishlistOpen || cartOpen || locationsOpen || helpOpen;
   const menuTrigger = useRef<HTMLButtonElement | null>(null);
   const signOut = () => {
+    if (visitor.isGuest) {
+      visitor.signIn();
+      return;
+    }
     if (signingOut) return;
     setSigningOut(true);
     setAccountError("");
@@ -172,7 +178,11 @@ export function AppHeader({
               onClick={signOut}
             >
               <AppIcon name="back" />
-              {signingOut ? "در حال خروج…" : "خروج از حساب"}
+              {visitor.isGuest
+                ? "ورود یا ثبت‌نام"
+                : signingOut
+                  ? "در حال خروج…"
+                  : "خروج از حساب"}
             </Button>
           </div>
         </div>
@@ -235,7 +245,11 @@ export function AppHeader({
               </DropdownMenu.Sub>
               <DropdownMenu.Separator className="menu-separator" />
               <DropdownMenu.Item disabled={signingOut} onSelect={signOut}>
-                {signingOut ? "در حال خروج امن…" : "خروج از حساب"}
+                {visitor.isGuest
+                  ? "ورود یا ثبت‌نام"
+                  : signingOut
+                    ? "در حال خروج امن…"
+                    : "خروج از حساب"}
               </DropdownMenu.Item>
             </DropdownMenu.Content>
           </DropdownMenu.Portal>
@@ -330,7 +344,11 @@ export function AppHeader({
                   disabled={signingOut}
                   onClick={signOut}
                 >
-                  {signingOut ? "در حال خروج امن…" : "خروج از حساب"}
+                  {visitor.isGuest
+                    ? "ورود یا ثبت‌نام"
+                    : signingOut
+                      ? "در حال خروج امن…"
+                      : "خروج از حساب"}
                 </Button>
               </div>
               {accountError && <p role="alert">{accountError}</p>}

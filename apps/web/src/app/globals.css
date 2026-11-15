@@ -114,105 +114,28 @@
 .phone-auth {
   min-height: 100dvh;
   display: grid;
-  place-items: center;
-  padding: 24px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.85fr);
+  align-items: center;
+  gap: clamp(40px, 7vw, 96px);
+  max-width: 1240px;
+  margin-inline: auto;
+  padding: 40px clamp(24px, 4vw, 56px);
   background: var(--background);
 }
-.phone-auth-card {
+.auth-story {
+  display: grid;
   width: 100%;
-  max-width: 460px;
-  padding: 32px 24px;
-  border: 1px solid var(--border);
-  border-radius: 24px;
-  background: var(--card);
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.phone-auth-card header {
-  border-top: 5px solid #c3cdff;
-  padding-top: 24px;
-}
-.phone-auth-brand {
-  font-weight: 800;
-  font-size: 24px;
-}
-.phone-auth-card h1 {
-  font-size: 21px;
-  margin: 20px 0 8px;
-}
-.phone-auth-card p {
-  color: var(--muted-foreground);
-  line-height: 1.9;
-}
-.phone-auth-card fieldset {
-  border: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  gap: 24px;
   min-width: 0;
 }
-.phone-auth-card label {
-  display: grid;
-  gap: 8px;
-}
-.phone-auth-card input {
-  min-height: 48px;
-}
-.phone-auth-card nav {
-  display: flex;
-  flex-direction: column;
-}
-.phone-auth-error {
-  color: var(--destructive) !important;
-}
-.phone-auth-card button:focus-visible {
-  outline: 2px solid #7888d1;
-  outline-offset: 4px;
-}
-@media (max-width: 380px) {
-  .phone-auth-card {
-    padding: 24px 12px;
-  }
-  .phone-auth {
-    padding: 12px;
-  }
-  .nexus-otp {
-    transform: scale(0.88);
-    transform-origin: center;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .phone-auth * {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* Authentication: shopping receipt motif, with the form as the quiet working area. */
-.phone-auth {
-  grid-template-columns: minmax(0, 520px) minmax(0, 440px);
-  gap: clamp(40px, 7vw, 112px);
-  align-content: center;
-  padding: 48px;
-  max-width: 1200px;
-  margin-inline: auto;
-}
-.auth-story {
-  display: flex;
-  flex-direction: column;
-  gap: 32px;
-  padding-block: 16px;
-}
 .auth-wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
   font-size: 26px;
   font-weight: 800;
   color: var(--foreground);
   text-decoration: none;
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
 }
 .auth-wordmark span {
   font-size: 12px;
@@ -220,130 +143,190 @@
   color: var(--muted-foreground);
   direction: ltr;
 }
-.auth-eyebrow,
-.auth-step-label {
-  color: var(--muted-foreground);
-  font-size: 12px;
-}
-.auth-story h2 {
-  font-size: clamp(38px, 4.5vw, 62px);
-  line-height: 1.5;
-  letter-spacing: -1.5px;
-  font-weight: 800;
-  margin: 14px 0;
-}
-.auth-story-copy p {
-  max-width: 370px;
-  font-size: 16px;
-  line-height: 2.1;
-  color: var(--muted-foreground);
-}
-.auth-receipt {
-  max-width: 340px;
-  padding: 24px;
-  background: #c3cdff;
-  color: #20243a;
-  border-radius: 4px 4px 16px 16px;
-  transform: rotate(-2deg);
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.08);
-}
-.auth-receipt > span {
-  font-weight: 700;
-}
-.auth-receipt > div {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 20px;
-  font-size: 14px;
-}
-.auth-receipt del {
-  opacity: 0.65;
-}
-.auth-receipt footer {
-  border-top: 1px dashed #747fae;
-  margin-top: 20px;
-  padding-top: 16px;
-  font-size: 13px;
-  font-weight: 700;
-}
-.auth-story > small {
-  color: var(--muted-foreground);
-  font-size: 12px;
-}
-.phone-auth-card {
-  max-width: 440px;
-  border: 0;
-  border-radius: 16px;
-  padding: 32px;
-  background: var(--card);
-  box-shadow: 0 0 0 1px var(--border);
-}
-.phone-auth-card header {
-  border: 0;
-  padding: 0;
-}
-.phone-auth-brand {
-  display: none;
-}
-.auth-step-label {
-  display: block;
-}
-.phone-auth-card h1 {
-  font-size: 25px;
+.auth-introduction h2 {
+  max-width: 24ch;
+  margin: 8px 0 12px;
+  font-size: clamp(30px, 3.2vw, 40px);
   font-weight: 800;
   line-height: 1.6;
-  margin: 8px 0;
+  text-wrap: balance;
+}
+.auth-introduction p {
+  max-width: 42ch;
+  color: var(--muted-foreground);
+  font-size: 15px;
+  line-height: 2;
+}
+.auth-receipt {
+  width: min(100%, 340px);
+  margin: 0 8px 8px 0;
+  padding: 20px 24px 24px;
+  border-radius: 4px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: 0 10px 24px rgb(32 36 58 / 12%);
+  transform: rotate(-1.5deg);
+  clip-path: polygon(
+    0 0,
+    100% 0,
+    100% 97%,
+    95% 100%,
+    90% 97%,
+    85% 100%,
+    80% 97%,
+    75% 100%,
+    70% 97%,
+    65% 100%,
+    60% 97%,
+    55% 100%,
+    50% 97%,
+    45% 100%,
+    40% 97%,
+    35% 100%,
+    30% 97%,
+    25% 100%,
+    20% 97%,
+    15% 100%,
+    10% 97%,
+    5% 100%,
+    0 97%
+  );
+}
+.auth-receipt figcaption {
+  font-size: 14px;
+  font-weight: 700;
+}
+.auth-receipt ul {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  padding: 14px 0;
+  margin: 12px 0;
+  border-block: 1px dashed rgb(32 36 58 / 30%);
+}
+.auth-receipt li {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.auth-receipt li span:last-child {
+  font-size: 12px;
+}
+.auth-receipt p {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+.auth-supported-stores {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 20px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+.auth-supported-stores img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  background: #f8fafc;
+  border-radius: var(--radius-control);
+  padding: 4px;
+}
+.phone-auth-card {
+  width: 100%;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.phone-auth-card header {
+  padding: 0;
+}
+.phone-auth-card h1 {
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.7;
+  margin: 0 0 8px;
+}
+.phone-auth-card p {
+  color: var(--muted-foreground);
+  line-height: 1.9;
+  font-size: 13px;
+}
+.phone-auth-card fieldset {
+  border: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
 }
 .phone-auth-card label {
+  display: grid;
+  gap: 8px;
   font-size: 14px;
   font-weight: 600;
 }
 .phone-auth-card input {
-  border-radius: 8px;
+  min-height: 48px;
+  border-radius: var(--radius-control);
   font-size: 16px;
-  min-height: 50px;
+  caret-color: var(--foreground);
 }
-.phone-auth-card fieldset {
-  gap: 14px;
-}
-.phone-auth-card button[type="submit"] {
-  min-height: 50px;
-  font-weight: 750;
-  font-size: 15px;
+.phone-auth-card input::placeholder {
+  color: var(--muted-foreground);
 }
 .phone-auth-card nav {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+.phone-auth-card button {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+.phone-auth-card button[type="submit"] {
+  min-height: 48px;
+  font-weight: 700;
+  font-size: 15px;
+}
+.phone-auth-card button[data-variant="link"] {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.phone-auth-card button:focus-visible,
+.auth-wordmark:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
 }
 .phone-auth-card .auth-register-prompt {
   text-align: center;
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
 }
 .phone-auth-card .auth-register-button {
-  font-weight: 800;
-  font-size: 15px;
-  min-height: 50px;
-  border: 1px solid #c3cdff;
-  background: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  background: var(--card);
   color: var(--foreground);
   text-decoration: none;
 }
 .phone-auth-card .phone-auth-error {
+  color: var(--destructive);
   padding: 12px;
-  border-radius: 8px;
+  border-radius: var(--radius-control);
   background: var(--error-surface);
   font-size: 13px;
   margin: 0;
-}
-.phone-auth-card button {
-  touch-action: manipulation;
-  transition:
-    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
-    background-color 160ms ease;
-}
-.phone-auth-card button:active:not(:disabled) {
-  transform: scale(0.98);
 }
 .phone-auth-card .nexus-otp input:focus-visible {
   outline: none;
@@ -355,44 +338,72 @@
 .phone-auth-card .nexus-otp {
   outline: none;
 }
+@media (prefers-reduced-motion: no-preference) {
+  .phone-auth-card button {
+    transition:
+      transform 160ms ease,
+      background-color 160ms ease;
+  }
+  .phone-auth-card button:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+}
 @media (max-width: 768px) {
   .phone-auth {
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-    min-height: 100dvh;
-    padding: 24px 20px 40px;
+    grid-template-columns: minmax(0, 440px);
     justify-content: center;
+    align-content: center;
+    gap: 24px;
+    padding: 24px 20px 32px;
   }
   .auth-story {
-    padding: 0;
-    gap: 0;
-    width: 100%;
-    max-width: 440px;
-  }
-  .auth-story-copy,
-  .auth-receipt,
-  .auth-story > small {
-    display: none;
+    gap: 8px;
   }
   .auth-wordmark {
-    font-size: 25px;
+    font-size: 23px;
+  }
+  .auth-introduction h2 {
+    max-width: none;
+    font-size: 21px;
+    margin: 0;
+  }
+  .auth-introduction p,
+  .auth-receipt,
+  .auth-supported-stores {
+    display: none;
   }
   .phone-auth-card {
-    padding: 28px 22px;
-    width: 100%;
-    box-sizing: border-box;
+    padding: 24px;
   }
   .phone-auth-card h1 {
-    font-size: 23px;
+    font-size: 21px;
+  }
+}
+@media (max-width: 380px) {
+  .phone-auth {
+    padding-inline: 12px;
+  }
+  .phone-auth-card {
+    padding: 20px 16px;
+  }
+  .nexus-otp {
+    transform: scale(0.88);
+    transform-origin: center;
+  }
+}
+@media (max-height: 720px) and (max-width: 768px) {
+  .phone-auth {
+    align-content: start;
+    gap: 16px;
+  }
+  .auth-introduction {
+    display: none;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .phone-auth-card button {
-    transition: none;
-  }
-  .phone-auth-card button:active:not(:disabled) {
-    transform: none;
+  .phone-auth * {
+    animation: none !important;
+    transition: none !important;
   }
 }
 

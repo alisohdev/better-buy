@@ -740,7 +740,6 @@ details > p {
   height: 100%;
   border-radius: inherit;
   background: var(--primary);
-  transition: width 400ms ease;
 }
 .scan-status-badges {
   display: flex;
@@ -1744,11 +1743,6 @@ details > p {
   direction: ltr;
   accent-color: var(--primary);
 }
-@keyframes scan-orbit {
-  to {
-    transform: rotate(1turn);
-  }
-}
 @keyframes scan-pulse {
   50% {
     opacity: 0.45;
@@ -1771,7 +1765,7 @@ details > p {
   .scan-page {
     gap: 12px;
     padding: 10px;
-    border-radius: 18px;
+    border-radius: var(--radius-surface);
   }
   .scan-page-intro {
     gap: 14px;
@@ -1842,9 +1836,9 @@ details > p {
   margin: 20px auto 40px;
   padding: clamp(16px, 3vw, 32px);
   border: 1px solid #e2e6f4;
-  border-radius: 26px;
-  background: linear-gradient(145deg, #fbfcff 0%, #f1f3fb 100%);
-  box-shadow: 0 14px 36px rgb(38 50 96 / 8%);
+  border-radius: var(--radius-surface);
+  background: var(--background);
+  box-shadow: none;
 }
 
 .dark .scan-page {
@@ -1855,8 +1849,8 @@ details > p {
   --scan-lavender: #bbc7ff;
   --scan-soft: #293149;
   border-color: #303849;
-  background: linear-gradient(145deg, #1c2230 0%, #171b26 100%);
-  box-shadow: 0 18px 40px rgb(0 0 0 / 22%);
+  background: var(--background);
+  box-shadow: none;
 }
 
 .scan-flow-header {
@@ -1925,14 +1919,14 @@ details > p {
   margin: 0;
   padding: clamp(16px, 2.5vw, 24px);
   border: 1px solid #e1e5f1;
-  border-radius: 18px;
+  border-radius: var(--radius-surface);
   background: var(--card);
-  box-shadow: 0 8px 22px rgb(36 51 103 / 5%);
+  box-shadow: none;
 }
 
 .dark .scan-page .scan-controls {
   border-color: #30394c;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 13%);
+  box-shadow: none;
 }
 
 .scan-page .feed-location.scan-location-control {
@@ -2212,13 +2206,13 @@ details > p {
   background: var(--scan-lavender);
   color: #11182a;
   font-weight: 700;
-  box-shadow: 0 7px 16px rgb(113 132 230 / 20%);
+  box-shadow: none;
 }
 
 .dark .scan-page .scan-button {
   background: #aebcff;
   color: #111827;
-  box-shadow: 0 7px 18px rgb(81 103 202 / 22%);
+  box-shadow: none;
 }
 
 .scan-page .scan-button:hover:not(:disabled) {
@@ -2237,10 +2231,10 @@ details > p {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-block-size: 318px;
+  min-block-size: 220px;
   padding: 24px;
   border: 1px solid #e1e5f1;
-  border-radius: 18px;
+  border-radius: var(--radius-surface);
   background: var(--card);
   text-align: center;
 }
@@ -2248,73 +2242,6 @@ details > p {
 .dark .scan-stage {
   border-color: #30394c;
   background: #202634;
-}
-
-.scan-progress-orbit {
-  position: relative;
-  display: grid;
-  place-items: center;
-  inline-size: 98px;
-  block-size: 98px;
-  margin-block-end: 9px;
-  border-radius: 50%;
-  --scan-progress: 14%;
-}
-
-.scan-progress-orbit::before {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: conic-gradient(
-    from -30deg,
-    var(--scan-accent) 0,
-    var(--scan-lavender) var(--scan-progress),
-    #e5e8f3 var(--scan-progress),
-    #e5e8f3 100%
-  );
-  content: "";
-  animation: scan-orbit 1.8s linear infinite;
-  mask: radial-gradient(
-    farthest-side,
-    transparent calc(100% - 6px),
-    #000 calc(100% - 5px)
-  );
-}
-
-.dark .scan-progress-orbit::before {
-  background: conic-gradient(
-    from -30deg,
-    var(--scan-accent) 0,
-    var(--scan-lavender) var(--scan-progress),
-    #41495d var(--scan-progress),
-    #41495d 100%
-  );
-}
-
-.scan-progress-orbit[data-indeterminate="true"]::before {
-  background: conic-gradient(
-    from -30deg,
-    var(--scan-accent),
-    #e5e8f3 34%,
-    #e5e8f3 100%
-  );
-}
-
-.scan-progress-orbit-inner {
-  display: grid;
-  place-items: center;
-  inline-size: 68px;
-  block-size: 68px;
-  border: 1px solid color-mix(in srgb, var(--scan-accent) 16%, var(--border));
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--card) 80%, var(--scan-soft));
-  color: var(--foreground);
-}
-
-.scan-progress-orbit-inner svg {
-  inline-size: 29px;
-  block-size: 29px;
-  stroke-width: 1.7;
 }
 
 .scan-stage h2 {
@@ -2363,58 +2290,7 @@ details > p {
   display: block;
   block-size: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #6fba78, #40aa5c);
-  transition: width 400ms ease;
-}
-
-.scan-success-burst {
-  position: relative;
-  display: grid;
-  place-items: center;
-  inline-size: 112px;
-  block-size: 112px;
-  margin-block-end: 8px;
-}
-
-.scan-success-burst::before {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: repeating-conic-gradient(
-    from 0deg,
-    #a8b5ff 0deg 2deg,
-    transparent 2deg 30deg
-  );
-  content: "";
-  animation: scan-success-arrive 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  mask: radial-gradient(farthest-side, transparent 68%, #000 70%, #000 100%);
-}
-
-.dark .scan-success-burst::before {
-  background: repeating-conic-gradient(
-    from 0deg,
-    #8195ed 0deg 2deg,
-    transparent 2deg 30deg
-  );
-}
-
-.scan-success-mark {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  inline-size: 62px;
-  block-size: 62px;
-  border-radius: 19px;
-  background: #58be70;
-  color: white;
-  box-shadow: 0 7px 20px rgb(68 174 91 / 23%);
-}
-
-.scan-success-mark svg {
-  inline-size: 31px;
-  block-size: 31px;
-  stroke-width: 2.5;
+  background: var(--scan-accent);
 }
 
 .scan-complete-providers {
@@ -2578,17 +2454,6 @@ details > p {
   display: none;
 }
 
-@keyframes scan-success-arrive {
-  from {
-    opacity: 0;
-    transform: scale(0.76) rotate(-16deg);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) rotate(0deg);
-  }
-}
-
 @media (max-width: 640px) {
   .workspace-scan > .workspace-switcher {
     display: none;
@@ -2598,7 +2463,7 @@ details > p {
     gap: 14px;
     margin-block: 12px 28px;
     padding: 14px;
-    border-radius: 20px;
+    border-radius: var(--radius-surface);
   }
 
   .scan-flow-header {
@@ -2688,22 +2553,6 @@ details > p {
     padding: 15px 12px;
   }
 
-  .scan-stage-running .scan-progress-orbit {
-    inline-size: 78px;
-    block-size: 78px;
-    margin-block-end: 4px;
-  }
-
-  .scan-stage-running .scan-progress-orbit-inner {
-    inline-size: 56px;
-    block-size: 56px;
-  }
-
-  .scan-stage-running .scan-progress-orbit-inner svg {
-    inline-size: 24px;
-    block-size: 24px;
-  }
-
   .scan-stage-running h2 {
     font-size: 18px;
   }
@@ -2775,11 +2624,6 @@ details > p {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scan-progress-orbit::before,
-  .scan-success-burst::before {
-    animation: none;
-  }
-
   .scan-page .scan-progress-track span,
   .scan-page .provider-option {
     transition: none;

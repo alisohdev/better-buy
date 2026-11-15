@@ -8,6 +8,7 @@ import {
 import { api, RequestFailure } from "../../lib/api";
 import { recoveryInterval } from "../../lib/queryPolicy";
 import type { DealSource } from "../dashboard/types";
+import { useVisitor } from "../guest/VisitorProvider";
 export type ScanSelection = {
   locationId: string;
   source: DealSource;
@@ -16,6 +17,7 @@ export type ScanSelection = {
 };
 type StartIntent = { target: ScanSelection; key: string; failedAt: number };
 export function useStartScan(selection: ScanSelection) {
+  const visitor = useVisitor();
   const client = useQueryClient();
   const locked = useRef(false);
   const [uncertain, setUncertain] = useState<StartIntent | null>(null);
@@ -73,6 +75,10 @@ export function useStartScan(selection: ScanSelection) {
       );
     },
     onSuccess: (run) => {
+      if (visitor.isGuest)
+        visitor.notify(
+          "اسکن مهمان شروع شد. نتیجه‌ها موقت‌اند؛ برای نگهداری اطلاعات وارد حساب شوید. موقعیت پس از ورود منتقل می‌شود."
+        );
       remember(run);
       setUncertain(null);
     },

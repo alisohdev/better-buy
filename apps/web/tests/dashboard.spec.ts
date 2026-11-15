@@ -307,11 +307,97 @@ const success = async (page: Page) => {
   return state;
 };
 
+test("enhanced scan feedback distinguishes searching, measured progress and completion", async ({
+  page,
+}) => {
+  const state = await mock(page);
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
+    .last()
+    .click();
+  const start = page.getByRole("button", { name: "شروع اسکن", exact: true });
+  await expect(start).toBeEnabled();
+  await page
+    .locator("label.provider-option")
+    .filter({ hasText: "اسنپ‌مارکت" })
+    .click();
+  await start.click();
+  const stage = page.locator(".scan-stage-running");
+  await expect(stage).toBeVisible();
+  const progress = stage.getByRole("progressbar");
+  await expect(progress).toHaveAttribute("data-indeterminate", "true");
+  await expect(progress).not.toHaveAttribute("aria-valuenow");
+  await expect(stage.locator(".scan-activity-mark")).toBeVisible();
+  await captureState(page, "enhanced-scan-searching");
+  state.scans = state.scans.map((scan) => ({
+    ...scan,
+    status: "running",
+    execution: {
+      kind: "workflow",
+      phase: "collecting",
+      completedUnits: 3,
+      totalUnits: 8,
+      completedPages: 3,
+      observedRows: 24,
+      eligibleOffers: 6,
+      attemptCount: 1,
+      heartbeatAt: date,
+      deadlineAt: null,
+      dispatchState: "running",
+      cancelRequested: false,
+    },
+  }));
+  await expect(progress).toHaveAttribute("aria-valuenow", "3", {
+    timeout: 15000,
+  });
+  await expect(progress).toHaveAttribute("aria-valuemax", "8");
+  await expect(progress).toHaveAttribute("data-indeterminate", "false");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(stage.locator(".scan-activity-mark span").first()).toHaveCSS(
+    "animation-name",
+    "none"
+  );
+  await captureState(page, "enhanced-scan-progress");
+  state.scans = state.scans.map((scan) => ({
+    ...scan,
+    status: "succeeded",
+    finishedAt: new Date().toISOString(),
+    context: {
+      location: {
+        name: home.name,
+        latitude: home.latitude,
+        longitude: home.longitude,
+        revision: 1,
+      },
+      requestedThreshold: 15,
+      effectiveThreshold: 15,
+      policyVersion: "automatic-v1",
+      manifest: {
+        adapter: "okala-public-campaigns",
+        contractVersion: 1,
+        feedKinds: ["public_campaign_feed"],
+      },
+      scopeHash: "fixture",
+      eligibilityVersion: 1,
+      offerKeyVersion: 1,
+      coverage: "complete",
+    },
+  }));
+  await expect(page.locator(".scan-completion-mark")).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(
+    page.getByRole("button", { name: "مشاهده نتایج", exact: true })
+  ).toBeVisible();
+  await captureState(page, "enhanced-scan-complete");
+});
+
 test("signed out, pending, and authentication error have clear next steps", async ({
   page,
 }) => {
   await mock(page, { signedOut: true });
-  await page.goto("/");
+  await page.goto("/?page=login");
   await expect(
     page.getByRole("heading", { name: "به بهتر بخر خوش آمدید", exact: true })
   ).toBeVisible();

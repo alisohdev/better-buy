@@ -8,7 +8,7 @@ web
 
 ## Users
 
-Signed-in users in Iran who want to quickly compare unusually deep grocery discounts from supported stores across several saved delivery locations.
+People in Iran who want to compare grocery discounts across delivery locations, either as guests trying the application or signed-in users keeping account-owned history, carts, and wishlist alerts.
 
 ## Product Purpose
 
@@ -23,6 +23,9 @@ The product turns a location-specific promotional feed into a durable, comparabl
 The application uses a Go HTTP backend with SQLite and a static Next.js frontend. Each signed-in user owns private delivery locations and scan history and starts scans manually. A valid Tehran location is enough to start a SnappMarket scan: the API obtains public PWA guest access automatically. Okala uses public nearby-store and multi-store campaign feeds without customer credentials; Digikala Jet is disabled for new activity and keeps read-only history.
 
 ## Capabilities and Constraints
+
+- Guest exploration and manual scanning require no account. Guest identities and scan results are isolated and temporary (24-hour access), with always-on abuse limits. Wishlists, notifications, and saved carts require sign-in and explain why through contextual prompts.
+- Guest delivery locations remain in browser localStorage and restore into a new guest session. After sign-in, confirmed locations are imported idempotently into the account; failed imports retain the browser copy and expose retry. Existing account defaults are not replaced. Guest scan history itself is not imported.
 
 - Persian RTL web interface.
 - Go API, static Next.js frontend, tenant-isolated SQLite history, and location-specific wishlist scans scheduled for 09:00 and 18:00 Asia/Tehran.

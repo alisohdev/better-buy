@@ -47,7 +47,7 @@ type geocoderResult struct {
 }
 
 func registerLocations(mux *http.ServeMux, db *sql.DB, cfg config.Config, service *auth.Service) {
-	mux.Handle("GET /api/locations", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/locations", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		identity := requestIdentity(r)
 		rows, err := db.QueryContext(r.Context(), `SELECT id,name,latitude,longitude,is_default,created_at,updated_at,coordinate_revision FROM locations WHERE user_id=? ORDER BY is_default DESC,created_at`, identity.User.ID)
 		if err != nil {
@@ -70,7 +70,7 @@ func registerLocations(mux *http.ServeMux, db *sql.DB, cfg config.Config, servic
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"data": items})
 	})))
-	mux.Handle("GET /api/locations/search", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/locations/search", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := norm.NFKC.String(strings.TrimSpace(r.URL.Query().Get("q")))
 		if len([]rune(query)) < 2 || len([]rune(query)) > 120 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "INVALID_SEARCH_QUERY", "message": "عبارت جست‌وجو باید بین ۲ تا ۱۲۰ نویسه باشد."})
@@ -90,7 +90,7 @@ func registerLocations(mux *http.ServeMux, db *sql.DB, cfg config.Config, servic
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"data": results})
 	})))
-	mux.Handle("POST /api/locations", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("POST /api/locations", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var input locationInput
 		if !decodeJSONBody(w, r, &input) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "INVALID_INPUT"})
@@ -142,7 +142,7 @@ func registerLocations(mux *http.ServeMux, db *sql.DB, cfg config.Config, servic
 		}
 		writeJSON(w, http.StatusCreated, map[string]any{"data": item})
 	})))
-	mux.Handle("PATCH /api/locations/{id}", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("PATCH /api/locations/{id}", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var patch map[string]json.RawMessage
 		if !decodeJSONBody(w, r, &patch) || len(patch) == 0 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "INVALID_INPUT"})
@@ -237,7 +237,7 @@ func registerLocations(mux *http.ServeMux, db *sql.DB, cfg config.Config, servic
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"data": item})
 	})))
-	mux.Handle("DELETE /api/locations/{id}", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("DELETE /api/locations/{id}", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		identity := requestIdentity(r)
 		tx, err := db.BeginTx(r.Context(), nil)
 		if err != nil {

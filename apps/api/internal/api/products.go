@@ -13,7 +13,7 @@ import (
 
 func registerProducts(mux *http.ServeMux, db *sql.DB, cfg config.Config, service *auth.Service, queue *scans.Queue) {
 	productService := products.New(db, cfg.BoxKey)
-	mux.Handle("GET /api/scans/{id}/product-detail", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/scans/{id}/product-detail", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.URL.Query().Get("key")
 		if key == "" || len(key) > 1024 {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "INVALID_INPUT"})
@@ -32,7 +32,7 @@ func registerProducts(mux *http.ServeMux, db *sql.DB, cfg config.Config, service
 		}
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "PRODUCT_NOT_FOUND"})
 	})))
-	mux.Handle("GET /api/scans/{id}/deals", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/scans/{id}/deals", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		deals, _, err := productService.Deals(r.Context(), queue, requestIdentity(r).User.ID, r.PathValue("id"))
 		if err != nil {
 			writeProductError(w, err)
@@ -45,7 +45,7 @@ func registerProducts(mux *http.ServeMux, db *sql.DB, cfg config.Config, service
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"data": deals})
 	})))
-	mux.Handle("GET /api/scans/{id}/deal-groups", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/scans/{id}/deal-groups", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		deals, scan, err := productService.Deals(r.Context(), queue, requestIdentity(r).User.ID, r.PathValue("id"))
 		if err != nil {
 			writeProductError(w, err)
@@ -59,7 +59,7 @@ func registerProducts(mux *http.ServeMux, db *sql.DB, cfg config.Config, service
 		groups := products.LegacyGroups(scan.Source, deals)
 		writeJSON(w, http.StatusOK, map[string]any{"data": groups, "meta": map[string]any{"groupKeyVersion": 1, "groupedProductCount": len(groups), "offerCount": len(deals)}})
 	})))
-	mux.Handle("GET /api/scans/{id}/products", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/scans/{id}/products", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userID, scanID := requestIdentity(r).User.ID, r.PathValue("id")
 		if r.URL.Query().Get("page") == "1" {
 			page, err := productService.ProductPage(r.Context(), queue, userID, scanID, r.URL.Query())
@@ -81,7 +81,7 @@ func registerProducts(mux *http.ServeMux, db *sql.DB, cfg config.Config, service
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"data": groups, "meta": map[string]any{"groupKeyVersion": 2, "historyContext": contextStatus, "coverageSummary": "supported_discount_feeds"}})
 	})))
-	mux.Handle("GET /api/scans/{id}/products/{key}/offers", requireIdentity(service, db, cfg.APIRateLimitsEnabled, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	mux.Handle("GET /api/scans/{id}/products/{key}/offers", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		page, err := productService.OfferPage(r.Context(), queue, requestIdentity(r).User.ID, r.PathValue("id"), r.PathValue("key"), r.URL.Query())
 		if err != nil {
 			writeProductError(w, err)

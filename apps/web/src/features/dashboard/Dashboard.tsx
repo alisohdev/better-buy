@@ -1,7 +1,9 @@
 "use client";
+import "../scans/scan-feedback.css";
+import { useVisitor } from "../guest/VisitorProvider";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "radix-ui";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   isWithinTehranBoundary,
   type CartSource,
@@ -35,6 +37,7 @@ import { useAdminAccess } from "../admin/useAdminAnalytics";
 import { useSearchAnalytics } from "../admin/useAnalytics";
 
 export function Dashboard() {
+  const visitor = useVisitor();
   const data = useDashboardData();
   const wishlist = useWishlistQuery();
   const adminAccess = useAdminAccess();
@@ -48,6 +51,12 @@ export function Dashboard() {
   const overlayReturnFocus = useRef<HTMLElement | null>(null);
   const mobileCartTrigger = useRef<HTMLButtonElement | null>(null);
   const openOverlay = (kind: "wishlist" | "inbox") => {
+    if (
+      !visitor.requireAccount(
+        kind === "wishlist" ? "علاقه‌مندی‌ها" : "اعلان‌ها"
+      )
+    )
+      return;
     overlayReturnFocus.current =
       document.activeElement instanceof HTMLElement
         ? document.activeElement
@@ -340,6 +349,7 @@ export function Dashboard() {
     ? Math.min(100, Math.round((progressCompleted / progressTotal) * 100))
     : null;
   const openCart = (_source: CartSource) => {
+    if (!visitor.requireAccount("نگهداری سبد خرید")) return;
     setCartOpen(true);
   };
   return (
@@ -378,6 +388,7 @@ export function Dashboard() {
               ]}
               open={cartOpen}
               onOpenChange={(open) => {
+                if (open && !visitor.requireAccount("نگهداری سبد خرید")) return;
                 setCartOpen(open);
                 if (!open && window.matchMedia("(max-width: 768px)").matches)
                   requestAnimationFrame(() =>
@@ -533,19 +544,11 @@ export function Dashboard() {
                     role="status"
                     aria-live="polite"
                   >
-                    <div
-                      className="scan-progress-orbit"
-                      style={
-                        {
-                          "--scan-progress": `${scanProgressPercent ?? 14}%`,
-                        } as CSSProperties
-                      }
-                      data-indeterminate={scanProgressPercent === null}
-                      aria-hidden="true"
-                    >
-                      <span className="scan-progress-orbit-inner">
-                        <AppIcon name="basket" />
-                      </span>
+                    <div className="scan-activity-mark" aria-hidden="true">
+                      <AppIcon name="scan" />
+                      <span />
+                      <span />
+                      <span />
                     </div>
                     <h2>در حال اسکن فروشگاه‌ها…</h2>
                     <p>
@@ -562,6 +565,7 @@ export function Dashboard() {
                     </div>
                     <div
                       className="scan-progress-track scan-stage-track"
+                      data-indeterminate={scanProgressPercent === null}
                       role="progressbar"
                       aria-label="پیشرفت اسکن"
                       aria-valuemin={0}
@@ -572,10 +576,15 @@ export function Dashboard() {
                     >
                       <span
                         style={{
-                          width: `${scanProgressPercent ?? 12}%`,
+                          width: `${scanProgressPercent ?? 0}%`,
                         }}
                       />
                     </div>
+                    <p className="scan-observation-count">
+                      {progressTotal > 0
+                        ? `${faNumber.format(progressCompleted)} از ${faNumber.format(progressTotal)} بخش بررسی شده`
+                        : "در انتظار دریافت اطلاعات فروشگاه‌ها"}
+                    </p>
                   </section>
                 )}
                 {scanPageStage === "complete" && (
@@ -584,10 +593,8 @@ export function Dashboard() {
                     role="status"
                     aria-live="polite"
                   >
-                    <div className="scan-success-burst" aria-hidden="true">
-                      <span className="scan-success-mark">
-                        <AppIcon name="check" />
-                      </span>
+                    <div className="scan-completion-mark" aria-hidden="true">
+                      <AppIcon name="check" />
                     </div>
                     <h2>اسکن با موفقیت انجام شد</h2>
                     <p>
@@ -706,9 +713,6 @@ export function Dashboard() {
                 })}
                 <header className="shopping-page-heading">
                   <div>
-                    <span className="shopping-eyebrow">
-                      خرید روزمره، با قیمت بهتر
-                    </span>
                     <h1>پیشنهادهای امروز</h1>
                     <button
                       type="button"
@@ -749,7 +753,9 @@ export function Dashboard() {
           ref={mobileCartTrigger}
           type="button"
           aria-label="سبد خرید"
-          onClick={() => setCartOpen(true)}
+          onClick={() => {
+            if (visitor.requireAccount("نگهداری سبد خرید")) setCartOpen(true);
+          }}
         >
           <AppIcon name="cart" />
           <small>سبد خرید</small>

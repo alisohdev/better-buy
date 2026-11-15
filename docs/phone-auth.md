@@ -1,5 +1,7 @@
 # Phone authentication
 
+Browsing and manual scanning are available at `/` without signing in. Use `/?page=login` for phone login or registration. Guest locations are remembered in browser localStorage and imported after authentication, with idempotent retries; guest scan history remains temporary. Wishlists, notifications, saved carts, and administration still require an authenticated account. See the README guest-access section for retention and rate limits.
+
 The API uses phone/password authentication. Email and Google routes are removed. `user.id` and application ownership keys remain unchanged. Back up SQLite, then run `pnpm api:migrate` before starting the new API. Migration `0021_phone_auth.sql` adds unique canonical phones, password hashes, verification timestamps, OTP challenges, single-use tickets, and persistent abuse limits. It revokes existing sessions and clears obsolete authentication secrets. It preserves fixture users, legacy identity metadata, account rows, locations, scans, settings, carts, and wishlists. Legacy identity labels are preserved in an inert `legacy_identity` metadata column; live email verification and obsolete account credential/token columns are removed. They are never used to authenticate or authorize.
 
 ## Local setup
