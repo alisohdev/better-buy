@@ -1219,3 +1219,13 @@
     animation: none;
   }
 }
+
+.results-search input::-webkit-search-cancel-button,
+.results-search input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+.results-search input::-ms-clear {
+  display: none;
+}
