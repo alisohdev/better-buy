@@ -848,12 +848,36 @@ test("interactive guide waits for location save and explicit scan then finishes 
   });
   await page.getByRole("button", { name: "مشاهده نتایج", exact: true }).click();
   await expect(page.locator('[data-tutorial-step="done"]')).toBeVisible();
+  await page.getByRole("button", { name: "پایان راهنما", exact: true }).click();
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const search = page.getByRole("searchbox", {
+    name: "جست‌وجوی کالا یا فروشگاه",
+  });
+  await search.fill("شیر");
+  await expect(page.locator(".results-search-icon")).toHaveCSS(
+    "animation-name",
+    "search-look"
+  );
+  await page.screenshot({
+    path: `../../.data/design-evidence/search-toolbar-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "پاک‌کردن جست‌وجو", exact: true })
+    .click();
+  await expect(search).toHaveValue("");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await search.fill("شیر");
+  await expect(page.locator(".results-search-icon")).toHaveCSS(
+    "animation-name",
+    "none"
+  );
+
   await expect(
     page.locator(
       '[data-tutorial-step="search"], [data-tutorial-step="product"]'
     )
   ).toHaveCount(0);
-  await page.getByRole("button", { name: "پایان راهنما", exact: true }).click();
   await expect(page.locator(".tutorial-hint")).toHaveCount(0);
   await expect(page.locator(".tutorial-spotlight")).toHaveCount(0);
   await page.reload();

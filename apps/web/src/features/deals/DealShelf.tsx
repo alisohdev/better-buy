@@ -1,7 +1,7 @@
 import { TutorialHint } from "../dashboard/Tutorial";
 import { DiscountSelect } from "../dashboard/DiscountSelect";
 import { useVisitor } from "../guest/VisitorProvider";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +61,7 @@ export function DealShelf({
   onOpenCart: (source: CartSource) => void;
 }) {
   const { query, setQuery, sort, setSort, reset } = filters;
+  const [searchMotion, setSearchMotion] = useState(0);
   const visitor = useVisitor();
   const wishlist = useWishlist();
   const savedItems = wishlist.query.data?.items ?? [];
@@ -268,17 +269,59 @@ export function DealShelf({
       <TutorialHint at="done" />
       {hasScan && (
         <div className="results-toolbar compact-results-toolbar">
-          <Label className="search">
+          <Label
+            className="search results-search"
+            data-searching={fetching && !!query}
+          >
+            <svg
+              key={searchMotion}
+              className={
+                searchMotion
+                  ? "results-search-icon is-searching"
+                  : "results-search-icon"
+              }
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle
+                cx="10.5"
+                cy="10.5"
+                r="6.5"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              />
+              <path
+                d="m16 16 4 4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+              />
+            </svg>
             <span className="sr-only">جست‌وجو</span>
             <Input
               type="search"
               aria-label="جست‌وجوی کالا یا فروشگاه"
               value={query}
+              onFocus={() => setSearchMotion((value) => value + 1)}
               onChange={(event) => {
                 setQuery(event.target.value);
+                setSearchMotion((value) => value + 1);
               }}
-              placeholder="نام کالا یا فروشگاه"
+              placeholder="جست‌وجوی کالا یا فروشگاه…"
             />
+            {query && (
+              <button
+                type="button"
+                className="results-search-clear"
+                aria-label="پاک‌کردن جست‌وجو"
+                onClick={reset}
+              >
+                <AppIcon name="close" />
+              </button>
+            )}
           </Label>
           <Label className="sort-control">
             <span className="sr-only">مرتب‌سازی</span>
@@ -296,11 +339,6 @@ export function DealShelf({
           <div className="discount-control">
             <DiscountSelect value={minDiscount} onChange={onMinDiscount} />
           </div>
-          {query && (
-            <Button variant="outline" onClick={reset}>
-              پاک‌کردن جست‌وجو
-            </Button>
-          )}
         </div>
       )}
       {wishlist.mutation.error && (

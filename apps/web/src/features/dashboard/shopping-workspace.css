@@ -1131,3 +1131,91 @@
   min-height: 34px;
   padding: 6px 12px;
 }
+
+/* Search leads the toolbar; filters stay compact beside it. */
+.app-shell .deal-section .compact-results-toolbar {
+  grid-template-columns: minmax(220px, 1fr) 180px 170px;
+  gap: 12px;
+  padding-block-end: 16px;
+}
+.app-shell .compact-results-toolbar input,
+.app-shell .compact-results-toolbar button[role="combobox"],
+.app-shell .compact-results-toolbar .discount-control > button {
+  min-height: 44px;
+  height: 44px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.app-shell .compact-results-toolbar .results-search {
+  position: relative;
+}
+.app-shell .compact-results-toolbar .results-search input {
+  padding-inline: 42px;
+  background: var(--card);
+}
+.results-search-icon {
+  position: absolute;
+  inset-inline-start: 14px;
+  top: 12px;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  transform-origin: center;
+}
+.results-search:focus-within .results-search-icon {
+  color: var(--ring);
+}
+.results-search-icon.is-searching {
+  animation: search-look 550ms ease-in-out;
+}
+.results-search[data-searching="true"] .results-search-icon {
+  animation: search-look 900ms ease-in-out infinite;
+}
+.results-search-clear {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.results-search-clear svg {
+  width: 16px;
+  height: 16px;
+}
+.results-search-clear:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -4px;
+  border-radius: 8px;
+}
+@keyframes search-look {
+  0%,
+  100% {
+    transform: translateX(0) rotate(0);
+  }
+  30% {
+    transform: translateX(-3px) rotate(-12deg);
+  }
+  65% {
+    transform: translateX(3px) rotate(10deg);
+  }
+}
+@media (max-width: 768px) {
+  .app-shell .deal-section .compact-results-toolbar {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+  }
+  .app-shell .compact-results-toolbar .results-search {
+    grid-column: 1 / -1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .results-search-icon.is-searching,
+  .results-search[data-searching="true"] .results-search-icon {
+    animation: none;
+  }
+}

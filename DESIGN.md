@@ -78,3 +78,5 @@ Emil leads feedback/accessibility/restraint; Anthropic leads deliberate tokens, 
 ## Visual evidence
 
 Local evidence is kept in ignored `.data/design-evidence/`: real before/after browser screenshots, responsive/theme/state captures, and three public Okala image references. Before/after comparison uses controlled representative Persian grocery data; prices and account/session responses are fixtures. The public image lookup is a separate read-only live observation, not a production application scan. Browser transport fixtures do not reproduce TLS negotiation. See README for behavioral validation and limitations.
+
+The results toolbar gives search the flexible leading column, with matched 44px filter controls. The inset magnifier makes a brief searching movement on focus and typing, repeats only while a search read is fetching, and stays static under reduced motion. Clearing uses an inline 44px icon target without adding another toolbar row.
