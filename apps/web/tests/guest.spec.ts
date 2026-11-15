@@ -594,10 +594,6 @@ test("guests restore browser location and start manual scans without private req
   );
   await expect(page.locator(".scan-page")).toBeVisible();
   expect(state.guestLocations).toHaveLength(1);
-  await page
-    .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
-    .last()
-    .click();
   await page.getByRole("button", { name: "شروع اسکن", exact: true }).click();
   await expect(page.locator(".scan-stage-running")).toBeVisible();
   await expect(page.locator(".guest-toast")).toContainText("اسکن مهمان");
@@ -1006,3 +1002,26 @@ for (const feature of ["علاقه‌مندی‌ها", "اعلان‌ها", "س�
     expect(state.starts).toBe(0);
   });
 }
+
+test("continue without login sits inside the auth card and opens guest browsing", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  await page.goto("/?page=login");
+  const card = page.locator(".phone-auth-card");
+  const guestLink = card.getByRole("link", {
+    name: "ادامه بدون ورود",
+    exact: true,
+  });
+  await expect(guestLink).toBeVisible();
+  await expect(guestLink).toHaveCSS("min-block-size", "48px");
+  await expect(page.locator(".guest-login-return")).toHaveCount(0);
+  await page.screenshot({
+    path: `../../.data/design-evidence/auth-guest-link-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await guestLink.click();
+  await expect(page).not.toHaveURL(/page=login/);
+  await expect(page.locator(".onboarding")).toBeVisible();
+  expect(state.starts).toBe(0);
+});

@@ -85,20 +85,6 @@
 .guest-import-notice button {
   margin-top: 12px;
 }
-.guest-login-return {
-  max-width: 1240px;
-  margin: 0 auto;
-  padding: 16px 24px 0;
-}
-.guest-login-return a {
-  color: var(--foreground);
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-.guest-login-return + .phone-auth {
-  min-height: calc(100dvh - 52px);
-  padding-block: 20px;
-}
 @media (min-width: 769px) {
   .guest-banner {
     inset-inline-start: 224px;

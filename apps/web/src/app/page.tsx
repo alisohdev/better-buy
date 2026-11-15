@@ -52,15 +52,7 @@ export default function Page() {
         </Card>
       </main>
     );
-  if (!session && destination.page === "login")
-    return (
-      <>
-        <nav className="guest-login-return">
-          <a href="/">ادامه بدون ورود</a>
-        </nav>
-        <AuthScreen />
-      </>
-    );
+  if (!session && destination.page === "login") return <AuthScreen />;
   const content =
     destination.page === "notifications" ? (
       session ? (

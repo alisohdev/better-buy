@@ -383,6 +383,28 @@ export function AuthScreen() {
             بازگشت به ورود
           </Button>
         )}
+        <div className="auth-guest-access">
+          <Button asChild variant="secondary" className="auth-guest-link">
+            <a href="/">
+              ادامه بدون ورود
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <path
+                  d="M19 12H5m6-6-6 6 6 6"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </a>
+          </Button>
+        </div>
       </section>
     </main>
   );

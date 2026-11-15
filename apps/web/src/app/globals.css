@@ -320,6 +320,28 @@
   color: var(--foreground);
   text-decoration: none;
 }
+.auth-guest-access {
+  border-block-start: 1px solid var(--border);
+  padding-block-start: 16px;
+}
+.phone-auth-card .auth-guest-link {
+  display: flex;
+  inline-size: 100%;
+  min-block-size: 48px;
+  justify-content: center;
+  gap: 10px;
+  background: var(--accent);
+  color: var(--foreground);
+  font-weight: 700;
+  text-decoration: none;
+}
+.phone-auth-card .auth-guest-link:hover {
+  background: var(--muted);
+}
+.phone-auth-card .auth-guest-link:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 4px;
+}
 .phone-auth-card .phone-auth-error {
   color: var(--destructive);
   padding: 12px;
