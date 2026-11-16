@@ -1,11 +1,12 @@
 "use client";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { OtpInput } from "@/components/otp-input";
 import { authClient, type OTPPurpose } from "@/app/auth-client";
 import { normalizeDigits, useWebOTP } from "./useWebOTP";
 import Image from "next/image";
+import { useForm } from "react-hook-form";
 type Flow =
   | { kind: "login" }
   | { kind: "phone"; purpose: OTPPurpose }
@@ -18,6 +19,52 @@ export function AuthScreen() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [name, setName] = useState("");
+  const {
+    handleSubmit,
+    clearErrors,
+    formState: { errors },
+  } = useForm({
+    resolver: () => {
+      const errors: Record<string, { type: string; message: string }> = {};
+      const invalid = (field: string, message: string) => {
+        errors[field] = { type: "validate", message };
+      };
+      if (flow.kind === "login" || flow.kind === "phone") {
+        if (
+          !/^(09[0-9]{9}|989[0-9]{9}|\+989[0-9]{9})$/.test(
+            normalizeDigits(phone)
+          )
+        )
+          invalid("phone", "شماره همراه معتبر وارد کنید.");
+      }
+      if (flow.kind === "login" && !password)
+        invalid("password", "رمز عبور را وارد کنید.");
+      if (flow.kind === "details") {
+        if (
+          Array.from(password).length < 8 ||
+          new TextEncoder().encode(password).length > 1024
+        )
+          invalid(
+            "password",
+            "رمز عبور باید حداقل ۸ نویسه و حداکثر ۱۰۲۴ بایت باشد."
+          );
+        if (!confirm || confirm !== password)
+          invalid("confirm", "رمزهای عبور یکسان نیستند.");
+        if (
+          flow.purpose === "registration" &&
+          (!name.trim() || Array.from(name).length > 120)
+        )
+          invalid("name", "نام باید بین ۱ تا ۱۲۰ نویسه باشد.");
+      }
+      return { values: {}, errors };
+    },
+  });
+  const fieldError = (field: string) =>
+    errors[field] ? (
+      <p id={`auth-${field}-error`} role="alert" className="phone-auth-error">
+        {String(errors[field]?.message)}
+      </p>
+    ) : null;
   const [visible, setVisible] = useState(false);
   const [eyeAnimation, setEyeAnimation] = useState(0);
   const [busy, setBusy] = useState(false);
@@ -33,6 +80,7 @@ export function AuthScreen() {
     return () => clearInterval(timer);
   }, []);
   function navigate(next: Flow) {
+    clearErrors();
     generation.current++;
     webOTP.cancel();
     setFlow(next);
@@ -67,8 +115,7 @@ export function AuthScreen() {
       setBusy(false);
     }
   }
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function submit() {
     if (flow.kind === "phone") {
       await start(flow.purpose);
       return;
@@ -268,7 +315,7 @@ export function AuthScreen() {
             </Button>
           </>
         ) : (
-          <form onSubmit={(event) => void submit(event)} aria-busy={busy}>
+          <form noValidate onSubmit={handleSubmit(submit)} aria-busy={busy}>
             <fieldset disabled={busy}>
               {(flow.kind === "login" || flow.kind === "phone") && (
                 <label>
@@ -278,11 +325,14 @@ export function AuthScreen() {
                     type="tel"
                     autoComplete="tel"
                     required
+                    aria-invalid={!!errors.phone}
+                    aria-describedby="auth-phone-error"
                     value={phone}
                     onChange={(e) => setPhone(normalizeDigits(e.target.value))}
                     pattern="(09[0-9]{9}|989[0-9]{9}|\+989[0-9]{9})"
                     placeholder="09123456789"
                   />
+                  {fieldError("phone")}
                 </label>
               )}
               {flow.kind === "details" && flow.purpose === "registration" && (
@@ -292,9 +342,12 @@ export function AuthScreen() {
                     autoComplete="name"
                     required
                     maxLength={120}
+                    aria-invalid={!!errors.name}
+                    aria-describedby="auth-name-error"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                   />
+                  {fieldError("name")}
                 </label>
               )}
               {(flow.kind === "login" || flow.kind === "details") && (
@@ -325,8 +378,10 @@ export function AuthScreen() {
                           : "new-password"
                       }
                       required
-                      minLength={12}
+                      minLength={8}
                       maxLength={1024}
+                      aria-invalid={!!errors.password}
+                      aria-describedby="auth-password-error"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                     />
@@ -377,10 +432,11 @@ export function AuthScreen() {
                       </svg>
                     </Button>
                   </div>
+                  {fieldError("password")}
                   {flow.kind === "details" && (
                     <>
                       <p>
-                        حداقل ۱۲ نویسه؛ می‌توانید یک عبارت طولانی انتخاب کنید.
+                        حداقل ۸ نویسه؛ می‌توانید یک عبارت طولانی انتخاب کنید.
                       </p>
                       <label>
                         تکرار رمز عبور
@@ -389,9 +445,12 @@ export function AuthScreen() {
                           type={visible ? "text" : "password"}
                           autoComplete="new-password"
                           required
+                          aria-invalid={!!errors.confirm}
+                          aria-describedby="auth-confirm-error"
                           value={confirm}
                           onChange={(e) => setConfirm(e.target.value)}
                         />
+                        {fieldError("confirm")}
                       </label>
                     </>
                   )}

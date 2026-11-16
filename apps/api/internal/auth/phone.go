@@ -53,7 +53,7 @@ func NormalizePhone(p string) (string, error) {
 	return p, nil
 }
 func validPassword(p string) bool {
-	return utf8.ValidString(p) && utf8.RuneCountInString(p) >= 12 && len(p) <= 1024
+	return utf8.ValidString(p) && utf8.RuneCountInString(p) >= 8 && len(p) <= 1024
 }
 func argonSettings() (uint32, uint32, uint8) {
 	read := func(name string, fallback, min, max int) int {
