@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -79,7 +80,7 @@ func (c *Collector) collectOkala(ctx context.Context, job *scanJob) (scanResult,
 		if err := ctx.Err(); err != nil {
 			return scanResult{}, err
 		}
-		if store.ID > 0 && store.Active && store.Serves && store.Exists {
+		if store.ID > 0 && store.Active && store.Serves && store.Exists && okalaSupermarketStore(store.Name) {
 			if _, exists := seenStores[store.ID]; !exists {
 				seenStores[store.ID] = struct{}{}
 				storeIDs = append(storeIDs, store.ID)
@@ -295,4 +296,15 @@ func (c *Collector) collectOkalaStores(parent context.Context, job *scanJob, sto
 }
 func newerLiveObservation(a, b liveObservation) bool {
 	return a.ObservedNano > b.ObservedNano || a.ObservedNano == b.ObservedNano && a.CategoryID > b.CategoryID
+}
+
+// Exclude specialist stores before scheduling any catalogue requests.
+func okalaSupermarketStore(name string) bool {
+	normalized := strings.NewReplacer("ي", "ی", "ك", "ک", "\u200c", "", " ", "", "-", "").Replace(name)
+	for _, specialist := range []string{"نانوایی", "نانوايی", "سوپرمیوه", "میوهفروشی", "میوهوتربار", "میوهترهبار", "میوهوترهبار"} {
+		if strings.Contains(normalized, specialist) {
+			return false
+		}
+	}
+	return true
 }
