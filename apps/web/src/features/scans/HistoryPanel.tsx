@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { scanFailureMessage } from "./scanFailureMessage";
 import { Card } from "@/components/ui/card";
 import { digikalaSupermarketEnabled } from "./ScanControls";
 import type { ScanRecord } from "@better-buy/shared";
@@ -55,7 +56,7 @@ export function HistoryPanel({
                       </p>
                     )}
                   {s.errorMessage && (
-                    <p className="form-error">{s.errorMessage}</p>
+                    <p className="form-error">{scanFailureMessage(s)}</p>
                   )}
                   <details>
                     <summary>جزئیات اسکن</summary>

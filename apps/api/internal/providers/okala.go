@@ -15,7 +15,8 @@ import (
 
 const okalaConcurrency = 24
 
-// This detects Okala's upstream response truncation; it never limits scan results.
+// Large parent categories are expanded for additional coverage. Response size
+// alone is not evidence of truncation: leaf responses can exceed this size.
 const okalaCategoryLimit = 350
 
 type okalaCategory struct {
@@ -62,6 +63,7 @@ func (c *Collector) collectOkala(ctx context.Context, job *scanJob) (scanResult,
 			Stores []struct {
 				ID     int64  `json:"storeId"`
 				Name   string `json:"storeName"`
+				Type   string `json:"storeType"`
 				Logo   string `json:"logoUrl"`
 				Active bool   `json:"isActive"`
 				Serves bool   `json:"isServes"`
@@ -80,7 +82,7 @@ func (c *Collector) collectOkala(ctx context.Context, job *scanJob) (scanResult,
 		if err := ctx.Err(); err != nil {
 			return scanResult{}, err
 		}
-		if store.ID > 0 && store.Active && store.Serves && store.Exists && okalaSupermarketStore(store.Name) {
+		if store.ID > 0 && store.Active && store.Serves && store.Exists && okalaSupermarketStore(store.Name) && okalaSupermarketStore(store.Type) {
 			if _, exists := seenStores[store.ID]; !exists {
 				seenStores[store.ID] = struct{}{}
 				storeIDs = append(storeIDs, store.ID)
@@ -226,8 +228,9 @@ func (c *Collector) collectOkalaStores(parent context.Context, job *scanJob, sto
 				if catalogue.Data == nil {
 					return scanResult{}, &Failure{Code: "UPSTREAM_CHANGED", Message: "Okala catalogue response format changed.", Status: 502}
 				}
-				saturated := len(catalogue.Data) >= okalaCategoryLimit || catalogue.HasNextPage || catalogue.TotalPages > 1
-				if saturated && len(category.Children) == 0 {
+				hasMore := catalogue.HasNextPage || catalogue.TotalPages > 1
+				saturated := len(catalogue.Data) >= okalaCategoryLimit || hasMore
+				if hasMore && len(category.Children) == 0 {
 					return scanResult{}, &Failure{Code: "INCOMPLETE_PAGINATION", Message: "Okala category is truncated and has no smaller categories to collect.", Status: 502}
 				}
 				observedAt, err := stableObservedAt(result.body.observedAt, job.StartedAt())

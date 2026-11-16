@@ -31,6 +31,7 @@ import { useDealFilters } from "../deals/useDealFilters";
 import type { DealSource } from "./types";
 import { scanProgressPercent as calculateScanProgress } from "../scans/progress";
 import { LiveScanResults } from "../scans/LiveScanResults";
+import { scanFailureMessage } from "../scans/scanFailureMessage";
 import { ScanFeedback } from "../scans/ScanFeedback";
 import { ProviderCart, CartWriteNotice } from "../carts/ProviderCart";
 import { useProviderCart } from "../carts/useProviderCart";
@@ -811,8 +812,7 @@ function DashboardContent() {
                       key={feed.source}
                       title={`${sourceLabel(feed.source)} · ${attempt.status === "failed" ? "اسکن ناموفق بود" : "به‌روزرسانی لغو شد"}`}
                     >
-                      {attempt.errorMessage ??
-                        "نتیجه‌ای از این به‌روزرسانی منتشر نشده است."}
+                      {scanFailureMessage(attempt)}
                       {feed.ledger.scan &&
                         " نتیجه موفق قبلی همچنان نمایش داده می‌شود."}
                     </ReadNotice>

@@ -142,7 +142,7 @@ func TestOkalaUnavailableFeedKeepsOtherResultsAndMarksCoverageIncomplete(t *test
 }
 
 func TestOkalaRejectsTruncatedLeafAndInvalidCatalogue(t *testing.T) {
-	for _, scenario := range []string{"saturated-leaf", "null-data", "wrong-store", "additional-pages"} {
+	for _, scenario := range []string{"saturated-leaf", "large-leaf", "null-data", "wrong-store", "additional-pages"} {
 		t.Run(scenario, func(t *testing.T) {
 			db := openJournalTestDB(t)
 			claim := insertRunningJournalScan(t, db, "okala-invalid", time.Now().UTC().Format(time.RFC3339), time.Now().UTC().Format(time.RFC3339))
@@ -153,8 +153,12 @@ func TestOkalaRejectsTruncatedLeafAndInvalidCatalogue(t *testing.T) {
 				}
 				if strings.Contains(r.URL.Path, "products") {
 					ps := []any{}
-					if scenario == "saturated-leaf" {
-						for i := 0; i < 350; i++ {
+					if scenario == "saturated-leaf" || scenario == "large-leaf" {
+						count := 350
+						if scenario == "large-leaf" {
+							count = 741 // Size observed in a saved real category response.
+						}
+						for i := 0; i < count; i++ {
 							ps = append(ps, map[string]any{"id": i + 1, "storeId": 2223})
 						}
 					}
@@ -173,7 +177,16 @@ func TestOkalaRejectsTruncatedLeafAndInvalidCatalogue(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := collector.collectOkala(context.Background(), &job); err == nil {
+			result, err := collector.collectOkala(context.Background(), &job)
+			if scenario == "saturated-leaf" || scenario == "large-leaf" {
+				count := 350
+				if scenario == "large-leaf" {
+					count = 741
+				}
+				if err != nil || result.ProductCount != count || result.Coverage != "complete" {
+					t.Fatalf("large leaf rejected: result=%+v err=%v", result, err)
+				}
+			} else if err == nil {
 				t.Fatal("incomplete catalogue reported success")
 			}
 		})

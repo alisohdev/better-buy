@@ -1,16 +1,25 @@
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { productPageSchema, type ScanRecord } from "@better-buy/shared";
-import { api } from "../../lib/api";
+import { api, RequestFailure } from "../../lib/api";
 import { Button } from "@/components/ui/button";
 import { faNumber, money } from "../dashboard/format";
 import { ProductDestination } from "../deals/ProductDestination";
 
 export function LiveScanResults({ scan }: { scan: ScanRecord }) {
+  const client = useQueryClient();
   const results = useInfiniteQuery({
     queryKey: ["live-scan-results", scan.id],
     initialPageParam: null as string | null,
     enabled: scan.source === "okala" && scan.status === "running",
-    refetchInterval: 5000,
+    refetchInterval: (query: { state: { error: Error | null } }) =>
+      query.state.error instanceof RequestFailure &&
+      query.state.error.code === "SCAN_NOT_PUBLISHED"
+        ? false
+        : 5000,
+    retry: (count, error) =>
+      !(
+        error instanceof RequestFailure && error.code === "SCAN_NOT_PUBLISHED"
+      ) && count < 2,
     staleTime: 0,
     queryFn: ({ signal, pageParam }) => {
       const params = new URLSearchParams({
@@ -22,7 +31,16 @@ export function LiveScanResults({ scan }: { scan: ScanRecord }) {
         `/api/scans/${scan.id}/preview?${params}`,
         { signal },
         productPageSchema.parse
-      );
+      ).catch((error: unknown) => {
+        if (
+          error instanceof RequestFailure &&
+          error.code === "SCAN_NOT_PUBLISHED"
+        ) {
+          void client.invalidateQueries({ queryKey: ["scan", scan.id] });
+          void client.invalidateQueries({ queryKey: ["scans"] });
+        }
+        throw error;
+      });
     },
     getNextPageParam: (page) => page.nextCursor ?? undefined,
   });
