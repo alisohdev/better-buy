@@ -255,15 +255,6 @@ func registerLocations(mux *http.ServeMux, db *sql.DB, cfg config.Config, servic
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "NOT_FOUND"})
 			return
 		}
-		var count int
-		if err := tx.QueryRowContext(r.Context(), `SELECT COUNT(*) FROM locations WHERE user_id=?`, identity.User.ID).Scan(&count); err != nil {
-			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "LOCATION_READ_ERROR"})
-			return
-		}
-		if count <= 1 {
-			writeJSON(w, http.StatusConflict, map[string]string{"error": "LAST_LOCATION"})
-			return
-		}
 		var active int
 		if err := tx.QueryRowContext(r.Context(), `SELECT EXISTS(SELECT 1 FROM scans WHERE user_id=? AND location_id=? AND status IN ('queued','running'))`, identity.User.ID, r.PathValue("id")).Scan(&active); err != nil {
 			writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "LOCATION_READ_ERROR"})

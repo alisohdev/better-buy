@@ -191,3 +191,35 @@ func TestGuestScanBudgetCannotBeResetByNewCookie(t *testing.T) {
 		t.Fatal("new cookie reset scan budget", response.Code, response.Body.String())
 	}
 }
+
+func TestDeleteLastLocation(t *testing.T) {
+	db, cfg := analyticsTestDatabase(t)
+	queue, err := scans.NewQueue(db, nil, scans.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	handler := New(db, cfg, queue)
+	first := analyticsTestRequest(handler, "POST", "/api/guest/session", "{}", nil).Result().Cookies()[0]
+	second := analyticsTestRequest(handler, "POST", "/api/guest/session", "{}", nil).Result().Cookies()[0]
+	saved := analyticsTestRequest(handler, "POST", "/api/locations", `{"name":"Home","latitude":35.7,"longitude":51.4,"isDefault":true}`, first)
+	if saved.Code != 201 {
+		t.Fatal(saved.Code, saved.Body.String())
+	}
+	var item struct {
+		Data location `json:"data"`
+	}
+	if err := json.Unmarshal(saved.Body.Bytes(), &item); err != nil {
+		t.Fatal(err)
+	}
+	path := "/api/locations/" + item.Data.ID
+	if response := analyticsTestRequest(handler, "DELETE", path, "", second); response.Code != 404 {
+		t.Fatal("ownership", response.Code)
+	}
+	if response := analyticsTestRequest(handler, "DELETE", path, "", first); response.Code != 204 {
+		t.Fatal("last location", response.Code, response.Body.String())
+	}
+	response := analyticsTestRequest(handler, "GET", "/api/locations", "", first)
+	if response.Code != 200 || response.Body.String() != "{\"data\":[]}\n" {
+		t.Fatal("empty locations", response.Code, response.Body.String())
+	}
+}
