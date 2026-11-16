@@ -105,3 +105,54 @@
 .tutorial-navigation button:disabled {
   opacity: 0.45;
 }
+
+/* Quiet navigation on opposite edges, with content clear of the hit targets. */
+.tutorial-hint {
+  padding-inline: 52px;
+}
+.tutorial-navigation {
+  display: contents;
+}
+.tutorial-navigation button {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  min-height: 44px;
+  background: transparent;
+  border: 0;
+  color: rgb(255 255 255 / 70%);
+}
+.tutorial-navigation button:first-child {
+  inset-inline-start: 4px;
+}
+.tutorial-navigation button:last-child {
+  inset-inline-end: 4px;
+}
+.tutorial-navigation button:hover {
+  background: rgb(255 255 255 / 10%);
+  color: #fff;
+}
+.tutorial-navigation button:disabled {
+  opacity: 0.25;
+}
+.tutorial-navigation button svg {
+  width: 16px;
+  height: 16px;
+}
+.tutorial-spotlight {
+  background: rgb(28 23 44 / 32%);
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+.dark .tutorial-spotlight {
+  background: rgb(12 9 25 / 48%);
+}
+.tutorial-hint {
+  box-shadow: 0 8px 24px rgb(24 12 56 / 16%);
+}
+@media (max-width: 520px) {
+  .tutorial-hint {
+    padding-inline: 44px;
+  }
+}

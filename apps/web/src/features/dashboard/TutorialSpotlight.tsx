@@ -13,16 +13,13 @@ const scopes: Record<TutorialStep, string> = {
   done: ".deal-section",
 };
 type Rect = { left: number; top: number; right: number; bottom: number };
-const pathRect = (r: Rect) =>
-  `M${r.left},${r.top}H${r.right}V${r.bottom}H${r.left}Z`;
-
 // Cut the guide and working controls out of a viewport-sized blur layer.
 // Coordinates avoid lifting controls out of their modal or stacking context.
 export function TutorialSpotlight({ step }: { step: TutorialStep | null }) {
-  const [path, setPath] = useState("");
+  const [mask, setMask] = useState("");
   useLayoutEffect(() => {
     if (!step) {
-      setPath("");
+      setMask("");
       return;
     }
     let frame = 0;
@@ -35,7 +32,7 @@ export function TutorialSpotlight({ step }: { step: TutorialStep | null }) {
         document.querySelectorAll<HTMLElement>(`[data-tutorial-step="${step}"]`)
       ).filter(visible);
       if (!hints.length) {
-        setPath("");
+        setMask("");
         return;
       }
       const dialog = hints[0]?.closest('[role="dialog"]');
@@ -79,10 +76,14 @@ export function TutorialSpotlight({ step }: { step: TutorialStep | null }) {
         }
         holes.push(rect);
       }
-      setPath(
-        pathRect({ left: 0, top: 0, right: width, bottom: height }) +
-          holes.map(pathRect).join("")
-      );
+      const cutouts = holes
+        .map(
+          (r) =>
+            `<rect x="${r.left}" y="${r.top}" width="${r.right - r.left}" height="${r.bottom - r.top}" rx="18" fill="black" filter="url(#soft)"/>`
+        )
+        .join("");
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><defs><filter id="soft" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="7"/></filter><mask id="spot" maskUnits="userSpaceOnUse"><rect width="${width}" height="${height}" fill="white"/>${cutouts}</mask></defs><rect width="${width}" height="${height}" fill="white" mask="url(#spot)"/></svg>`;
+      setMask(`url("data:image/svg+xml,${encodeURIComponent(svg)}")`);
     };
     const schedule = () => {
       if (!frame) frame = requestAnimationFrame(update);
@@ -102,12 +103,12 @@ export function TutorialSpotlight({ step }: { step: TutorialStep | null }) {
       window.removeEventListener("scroll", schedule, true);
     };
   }, [step]);
-  if (!step || !path) return null;
+  if (!step || !mask) return null;
   return createPortal(
     <div
       className="tutorial-spotlight"
       aria-hidden="true"
-      style={{ clipPath: `path(evenodd, "${path}")` }}
+      style={{ maskImage: mask, WebkitMaskImage: mask }}
     />,
     document.body
   );

@@ -805,8 +805,8 @@ test("interactive guide waits for location save and explicit scan then finishes 
     "blur(5px)"
   );
   await expect(page.locator(".tutorial-spotlight")).toHaveCSS(
-    "clip-path",
-    /path\(evenodd/
+    "mask-image",
+    /data:image\/svg/
   );
   await page
     .getByRole("button", { name: "افزودن موقعیت تحویل", exact: true })
