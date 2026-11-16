@@ -322,18 +322,27 @@ const success = async (page: Page) => {
 test("enhanced scan feedback distinguishes searching, measured progress and completion", async ({
   page,
 }) => {
+  test.setTimeout(60000);
   const state = await mock(page);
   await page.goto("/");
   await page
-    .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
-    .last()
+    .getByRole("button", { name: "رد کردن راهنما", exact: true })
     .click();
   const start = page.getByRole("button", { name: "شروع اسکن", exact: true });
   await expect(start).toBeEnabled();
   await page
     .locator("label.provider-option")
-    .filter({ hasText: "اسنپ‌مارکت" })
+    .filter({ hasText: "اکالا" })
     .click();
+  const digikala = page.getByRole("checkbox", {
+    name: "سوپرمارکت دیجی‌کالا",
+    exact: true,
+  });
+  if (await digikala.count())
+    await page
+      .locator("label.provider-option")
+      .filter({ hasText: "سوپرمارکت دیجی‌کالا" })
+      .click();
   await start.click();
   const stage = page.locator(".scan-stage-running");
   await expect(stage).toBeVisible();
@@ -360,10 +369,10 @@ test("enhanced scan feedback distinguishes searching, measured progress and comp
       cancelRequested: false,
     },
   }));
-  await expect(progress).toHaveAttribute("aria-valuenow", "3", {
+  await expect(progress).toHaveAttribute("aria-valuenow", "37", {
     timeout: 15000,
   });
-  await expect(progress).toHaveAttribute("aria-valuemax", "8");
+  await expect(progress).toHaveAttribute("aria-valuemax", "100");
   await expect(progress).toHaveAttribute("data-indeterminate", "false");
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(stage.locator(".scan-activity-mark span").first()).toHaveCSS(
@@ -371,6 +380,22 @@ test("enhanced scan feedback distinguishes searching, measured progress and comp
     "none"
   );
   await captureState(page, "enhanced-scan-progress");
+  // Finishing the known collection units is not a completed scan: saving and
+  // projection may still be running, or another catalogue may be discovered.
+  state.scans = state.scans.map((scan) => ({
+    ...scan,
+    execution: scan.execution
+      ? { ...scan.execution, completedUnits: 8 }
+      : scan.execution,
+  }));
+  await expect(progress).toHaveAttribute("data-indeterminate", "true", {
+    timeout: 15000,
+  });
+  await expect(progress).not.toHaveAttribute("aria-valuenow");
+  await expect(stage.locator(".scan-stage-progress strong")).not.toContainText(
+    "۱۰۰"
+  );
+
   state.scans = state.scans.map((scan) => ({
     ...scan,
     status: "succeeded",
@@ -1098,6 +1123,43 @@ test("history identifies context and retains Jet results without new Jet scans",
   await expect(scanButton(page)).toBeEnabled();
   expect(state.posts).toEqual([]);
 });
+test("partial Okala history warns when a store could not be checked", async ({
+  page,
+}) => {
+  const partial = run({
+    id: "partial-okala",
+    source: "okala",
+    context: {
+      location: {
+        name: home.name,
+        latitude: home.latitude,
+        longitude: home.longitude,
+        revision: 1,
+      },
+      requestedThreshold: 15,
+      effectiveThreshold: 15,
+      policyVersion: "automatic-v1",
+      manifest: {
+        adapter: "okala-public-catalogue",
+        contractVersion: 2,
+        feedKinds: ["store_category_catalogue"],
+      },
+      scopeHash: "partial-okala",
+      eligibilityVersion: 1,
+      offerKeyVersion: 1,
+      coverage: "incomplete",
+    },
+  });
+  await mock(page, { scans: [partial] });
+  await page.goto("/");
+  await page.getByRole("button", { name: "تاریخچه", exact: true }).click();
+  await expect(page.locator(".run-item")).toContainText(
+    "بعضی فروشگاه‌ها پاسخ قابل بررسی ندادند"
+  );
+  await expect(page.locator(".run-item")).toContainText(
+    "نتیجه ممکن است کامل نباشد"
+  );
+});
 test("a failed scan retains the previous snapshot and repeating it is an explicit new scan", async ({
   page,
 }) => {
@@ -1754,10 +1816,6 @@ test("map selection stays usable when the visual tile service fails", async ({
 test("enabled Digikala loads and displays saved deals on the initial live list", async ({
   page,
 }) => {
-  test.skip(
-    process.env.NEXT_PUBLIC_DIGIKALA_SUPERMARKET_ENABLED !== "true",
-    "This scenario requires a build with Digikala enabled."
-  );
   await mock(page, {
     scans: [run({ source: "digikalajet" })],
     groups: [group("Digikala regression product")],
@@ -1768,6 +1826,12 @@ test("enabled Digikala loads and displays saved deals on the initial live list",
     { timeout: 10000 }
   );
   await page.goto("/");
+  await page
+    .getByRole("button", { name: "رد کردن راهنما", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "بازگشت به پیشنهادها", exact: true })
+    .click();
   await read;
   await expect(
     page.getByRole("heading", {
@@ -1780,10 +1844,6 @@ test("enabled Digikala loads and displays saved deals on the initial live list",
 test("infinite live feed loads every provider and shows the server total", async ({
   page,
 }) => {
-  test.skip(
-    process.env.NEXT_PUBLIC_DIGIKALA_SUPERMARKET_ENABLED !== "true",
-    "Requires Digikala build"
-  );
   const sources = ["snappmarket", "okala", "digikalajet"] as const;
   await mock(page, {
     scans: sources.map((source) => run({ id: source, source })),
@@ -1815,6 +1875,12 @@ test("infinite live feed loads every provider and shows the server total", async
     });
   });
   await page.goto("/");
+  await page
+    .getByRole("button", { name: "رد کردن راهنما", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "بازگشت به پیشنهادها", exact: true })
+    .click();
   await page.locator(".feed-load-sentinel").scrollIntoViewIfNeeded();
   for (const source of sources)
     await expect(
@@ -2070,4 +2136,114 @@ test("Fresh DigiKala history does not block scan setup", async ({ page }) => {
   await expect(
     page.getByText("تاریخچه اسکن دریافت نشد", { exact: true })
   ).toHaveCount(0);
+});
+
+test("live Okala results grow and remain provisional until completion", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const active = run({
+    id: "active-okala",
+    source: "okala",
+    status: "running",
+    createdAt: new Date().toISOString(),
+    finishedAt: null,
+    execution: {
+      kind: "workflow",
+      phase: "collecting",
+      completedUnits: 4,
+      totalUnits: 0,
+      completedPages: 4,
+      observedRows: 5948,
+      eligibleOffers: 0,
+      attemptCount: 1,
+      heartbeatAt: date,
+      deadlineAt: null,
+      dispatchState: "running",
+      cancelRequested: false,
+    },
+  });
+  const state = await mock(page, { scans: [active] });
+  let phase = 0;
+  await page.route("**/api/scans/active-okala/preview**", async (route) => {
+    if (phase === 2) {
+      await route.fulfill({
+        status: 503,
+        json: { error: "RESULT_READ_ERROR" },
+      });
+      return;
+    }
+    const groups = [
+      group("پیشنهاد زنده اول", "active-okala"),
+      group("پیشنهاد زنده دوم", "active-okala"),
+    ];
+    if (phase === 0) {
+      groups[0] = {
+        ...groups[0]!,
+        vendors: groups[0]!.vendors.map((offer, index) =>
+          index === 0
+            ? {
+                ...offer,
+                vendorId: "2223",
+                productVariationId: "87001",
+                priceRials: 200_000,
+                finalPriceRials: 1,
+                productDestination: {
+                  url: "https://www.okala.com/store/2223/offer/87001",
+                  vendorId: "2223",
+                  productVariationId: "87001",
+                },
+              }
+            : offer
+        ),
+      };
+    }
+    const index = new URL(route.request().url()).searchParams.get("cursor")
+      ? 1
+      : 0;
+    const data = products(groups.slice(index, index + 1));
+    await route.fulfill({
+      json: {
+        data: {
+          ...data,
+          totalCount: phase === 0 ? 1 : 2,
+          nextCursor: phase === 1 && index === 0 ? "next-live" : null,
+          coverageSummary: "in_progress",
+        },
+      },
+    });
+  });
+  await page.goto("/");
+  const skip = page.getByRole("button", {
+    name: "رد کردن راهنما",
+    exact: true,
+  });
+  if (await skip.isVisible()) await skip.click();
+  const live = page.getByRole("region", { name: "نتایج زنده اسکن" });
+  await expect(
+    live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
+  ).toBeVisible();
+  await expect(live).toContainText("اسکن ادامه دارد");
+  await expect(live).toContainText("۵٬۹۴۸ کالا از فهرست فروشگاه‌ها بررسی شده");
+  await expect(live).toContainText("۱ کالای واجد شرایط");
+  await expect(
+    live.getByRole("link", { name: "باز کردن کالا در فروشگاه محله" })
+  ).toHaveAttribute("href", "https://www.okala.com/store/2223/offer/87001");
+  phase = 1;
+  await live
+    .getByRole("button", { name: "نمایش پیشنهادهای بیشتر" })
+    .click({ timeout: 15000 });
+  await expect(
+    live.getByRole("heading", { name: "پیشنهاد زنده دوم", exact: true })
+  ).toBeVisible();
+  phase = 2;
+  await expect(live).toContainText("تازه‌سازی پیشنهادها انجام نشد", {
+    timeout: 20000,
+  });
+  await expect(
+    live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
+  ).toBeVisible();
+  await captureState(page, "live-okala-results");
+  state.scans = [{ ...active, status: "cancelled" }];
+  await expect(live).not.toBeVisible({ timeout: 15000 });
 });

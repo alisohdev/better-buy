@@ -66,9 +66,9 @@ export async function defaultScanContext(
         }
       : source === "okala"
         ? {
-            adapter: "okala-public-campaigns",
-            contractVersion: 1,
-            feedKinds: ["public_campaign_feed"],
+            adapter: "okala-public-catalogue",
+            contractVersion: 2,
+            feedKinds: ["store_category_catalogue"],
           }
         : {
             adapter: "digikalajet-pending",

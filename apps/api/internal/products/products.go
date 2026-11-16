@@ -203,11 +203,25 @@ func (s *Service) Deals(ctx context.Context, queue *scans.Queue, userID, scanID 
 }
 
 func (s *Service) ProductPage(ctx context.Context, queue *scans.Queue, userID, scanID string, query url.Values) (ProductPage, error) {
+	return s.productPage(ctx, queue, userID, scanID, query, false)
+}
+
+func (s *Service) PreviewPage(ctx context.Context, queue *scans.Queue, userID, scanID string, query url.Values) (ProductPage, error) {
+	return s.productPage(ctx, queue, userID, scanID, query, true)
+}
+
+func (s *Service) productPage(ctx context.Context, queue *scans.Queue, userID, scanID string, query url.Values, preview bool) (ProductPage, error) {
 	minDiscount, err := minimumDiscount(query)
 	if err != nil {
 		return ProductPage{}, err
 	}
-	deals, scan, err := s.Deals(ctx, queue, userID, scanID)
+	var deals []DealRecord
+	var scan *scans.Record
+	if preview {
+		deals, scan, err = s.previewDeals(ctx, queue, userID, scanID)
+	} else {
+		deals, scan, err = s.Deals(ctx, queue, userID, scanID)
+	}
 	if err != nil {
 		return ProductPage{}, err
 	}
@@ -230,7 +244,11 @@ func (s *Service) ProductPage(ctx context.Context, queue *scans.Queue, userID, s
 		}
 		limit = parsed
 	}
-	position, err := decodeCursor(query.Get("cursor"), cursor{Version: 1, User: userID, Scan: scanID, Kind: "products", Query: q, Sort: sortBy, MinDiscount: minDiscount})
+	cursorKind := "products"
+	if preview {
+		cursorKind = "preview_products"
+	}
+	position, err := decodeCursor(query.Get("cursor"), cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, MinDiscount: minDiscount})
 	if err != nil {
 		return ProductPage{}, &scans.Error{Code: "INVALID_CURSOR", Message: "Invalid product cursor.", Status: 400}
 	}
@@ -263,14 +281,29 @@ func (s *Service) ProductPage(ctx context.Context, queue *scans.Queue, userID, s
 	baselineID, reason, _ := s.baseline(ctx, userID, *scan)
 	page.Baseline.ScanID = baselineID
 	page.Baseline.Reason = reason
+	if preview && scan.Status != "succeeded" {
+		page.CoverageSummary = "in_progress"
+
+		var newest time.Time
+		for _, deal := range deals {
+			observed, err := time.Parse(time.RFC3339Nano, deal.ObservedAt)
+			if err == nil && observed.After(newest) {
+				newest = observed
+				page.ObservedAt = deal.ObservedAt
+			}
+		}
+	}
+
 	if scan.Context != nil && scan.Context.Coverage == "complete" {
 		page.CoverageSummary = "supported_discount_feeds"
+	} else if scan.Context != nil && scan.Context.Coverage == "incomplete" {
+		page.CoverageSummary = "incomplete_coverage"
 	}
 	for _, group := range groups[position:end] {
 		page.Items = append(page.Items, ProductSummary{Key: group.Key, GroupKeyVersion: 2, ScanID: group.ScanID, Title: group.Title, Image: group.Image, CategoryTitle: group.CategoryTitle, PriceRials: group.PriceRials, DiscountRials: group.DiscountRials, FinalPriceRials: group.FinalPriceRials, DiscountRatio: group.DiscountRatio, State: group.State, BestCurrentOffer: group.BestCurrentOffer, CurrentStoreOfferCount: group.CurrentStoreOfferCount, Diagnostics: group.Diagnostics, ConditionalOfferCount: len(group.ConditionalOffers), CartQuantity: cartQuantities[group.Key], WishlistMatch: matchesWishlist(group.Title, wishlistPhrases)})
 	}
 	if end < len(groups) {
-		next, err := encodeCursor(cursor{Version: 1, User: userID, Scan: scanID, Kind: "products", Query: q, Sort: sortBy, MinDiscount: minDiscount, Position: []any{end}})
+		next, err := encodeCursor(cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, MinDiscount: minDiscount, Position: []any{end}})
 		if err != nil {
 			return ProductPage{}, err
 		}

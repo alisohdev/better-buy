@@ -181,11 +181,19 @@ func (j *journal) loadDiscovery(ctx context.Context, key string) (savedResponse,
 	return item, true, nil
 }
 
-func (j *journal) saveDiscovery(ctx context.Context, key string, body []byte) (savedResponse, error) {
+func (j *journal) saveDiscovery(ctx context.Context, key string, body []byte, observation ...string) (savedResponse, error) {
 	if !json.Valid(body) {
 		return savedResponse{}, errors.New("refusing to persist a non-JSON provider response")
 	}
 	observedAt := time.Now().UTC().Format(time.RFC3339Nano)
+	if len(observation) > 0 && observation[0] != "" {
+		parsed, err := time.Parse(time.RFC3339Nano, observation[0])
+		if err != nil {
+			return savedResponse{}, err
+		}
+		observedAt = parsed.UTC().Format(time.RFC3339Nano)
+	}
+
 	tx, err := j.db.BeginTx(ctx, nil)
 	if err != nil {
 		return savedResponse{}, err

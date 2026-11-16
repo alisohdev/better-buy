@@ -96,7 +96,6 @@ type Error = providers.Failure
 
 type Options struct {
 	SnappStoreCampaignsEnabled bool
-	DigikalaSupermarketEnabled bool
 }
 
 type Queue struct {
@@ -150,9 +149,6 @@ func (q *Queue) Enqueue(ctx context.Context, userID string, input Input, idempot
 		if !errors.Is(err, sql.ErrNoRows) {
 			return Record{}, err
 		}
-	}
-	if input.Source == "digikalajet" && !q.options.DigikalaSupermarketEnabled {
-		return Record{}, &Error{Code: "PROVIDER_UNAVAILABLE", Message: "This retailer is not available for new scans.", Status: 409}
 	}
 	var location Location
 	err = tx.QueryRowContext(ctx, `SELECT id,name,latitude,longitude,coordinate_revision FROM locations WHERE user_id=? AND id=?`, userID, input.LocationID).Scan(&location.ID, &location.Name, &location.Latitude, &location.Longitude, &location.CoordinateRevision)
@@ -1015,7 +1011,7 @@ func readRecord(ctx context.Context, queryer interface {
 func newContext(location Location, input Input, threshold int) Context {
 	manifest := Manifest{Adapter: "snapp-market-party", ContractVersion: 1, FeedKinds: []string{"market_party"}}
 	if input.Source == "okala" {
-		manifest = Manifest{Adapter: "okala-public-campaigns", ContractVersion: 1, FeedKinds: []string{"public_campaign_feed"}}
+		manifest = Manifest{Adapter: "okala-public-catalogue", ContractVersion: 2, FeedKinds: []string{"store_category_catalogue"}}
 	} else if input.Source == "digikalajet" {
 		manifest = Manifest{Adapter: "digikalajet-pending", ContractVersion: 1, FeedKinds: []string{"fresh_supermarket"}}
 	}

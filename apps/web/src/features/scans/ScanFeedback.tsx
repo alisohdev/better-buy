@@ -7,6 +7,7 @@ import { faNumber, sourceLabel } from "../dashboard/format";
 import type { useScanPolling } from "./useScanPolling";
 import type { useStartScan } from "./useStartScan";
 import { useCancelScan } from "./useCancelScan";
+import { scanProgressPercent } from "./progress";
 export function ScanFeedback({
   active,
   polling,
@@ -21,6 +22,7 @@ export function ScanFeedback({
   onOpenContext: (run: ScanRecord) => void;
 }) {
   const cancel = useCancelScan();
+  const percent = active ? scanProgressPercent([active]) : null;
   return (
     <>
       {active && (
@@ -66,27 +68,23 @@ export function ScanFeedback({
                   </p>
                   <div
                     className="scan-progress-track"
+                    data-indeterminate={percent === null}
                     role="progressbar"
                     aria-label="پیشرفت اسکن"
                     aria-valuemin={0}
-                    aria-valuemax={active.execution.totalUnits || undefined}
-                    aria-valuenow={
-                      active.execution.totalUnits
-                        ? active.execution.completedUnits
-                        : undefined
-                    }
+                    aria-valuemax={percent === null ? undefined : 100}
+                    aria-valuenow={percent ?? undefined}
                   >
                     <span
                       style={{
-                        width: `${active.execution.totalUnits ? Math.min(100, (active.execution.completedUnits / active.execution.totalUnits) * 100) : 0}%`,
+                        width: `${percent ?? 0}%`,
                       }}
                     />
                   </div>
                   <p className="scan-progress-count">
-                    {faNumber.format(active.execution.completedUnits)} از{" "}
-                    {faNumber.format(active.execution.totalUnits)} بخش ·{" "}
-                    {faNumber.format(active.execution.observedRows)} کالا
-                    بررسی‌شده
+                    {faNumber.format(active.execution.completedUnits)} بخش
+                    بررسی‌شده · {faNumber.format(active.execution.observedRows)}{" "}
+                    کالا بررسی‌شده
                   </p>
                   <details>
                     <summary>جزئیات به‌روزرسانی</summary>
@@ -97,9 +95,8 @@ export function ScanFeedback({
                       مشاهده‌شده
                     </p>
                     <p>
-                      {faNumber.format(active.execution.completedUnits)} از{" "}
-                      {faNumber.format(active.execution.totalUnits)} بخش تکمیل
-                      شده
+                      {faNumber.format(active.execution.completedUnits)} بخش
+                      تکمیل شده
                     </p>
                   </details>
                 </div>

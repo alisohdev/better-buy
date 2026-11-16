@@ -23,7 +23,6 @@ type Config struct {
 	WishlistScheduleEnabled    bool
 	APIRateLimitsEnabled       bool
 	SnappStoreCampaignsEnabled bool
-	DigikalaSupermarketEnabled bool
 	DevMode                    bool
 	GeocoderBaseURL            string
 	VAPIDPublicKey             string
@@ -79,10 +78,6 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	cfg.SnappStoreCampaignsEnabled, err = boolean(get, "SNAPP_STORE_CAMPAIGNS_ENABLED", false)
-	if err != nil {
-		return Config{}, err
-	}
-	cfg.DigikalaSupermarketEnabled, err = boolean(get, "DIGIKALA_SUPERMARKET_ENABLED", false)
 	if err != nil {
 		return Config{}, err
 	}

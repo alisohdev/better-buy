@@ -47,6 +47,13 @@ export function HistoryPanel({
                             ? "در انتظار بررسی"
                             : "در حال بررسی"}
                   </strong>
+                  {s.status === "succeeded" &&
+                    s.context?.coverage === "incomplete" && (
+                      <p role="status">
+                        بعضی فروشگاه‌ها پاسخ قابل بررسی ندادند؛ نتیجه ممکن است
+                        کامل نباشد.
+                      </p>
+                    )}
                   {s.errorMessage && (
                     <p className="form-error">{s.errorMessage}</p>
                   )}

@@ -28,7 +28,7 @@ func TestSafeHTTPS(t *testing.T) {
 }
 
 func TestUnverifiedRoutesRemainNull(t *testing.T) {
-	for _, provider := range []string{"snappmarket", "okala", "unknown"} {
+	for _, provider := range []string{"snappmarket", "unknown"} {
 		for _, product := range []string{"123", "456", "789"} {
 			for _, store := range []string{"10", "20"} {
 				for _, raw := range []string{"", "https://snapp.market/product/123", "https://www.okala.com/product/123"} {
@@ -41,5 +41,32 @@ func TestUnverifiedRoutesRemainNull(t *testing.T) {
 	}
 	if Resolve("okala", Identity{}, "") != nil {
 		t.Fatal("missing identity resolved")
+	}
+}
+
+func TestOkalaOfferDestinationBindsStoreAndProduct(t *testing.T) {
+	want := &Destination{
+		URL:                "https://www.okala.com/store/2223/offer/87001",
+		ProductVariationID: "87001",
+		VendorID:           "2223",
+	}
+	if got := Resolve("okala", Identity{ProductVariationID: "87001", VendorID: "2223"}, ""); got == nil || *got != *want {
+		t.Fatalf("destination = %+v, want %+v", got, want)
+	}
+	if got := Resolve("okala", Identity{ProductVariationID: "87001", VendorID: "2223"}, "https://okala.com/store/2223/offer/87001"); got == nil || got.URL != "https://okala.com/store/2223/offer/87001" {
+		t.Fatalf("canonical route = %+v", got)
+	}
+	for _, identity := range []Identity{
+		{ProductVariationID: "0", VendorID: "2223"},
+		{ProductVariationID: "87001", VendorID: "0"},
+		{ProductVariationID: "87001/other", VendorID: "2223"},
+		{ProductVariationID: "87001", VendorID: "2223/other"},
+	} {
+		if got := Resolve("okala", identity, ""); got != nil {
+			t.Errorf("unsafe identity resolved: %+v", got)
+		}
+	}
+	if got := Resolve("okala", Identity{ProductVariationID: "87001", VendorID: "2223"}, "https://www.okala.com/store/111/offer/87001"); got != nil {
+		t.Errorf("mismatched store route resolved: %+v", got)
 	}
 }

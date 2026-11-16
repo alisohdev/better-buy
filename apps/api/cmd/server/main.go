@@ -44,7 +44,7 @@ func run() error {
 	defer db.Close()
 
 	collector := providers.New(db)
-	queue, err := scans.NewQueue(db, collector, scans.Options{SnappStoreCampaignsEnabled: cfg.SnappStoreCampaignsEnabled, DigikalaSupermarketEnabled: cfg.DigikalaSupermarketEnabled})
+	queue, err := scans.NewQueue(db, collector, scans.Options{SnappStoreCampaignsEnabled: cfg.SnappStoreCampaignsEnabled})
 	if err != nil {
 		return err
 	}

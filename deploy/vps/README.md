@@ -72,6 +72,6 @@ See [phone authentication](../../docs/phone-auth.md) for required SMS secrets, t
 
 ### Frontend feature flags
 
-Set `NEXT_PUBLIC_DIGIKALA_SUPERMARKET_ENABLED=true` in the **build process environment** when DigiKala is enabled in production. The static Next.js export embeds this value; setting it only in the API systemd environment does not enable the frontend. Preserve all production `NEXT_PUBLIC_*` feature flags on every rebuild.
+Digikala supermarket is always enabled in the frontend and API. No environment flag is required.
 
 Always build the frontend with `pnpm --filter @better-buy/web build` or root `pnpm build`. The web prebuild regenerates shared runtime validators. Calling `next build` directly can embed stale shared validators and reject valid DigiKala Fresh history.

@@ -29,6 +29,8 @@ import { LocationManager } from "../locations/LocationManager";
 import { DealShelf, type DealFeed } from "../deals/DealShelf";
 import { useDealFilters } from "../deals/useDealFilters";
 import type { DealSource } from "./types";
+import { scanProgressPercent as calculateScanProgress } from "../scans/progress";
+import { LiveScanResults } from "../scans/LiveScanResults";
 import { ScanFeedback } from "../scans/ScanFeedback";
 import { ProviderCart, CartWriteNotice } from "../carts/ProviderCart";
 import { useProviderCart } from "../carts/useProviderCart";
@@ -425,9 +427,7 @@ function DashboardContent() {
     (total, run) => total + (run.execution?.totalUnits ?? 0),
     0
   );
-  const scanProgressPercent = progressTotal
-    ? Math.min(100, Math.round((progressCompleted / progressTotal) * 100))
-    : null;
+  const scanProgressPercent = calculateScanProgress(activeRuns);
   const openCart = (_source: CartSource) => {
     if (!visitor.requireAccount("نگهداری سبد خرید")) return;
     setCartOpen(true);
@@ -656,7 +656,7 @@ function DashboardContent() {
                     <div className="scan-stage-progress">
                       <strong>
                         {scanProgressPercent === null
-                          ? "…"
+                          ? "در حال بررسی…"
                           : `${faNumber.format(scanProgressPercent)}٪`}
                       </strong>
                       <span>پیشرفت اسکن</span>
@@ -667,10 +667,10 @@ function DashboardContent() {
                       role="progressbar"
                       aria-label="پیشرفت اسکن"
                       aria-valuemin={0}
-                      aria-valuemax={progressTotal || undefined}
-                      aria-valuenow={
-                        progressTotal ? progressCompleted : undefined
+                      aria-valuemax={
+                        scanProgressPercent === null ? undefined : 100
                       }
+                      aria-valuenow={scanProgressPercent ?? undefined}
                     >
                       <span
                         style={{
@@ -680,10 +680,15 @@ function DashboardContent() {
                     </div>
                     <p className="scan-observation-count">
                       {progressTotal > 0
-                        ? `${faNumber.format(progressCompleted)} از ${faNumber.format(progressTotal)} بخش بررسی شده`
+                        ? scanProgressPercent === null
+                          ? `${faNumber.format(progressCompleted)} بخش بررسی شده · بررسی ادامه دارد`
+                          : `${faNumber.format(progressCompleted)} از ${faNumber.format(progressTotal)} بخش بررسی شده`
                         : "در انتظار دریافت اطلاعات فروشگاه‌ها"}
                     </p>
                   </section>
+                )}
+                {activeOkala?.status === "running" && (
+                  <LiveScanResults key={activeOkala.id} scan={activeOkala} />
                 )}
                 {scanPageStage === "complete" && (
                   <section

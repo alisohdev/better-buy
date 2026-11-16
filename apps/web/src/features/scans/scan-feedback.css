@@ -38,7 +38,7 @@
   block-size: 4px;
   direction: rtl;
 }
-.scan-page .scan-stage-track[data-indeterminate="true"] span {
+.scan-progress-track[data-indeterminate="true"] span {
   width: 28% !important;
 }
 .scan-page .scan-observation-count {
@@ -59,7 +59,7 @@
   .scan-completion-mark {
     animation: scan-confirm 300ms cubic-bezier(0.16, 1, 0.3, 1);
   }
-  .scan-page .scan-stage-track[data-indeterminate="true"] span {
+  .scan-progress-track[data-indeterminate="true"] span {
     animation: scan-searching 1500ms ease-in-out infinite alternate;
   }
 }
@@ -96,5 +96,39 @@
     inline-size: 60px;
     block-size: 60px;
     margin-block-end: 8px;
+  }
+}
+
+.live-scan-results {
+  margin-block: 24px;
+}
+.live-scan-results header p,
+.live-scan-results small {
+  color: var(--muted-foreground);
+}
+.live-scan-items {
+  display: grid;
+  gap: 10px;
+  margin-block: 12px;
+}
+.live-scan-items article {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+.live-scan-items h3 {
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+.live-scan-items article > span {
+  font-size: 12px;
+}
+@media (max-width: 600px) {
+  .live-scan-items article {
+    grid-template-columns: 1fr;
   }
 }

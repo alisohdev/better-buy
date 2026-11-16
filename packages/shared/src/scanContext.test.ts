@@ -22,10 +22,14 @@ describe("provider scan contexts", () => {
     });
   });
 
-  it("preserves the existing Snapp and Okala manifests", async () => {
+  it("keeps Snapp unchanged and versions the complete Okala catalogue", async () => {
     const snapp = await defaultScanContext(location, "snappmarket", 15);
     const okala = await defaultScanContext(location, "okala", 15);
     expect(snapp.manifest.adapter).toBe("snapp-market-party");
-    expect(okala.manifest.adapter).toBe("okala-public-campaigns");
+    expect(okala.manifest).toEqual({
+      adapter: "okala-public-catalogue",
+      contractVersion: 2,
+      feedKinds: ["store_category_catalogue"],
+    });
   });
 });

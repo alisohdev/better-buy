@@ -13,6 +13,14 @@ import (
 
 func registerProducts(mux *http.ServeMux, db *sql.DB, cfg config.Config, service *auth.Service, queue *scans.Queue) {
 	productService := products.New(db, cfg.BoxKey)
+	mux.Handle("GET /api/scans/{id}/preview", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		page, err := productService.PreviewPage(r.Context(), queue, requestIdentity(r).User.ID, r.PathValue("id"), r.URL.Query())
+		if err != nil {
+			writeProductError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"data": page})
+	})))
 	mux.Handle("GET /api/scans/{id}/product-detail", requireVisitor(service, db, cfg, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.URL.Query().Get("key")
 		if key == "" || len(key) > 1024 {

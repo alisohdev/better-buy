@@ -13,8 +13,7 @@ import type { DealSource } from "../dashboard/types";
 import { AppIcon, ProviderMark } from "../dashboard/AppIcon";
 import { sourceLabel } from "../dashboard/format";
 
-export const digikalaSupermarketEnabled =
-  process.env.NEXT_PUBLIC_DIGIKALA_SUPERMARKET_ENABLED === "true";
+export const digikalaSupermarketEnabled = true;
 
 export function ScanControls({
   locations,
