@@ -25,6 +25,7 @@ export function ScanControls({
   hasSnapshot,
   historical,
   onLocation,
+  onAddLocation,
   onToggleProvider,
   onStart,
   onLive,
@@ -37,6 +38,7 @@ export function ScanControls({
   hasSnapshot: boolean;
   historical: boolean;
   onLocation: (id: string) => void;
+  onAddLocation: () => void;
   onToggleProvider: (source: DealSource) => void;
   onStart: () => void;
   onLive: () => void;
@@ -52,16 +54,27 @@ export function ScanControls({
           <AppIcon name="location" />
           موقعیت تحویل
         </span>
-        <Select value={selected || undefined} onValueChange={onLocation}>
+        <Select
+          value={selected || undefined}
+          onValueChange={(value) => {
+            if (value === "__add_address__")
+              requestAnimationFrame(onAddLocation);
+            else onLocation(value);
+          }}
+        >
           <SelectTrigger id="selected-location" aria-label="موقعیت تحویل">
             <SelectValue placeholder="یک موقعیت اضافه کنید" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="scan-location-menu">
             {locations.map((location) => (
               <SelectItem key={location.id} value={location.id}>
                 {location.name}
               </SelectItem>
             ))}
+            <SelectItem value="__add_address__" className="scan-add-address">
+              <AppIcon name="plus" />
+              افزودن آدرس جدید
+            </SelectItem>
           </SelectContent>
         </Select>
       </Label>

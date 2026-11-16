@@ -1259,3 +1259,113 @@
   padding: 0;
   text-align: center;
 }
+
+/* Scan setup uses content-sized fields, not nested full-width panels. */
+.scan-page .feed-location.scan-location-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-self: start;
+  width: min(320px, 100%);
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+}
+.scan-page .scan-location-control .scan-control-label {
+  font-size: 12px;
+  color: var(--muted-foreground);
+  font-weight: 500;
+}
+.scan-page .scan-location-control .scan-control-label svg {
+  display: none;
+}
+.scan-page .scan-location-control button {
+  width: 100%;
+  min-height: 44px;
+  height: 44px;
+  padding-inline: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: none;
+}
+.scan-location-menu {
+  width: var(--radix-select-trigger-width);
+  max-width: min(320px, calc(100vw - 32px));
+}
+.scan-location-menu .scan-add-address {
+  margin-block-start: 4px;
+  border-block-start: 1px solid var(--border);
+  padding-block: 10px;
+  color: var(--foreground);
+  font-weight: 600;
+}
+.scan-add-address svg {
+  width: 16px;
+  height: 16px;
+  display: inline;
+  margin-inline-end: 8px;
+}
+.scan-page .provider-card-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.scan-page .provider-option {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 20px;
+  flex: 0 1 auto;
+  width: auto;
+  min-inline-size: 180px;
+  min-block-size: 52px;
+  min-height: 52px;
+  padding: 10px 12px;
+  gap: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  box-shadow: none;
+}
+.scan-page .provider-option[data-checked="true"] {
+  border-color: color-mix(in srgb, var(--ring) 60%, var(--border));
+  background: color-mix(in srgb, var(--ring) 5%, var(--card));
+  box-shadow: none;
+}
+.scan-page .provider-option .provider-mark {
+  width: 26px;
+  height: 26px;
+}
+.scan-page .provider-copy strong {
+  font-size: 12px;
+  font-weight: 600;
+}
+.scan-page .provider-checkmark {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--background);
+}
+.scan-page .provider-option[data-checked="true"] .provider-checkmark {
+  background: #6334c5;
+  border-color: #6334c5;
+  color: white;
+}
+.scan-page .provider-checkmark svg {
+  width: 12px;
+  height: 12px;
+}
+@media (max-width: 520px) {
+  .scan-page .feed-location.scan-location-control {
+    width: 100%;
+  }
+  .scan-page .provider-card-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .scan-page .provider-option {
+    min-inline-size: 0;
+    width: 100%;
+  }
+}

@@ -1117,3 +1117,43 @@ test("password eye toggles inside the input without submitting and respects redu
     fullPage: true,
   });
 });
+
+test("scan location dropdown creates a new address and preserves store selection", async ({
+  page,
+}) => {
+  const state = await setup(page);
+  state.guestLocations.push(home);
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
+  await page.goto("/");
+  await expect(page.locator(".scan-page")).toBeVisible();
+  if (test.info().project.name === "desktop")
+    expect(
+      (await page.locator("#selected-location").boundingBox())!.width
+    ).toBeLessThanOrEqual(320);
+  await page
+    .getByRole("combobox", { name: "موقعیت تحویل", exact: true })
+    .click();
+  await page.getByRole("option", { name: /افزودن آدرس جدید/ }).click();
+  await expect(
+    page.getByRole("dialog", { name: "انتخاب آدرس", exact: true })
+  ).toBeVisible();
+  await page.getByRole("button", { name: "تأیید موقعیت", exact: true }).click();
+  await page.getByLabel("نام مکان", { exact: true }).fill("دفتر جدید");
+  await page.getByRole("button", { name: "ذخیره مکان", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", { name: "موقعیت تحویل", exact: true })
+  ).toContainText("دفتر جدید");
+  const checkboxes = page.locator(".provider-checklist input");
+  while ((await page.locator(".provider-checklist input:checked").count()) > 1)
+    await page.locator(".provider-option[data-checked=true]").first().click();
+  await expect(
+    page.locator(".provider-checklist input:checked")
+  ).toBeDisabled();
+  await page.screenshot({
+    path: `../../.data/design-evidence/scan-selectors-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  expect(state.starts).toBe(0);
+});

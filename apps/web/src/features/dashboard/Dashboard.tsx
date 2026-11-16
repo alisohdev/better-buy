@@ -619,6 +619,7 @@ function DashboardContent() {
                     hasSnapshot={feeds.some((feed) => !!feed.ledger.scan)}
                     historical={historical}
                     onLocation={changeLocation}
+                    onAddLocation={() => setLocationDialog("create")}
                     onToggleProvider={(provider) => {
                       setSelection({ source: null, runId: null });
                       setProviders((previous) =>

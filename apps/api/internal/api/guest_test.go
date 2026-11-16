@@ -211,12 +211,41 @@ func TestDeleteLastLocation(t *testing.T) {
 	if err := json.Unmarshal(saved.Body.Bytes(), &item); err != nil {
 		t.Fatal(err)
 	}
+	started := analyticsTestRequest(handler, "POST", "/api/scans", `{"locationId":"`+item.Data.ID+`","source":"okala","threshold":15,"mode":"partial"}`, first)
+	if started.Code != 202 {
+		t.Fatal(started.Code, started.Body.String())
+	}
+	var scan struct {
+		Data scans.Record `json:"data"`
+	}
+	if err := json.Unmarshal(started.Body.Bytes(), &scan); err != nil {
+		t.Fatal(err)
+	}
+	if response := analyticsTestRequest(handler, "DELETE", "/api/locations/"+item.Data.ID, "", first); response.Code != 409 {
+		t.Fatal("active scan protection", response.Code)
+	}
+	if _, err := db.Exec("UPDATE scans SET status='succeeded' WHERE id=?", scan.Data.ID); err != nil {
+		t.Fatal(err)
+	}
 	path := "/api/locations/" + item.Data.ID
 	if response := analyticsTestRequest(handler, "DELETE", path, "", second); response.Code != 404 {
 		t.Fatal("ownership", response.Code)
 	}
 	if response := analyticsTestRequest(handler, "DELETE", path, "", first); response.Code != 204 {
 		t.Fatal("last location", response.Code, response.Body.String())
+	}
+	for _, table := range []string{"scans", "vps_scan_jobs"} {
+		var count int
+		column := "scan_id"
+		if table == "scans" {
+			column = "id"
+		}
+		if err := db.QueryRow("SELECT COUNT(*) FROM "+table+" WHERE "+column+"=?", scan.Data.ID).Scan(&count); err != nil {
+			t.Fatal(err)
+		}
+		if count != 0 {
+			t.Fatalf("%s history retained after location deletion", table)
+		}
 	}
 	response := analyticsTestRequest(handler, "GET", "/api/locations", "", first)
 	if response.Code != 200 || response.Body.String() != "{\"data\":[]}\n" {
