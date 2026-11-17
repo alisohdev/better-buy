@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -26,17 +25,6 @@ func main() {
 }
 
 func run() error {
-	retentionDays := 14
-	if value := strings.TrimSpace(os.Getenv("VPS_BACKUP_RETENTION_DAYS")); value != "" {
-		parsed, err := strconv.Atoi(value)
-		if err != nil {
-			return errors.New("VPS_BACKUP_RETENTION_DAYS must be between 1 and 365")
-		}
-		retentionDays = parsed
-	}
-	if retentionDays < 1 || retentionDays > 365 {
-		return errors.New("VPS_BACKUP_RETENTION_DAYS must be between 1 and 365")
-	}
 
 	source, err := filepath.Abs(config.DatabasePath())
 	if err != nil {
@@ -103,27 +91,39 @@ func run() error {
 		_ = os.Remove(temporaryDestination)
 		return fmt.Errorf("publish backup atomically: %w", err)
 	}
-	if err := pruneBackups(backupDirectory, now.Add(-time.Duration(retentionDays)*24*time.Hour)); err != nil {
+	if err := pruneBackups(backupDirectory, name); err != nil {
 		return err
 	}
 	slog.Info("SQLite backup completed", "destination", destination)
 	return nil
 }
 
-func pruneBackups(directory string, cutoff time.Time) error {
+func pruneBackups(directory string, keep string) error {
+	// Never remove the prior backup until the newly published file exists.
+	if !backupName.MatchString(keep) {
+		return errors.New("invalid retained backup name")
+	}
+	kept, err := os.Lstat(filepath.Join(directory, keep))
+	if err != nil {
+		return fmt.Errorf("inspect completed backup: %w", err)
+	}
+	if !kept.Mode().IsRegular() || kept.Size() == 0 {
+		return errors.New("completed backup is not a nonempty regular file")
+	}
+
 	entries, err := os.ReadDir(directory)
 	if err != nil {
 		return fmt.Errorf("list backup directory: %w", err)
 	}
 	for _, entry := range entries {
-		if !backupName.MatchString(entry.Name()) {
+		if !backupName.MatchString(entry.Name()) || entry.Name() == keep {
 			continue
 		}
 		info, err := entry.Info()
 		if err != nil {
 			return fmt.Errorf("inspect backup %q: %w", entry.Name(), err)
 		}
-		if !info.Mode().IsRegular() || !info.ModTime().Before(cutoff) {
+		if !info.Mode().IsRegular() {
 			continue
 		}
 		if err := os.Remove(filepath.Join(directory, entry.Name())); err != nil {

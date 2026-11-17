@@ -18,7 +18,8 @@ export function initialWorkspace(
   return scans.some((run) => {
     const observed = new Date(run.finishedAt ?? run.createdAt);
     return (
-      run.status === "succeeded" &&
+      (run.status === "succeeded" ||
+        (run.status === "cancelled" && run.dealCount > 0)) &&
       run.locationId === location.id &&
       run.context?.location.revision === (location.coordinateRevision ?? 1) &&
       run.context.location.latitude === location.latitude &&

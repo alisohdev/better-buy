@@ -1,3 +1,4 @@
+import { scanExpired, useFreshnessClock, checkedAgo } from "./freshness";
 import { Button } from "@/components/ui/button";
 import { scanFailureMessage } from "./scanFailureMessage";
 import { Card } from "@/components/ui/card";
@@ -15,15 +16,20 @@ export function HistoryPanel({
   onRetry: (s: ScanRecord) => void;
   blocked: boolean;
 }) {
+  const now = useFreshnessClock();
+  const visible = scans.filter(
+    (s) =>
+      s.status === "running" || s.status === "queued" || !scanExpired(s, now)
+  );
   return (
     <section className="history-page">
       <header className="section-heading">
         <h1>تاریخچه اسکن‌ها</h1>
-        <p>هر نتیجه با موقعیت، فروشگاه و زمان خودش نگهداری می‌شود.</p>
+        <p>برای هر موقعیت و فروشگاه، سه اسکن آخر تا ۲۴ ساعت نگهداری می‌شود.</p>
       </header>
-      {scans.length ? (
+      {visible.length ? (
         <div className="run-list">
-          {scans.map((s) => (
+          {visible.map((s) => (
             <Card asChild key={s.id}>
               <article className="run-item" key={s.id}>
                 <div>
@@ -35,6 +41,7 @@ export function HistoryPanel({
                   <time dateTime={s.createdAt}>
                     {faDate.format(new Date(s.createdAt))}
                   </time>
+                  <p>{checkedAgo(s, now)}</p>
                 </div>
                 <div>
                   <strong>
@@ -118,7 +125,10 @@ export function HistoryPanel({
       ) : (
         <div className="empty">
           <h2>هنوز اسکن ثبت نشده</h2>
-          <p>پس از اولین اسکن، نتیجه و زمان آن اینجا نمایش داده می‌شود.</p>
+          <p>
+            نتیجه‌های قدیمی پس از ۲۴ ساعت حذف می‌شوند؛ برای بررسی قیمت و موجودی،
+            اسکن تازه انجام دهید.
+          </p>
         </div>
       )}
     </section>

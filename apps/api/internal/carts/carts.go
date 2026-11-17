@@ -135,8 +135,8 @@ func (s *Service) Read(ctx context.Context, userID, source string, locationID *s
 	}
 	response.ScanID = stringPointer(scan.ID)
 	observedAt := scan.CreatedAt
-	if scan.FinishedAt != nil {
-		observedAt = *scan.FinishedAt
+	if scan.StartedAt != nil {
+		observedAt = *scan.StartedAt
 	}
 	response.ObservedAt = stringPointer(observedAt)
 	if scan.Context != nil && scan.Context.Coverage == "complete" {
@@ -257,7 +257,7 @@ type scanCandidate struct {
 }
 
 func (s *Service) currentScan(ctx context.Context, userID, source string, target location) (*scanCandidate, error) {
-	rows, err := s.db.QueryContext(ctx, `SELECT id,context_json,finished_at,created_at FROM scans WHERE user_id=? AND location_id=? AND source=? AND status='succeeded' ORDER BY finished_at DESC,created_at DESC,id DESC`, userID, target.ID, source)
+	rows, err := s.db.QueryContext(ctx, `SELECT id,context_json,finished_at,created_at FROM scans WHERE user_id=? AND location_id=? AND source=? AND status='succeeded' AND julianday(COALESCE(started_at,created_at))>julianday('now','-1 day') ORDER BY finished_at DESC,created_at DESC,id DESC`, userID, target.ID, source)
 	if err != nil {
 		return nil, err
 	}

@@ -63,9 +63,15 @@ func NewMaintainer(store *Service, queue *scans.Queue, catalog ProductCatalog, s
 func (m *Maintainer) Run(ctx context.Context) error {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
-	var nextReconcile, nextSchedule, nextMaintenance time.Time
+	var nextReconcile, nextSchedule, nextMaintenance, nextRetention time.Time
 	for {
 		now := time.Now().UTC()
+		if !now.Before(nextRetention) {
+			if err := m.queue.MaintainRetention(ctx, now); err != nil && ctx.Err() == nil {
+				slog.Error("scan retention failed", "error", err)
+			}
+			nextRetention = now.Add(30 * time.Second)
+		}
 		if !now.Before(nextReconcile) {
 			bucket := now.Truncate(reconcileInterval)
 			m.runMaintenanceTick(ctx, "scan-reconciliation", bucket, m.queue.Reconcile)
@@ -428,7 +434,7 @@ func (m *Maintainer) drainPushDeliveries(ctx context.Context, now time.Time, sco
 	query := `SELECT d.notification_id,d.subscription_id,d.user_id,d.attempts,s.encrypted_subscription,n.title,n.body,n.scan_id,n.matches_json
 		FROM wishlist_push_deliveries d JOIN push_subscriptions s ON s.id=d.subscription_id AND s.user_id=d.user_id
 		JOIN wishlist_notifications n ON n.id=d.notification_id AND n.user_id=d.user_id
-		WHERE d.delivered_at IS NULL AND d.attempts<5 AND d.next_attempt_at<=? AND (d.lease_until IS NULL OR d.lease_until<=?)`
+		WHERE EXISTS(SELECT 1 FROM scans current WHERE current.id=n.scan_id AND julianday(COALESCE(current.started_at,current.created_at))>julianday('now','-1 day')) AND d.delivered_at IS NULL AND d.attempts<5 AND d.next_attempt_at<=? AND (d.lease_until IS NULL OR d.lease_until<=?)`
 	args := []any{nowText, nowText}
 	if scope != nil {
 		query += " AND d.user_id=? AND n.scan_id=?"

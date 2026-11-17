@@ -2138,112 +2138,414 @@ test("Fresh DigiKala history does not block scan setup", async ({ page }) => {
   ).toHaveCount(0);
 });
 
-test("live Okala results grow and remain provisional until completion", async ({
+for (const liveSource of ["okala", "snappmarket", "digikalajet"] as const)
+  test(`live ${liveSource} results grow and remain provisional until completion`, async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+    const active = run({
+      id: "active-okala",
+      source: liveSource,
+      status: "running",
+      createdAt: new Date().toISOString(),
+      startedAt: new Date().toISOString(),
+      finishedAt: null,
+      execution: {
+        kind: "workflow",
+        phase: "collecting",
+        completedUnits: 4,
+        totalUnits: 0,
+        completedPages: 4,
+        observedRows: 5948,
+        eligibleOffers: 0,
+        attemptCount: 1,
+        heartbeatAt: date,
+        deadlineAt: null,
+        dispatchState: "running",
+        cancelRequested: false,
+      },
+    });
+    const previous = run({
+      id: "previous",
+      source: liveSource,
+      createdAt: new Date(Date.now() - 60000).toISOString(),
+      startedAt: new Date(Date.now() - 60000).toISOString(),
+      finishedAt: new Date(Date.now() - 60000).toISOString(),
+    });
+    const state = await mock(page, {
+      scans: [active, previous],
+      groups: [group("Previous scan must stay hidden", "previous")],
+    });
+    let phase = 0;
+    await page.route("**/api/scans/active-okala/preview**", async (route) => {
+      if (phase === 2) {
+        await route.fulfill({
+          status: 503,
+          json: { error: "RESULT_READ_ERROR" },
+        });
+        return;
+      }
+      const groups = [
+        group("پیشنهاد زنده اول", "active-okala"),
+        group("پیشنهاد زنده دوم", "active-okala"),
+      ];
+      if (phase === 0) {
+        groups[0] = {
+          ...groups[0]!,
+          vendors: groups[0]!.vendors.map((offer, index) =>
+            index === 0
+              ? {
+                  ...offer,
+                  vendorId: "2223",
+                  productVariationId: "87001",
+                  priceRials: 200_000,
+                  finalPriceRials: 1,
+                  productDestination: {
+                    url: "https://www.okala.com/store/2223/offer/87001",
+                    vendorId: "2223",
+                    productVariationId: "87001",
+                  },
+                }
+              : offer
+          ),
+        };
+      }
+      const index = new URL(route.request().url()).searchParams.get("cursor")
+        ? 1
+        : 0;
+      const data = products(groups.slice(index, index + 1));
+      await route.fulfill({
+        json: {
+          data: {
+            ...data,
+            totalCount: phase === 0 ? 1 : 2,
+            nextCursor: phase === 1 && index === 0 ? "next-live" : null,
+            coverageSummary: "in_progress",
+          },
+        },
+      });
+    });
+    await page.addInitScript(() =>
+      localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+    );
+    await page.goto("/");
+    const skip = page.getByRole("button", {
+      name: "رد کردن راهنما",
+      exact: true,
+    });
+    if (await skip.isVisible()) await skip.click();
+    const live = page.getByRole("region", { name: "تخفیف‌های مناسب شما" });
+    await expect(
+      live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
+    ).toBeVisible();
+    await expect(live).toContainText("اسکن ادامه دارد");
+    const sticky = page.getByRole("complementary", {
+      name: "اسکن در حال انجام",
+    });
+    await expect(sticky).toBeVisible();
+    await expect(sticky).toContainText("اسکن هنوز ادامه دارد");
+    const layout = await sticky.evaluate((el) => ({
+      position: getComputedStyle(el).position,
+      height: el.getBoundingClientRect().height,
+      width: el.getBoundingClientRect().width,
+      viewport: innerWidth,
+      overflow: document.documentElement.scrollWidth > innerWidth,
+    }));
+    expect(layout.position).toBe("sticky");
+    expect(layout.height).toBeLessThan(190);
+    expect(layout.width).toBeLessThanOrEqual(layout.viewport);
+    expect(layout.overflow).toBe(false);
+    await captureState(page, `sticky-live-start-${liveSource}`);
+
+    await expect(live.locator(".deal-row")).toHaveCount(1);
+    await expect(
+      page.getByText("Previous scan must stay hidden", { exact: true })
+    ).toHaveCount(0);
+    await expect(live.locator(".product-image")).toBeVisible();
+    await expect(live).toContainText("۱ محصول");
+    if (liveSource === "okala")
+      await expect(
+        live.getByRole("link", { name: "باز کردن کالا در فروشگاه محله" })
+      ).toHaveAttribute("href", "https://www.okala.com/store/2223/offer/87001");
+    phase = 1;
+
+    await expect(
+      live.getByRole("heading", { name: "پیشنهاد زنده دوم", exact: true })
+    ).toBeVisible({ timeout: 20000 });
+    const viewport = page.viewportSize()!;
+    await page.setViewportSize({ width: viewport.width, height: 440 });
+    await page.evaluate(() =>
+      window.scrollTo({ top: 300, behavior: "instant" })
+    );
+    const stickyAfterScroll = await sticky.boundingBox();
+    expect(stickyAfterScroll!.y).toBeGreaterThanOrEqual(0);
+    expect(stickyAfterScroll!.y).toBeLessThanOrEqual(20);
+    await captureState(page, `sticky-live-scrolled-${liveSource}`, false);
+    await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await captureState(page, `sticky-live-dark-${liveSource}`, false);
+    await page.emulateMedia({
+      colorScheme: "light",
+      reducedMotion: "no-preference",
+    });
+    await page.setViewportSize(viewport);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    phase = 2;
+    await expect(live).toContainText("تازه‌سازی نتیجه انجام نشد", {
+      timeout: 20000,
+    });
+    await expect(
+      live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
+    ).toBeVisible();
+    await captureState(page, `live-okala-results-${liveSource}`);
+    phase = 0;
+    state.scans = [
+      {
+        ...active,
+        status: "cancelled",
+        dealCount: 1,
+        finishedAt: new Date().toISOString(),
+      },
+      previous,
+    ];
+    await expect(sticky).not.toBeVisible({ timeout: 15000 });
+    await expect(
+      live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
+    ).toBeVisible();
+    await expect(live).toContainText("اسکن متوقف شد");
+    await page.reload();
+    await page.getByRole("button", { name: "بهتر بخر، پیشنهادها" }).click();
+    await expect(
+      live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
+    ).toBeVisible();
+  });
+
+test("retention hides stale offers and asks for a fresh scan", async ({
   page,
 }) => {
-  test.setTimeout(60000);
+  const old = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+  await mock(page, {
+    scans: [run({ createdAt: old, startedAt: old, finishedAt: old })],
+    groups: [group("Expired product must stay hidden")],
+  });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "رد کردن راهنما", exact: true })
+    .click();
+  await page.getByRole("button", { name: "بهتر بخر، پیشنهادها" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Expired product must stay hidden" })
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("نتیجه‌ها نیاز به بررسی دوباره دارند", { exact: true })
+  ).toBeVisible();
+});
+test("retention shows last checked beside fresh results", async ({ page }) => {
+  const fresh = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+  await mock(page, {
+    scans: [run({ createdAt: fresh, startedAt: fresh, finishedAt: fresh })],
+    groups: [group("Fresh retention product")],
+  });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "رد کردن راهنما", exact: true })
+    .click();
+  await page.getByRole("button", { name: "بهتر بخر، پیشنهادها" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Fresh retention product", exact: true })
+  ).toBeVisible();
+  await expect(page.getByText(/۲ ساعت پیش بررسی شد/).first()).toBeVisible();
+});
+
+test("admin scan deletion requires a password and explicit confirmation", async ({
+  page,
+}) => {
+  await mock(page);
+  await page.route("**/api/admin/access", (route) =>
+    route.fulfill({ json: { data: { allowed: true } } })
+  );
+  await page.route("**/api/admin/scans?*", (route) =>
+    route.fulfill({
+      json: {
+        data: [
+          {
+            id: "scan-admin",
+            userId: "user-2",
+            source: "okala",
+            status: "failed",
+            errorCode: "UPSTREAM_CHANGED",
+            createdAt: new Date().toISOString(),
+            productCount: 5,
+            dealCount: 0,
+          },
+        ],
+      },
+    })
+  );
+  let deletes = 0;
+  await page.route("**/api/admin/scans", (route) => {
+    if (route.request().method() === "DELETE") {
+      deletes++;
+      return route.fulfill({ json: { data: { queued: 1 } } });
+    }
+    return route.fallback();
+  });
+  await page.goto("/");
+  await page
+    .getByRole("button", { name: "رد کردن راهنما", exact: true })
+    .click();
+  const entry = page
+    .getByRole("button", { name: "مدیریت و آمار", exact: true })
+    .first();
+  if (await entry.isVisible()) {
+    await entry.click();
+  } else {
+    await page
+      .getByRole("button", { name: "منوی برنامه", exact: true })
+      .click();
+    await page
+      .getByRole("button", { name: "مدیریت و آمار", exact: true })
+      .click();
+  }
+  await expect(
+    page.getByRole("cell", { name: "failed UPSTREAM_CHANGED", exact: true })
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "حذف تمام اسکن‌ها", exact: true })
+    .click();
+  const remove = page.getByRole("button", { name: "حذف دائمی", exact: true });
+  await expect(remove).toBeDisabled();
+  await page.getByLabel("رمز عبور مدیر", { exact: true }).fill("test-password");
+  await expect(remove).toBeDisabled();
+  await page
+    .getByLabel("عبارت تأیید حذف", { exact: true })
+    .fill("DELETE SCANS");
+  await remove.click();
+  await expect(
+    page.getByRole("status").filter({ hasText: "اسکن برای حذف ثبت شد" })
+  ).toBeVisible();
+  expect(deletes).toBe(1);
+});
+
+for (const remaining of [0, 1])
+  test(`cancelled scan with ${remaining} offers selects the right scan after reload`, async ({
+    page,
+  }) => {
+    const stamp = new Date().toISOString();
+    const previous = run({
+      id: "previous",
+      createdAt: new Date(Date.now() - 60000).toISOString(),
+      startedAt: stamp,
+      finishedAt: stamp,
+    });
+    const stopped = run({
+      id: "stopped",
+      status: "cancelled",
+      dealCount: remaining,
+      createdAt: stamp,
+      startedAt: stamp,
+      finishedAt: stamp,
+    });
+    await mock(page, {
+      scans: [stopped, previous],
+      groups: [group("Previous completed product", "previous")],
+    });
+    await page.route("**/api/scans/stopped/preview**", (route) =>
+      route.fulfill({
+        json: {
+          data: {
+            ...products(
+              remaining ? [group("Only one partial product", "stopped")] : []
+            ),
+            coverageSummary: "cancelled_partial",
+          },
+        },
+      })
+    );
+    await page.addInitScript(() =>
+      localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+    );
+    await page.goto("/");
+    await page.getByRole("button", { name: "بهتر بخر، پیشنهادها" }).click();
+    await expect(
+      page.getByRole("heading", {
+        name: remaining
+          ? "Only one partial product"
+          : "Previous completed product",
+        exact: true,
+      })
+    ).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: remaining
+          ? "Previous completed product"
+          : "Only one partial product",
+        exact: true,
+      })
+    ).toHaveCount(0);
+  });
+
+test("Snapp shows request activity before first product then opens the home list", async ({
+  page,
+}) => {
+  const stamp = new Date().toISOString();
   const active = run({
-    id: "active-okala",
-    source: "okala",
+    id: "snapp-discovering",
+    source: "snappmarket",
     status: "running",
-    createdAt: new Date().toISOString(),
+    createdAt: stamp,
+    startedAt: stamp,
     finishedAt: null,
+    productCount: 0,
+    dealCount: 0,
     execution: {
       kind: "workflow",
       phase: "collecting",
-      completedUnits: 4,
+      completedUnits: 0,
       totalUnits: 0,
-      completedPages: 4,
-      observedRows: 5948,
+      completedPages: 0,
+      observedRows: 0,
       eligibleOffers: 0,
-      attemptCount: 1,
-      heartbeatAt: date,
+      attemptCount: 17,
+      heartbeatAt: stamp,
       deadlineAt: null,
       dispatchState: "running",
       cancelRequested: false,
     },
   });
   const state = await mock(page, { scans: [active] });
-  let phase = 0;
-  await page.route("**/api/scans/active-okala/preview**", async (route) => {
-    if (phase === 2) {
-      await route.fulfill({
-        status: 503,
-        json: { error: "RESULT_READ_ERROR" },
-      });
-      return;
-    }
-    const groups = [
-      group("پیشنهاد زنده اول", "active-okala"),
-      group("پیشنهاد زنده دوم", "active-okala"),
-    ];
-    if (phase === 0) {
-      groups[0] = {
-        ...groups[0]!,
-        vendors: groups[0]!.vendors.map((offer, index) =>
-          index === 0
-            ? {
-                ...offer,
-                vendorId: "2223",
-                productVariationId: "87001",
-                priceRials: 200_000,
-                finalPriceRials: 1,
-                productDestination: {
-                  url: "https://www.okala.com/store/2223/offer/87001",
-                  vendorId: "2223",
-                  productVariationId: "87001",
-                },
-              }
-            : offer
-        ),
-      };
-    }
-    const index = new URL(route.request().url()).searchParams.get("cursor")
-      ? 1
-      : 0;
-    const data = products(groups.slice(index, index + 1));
-    await route.fulfill({
+  let found = false;
+  await page.route("**/api/scans/snapp-discovering/preview**", (route) =>
+    route.fulfill({
       json: {
         data: {
-          ...data,
-          totalCount: phase === 0 ? 1 : 2,
-          nextCursor: phase === 1 && index === 0 ? "next-live" : null,
+          ...products(
+            found ? [group("First Snapp product", "snapp-discovering")] : []
+          ),
           coverageSummary: "in_progress",
         },
       },
-    });
-  });
+    })
+  );
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
   await page.goto("/");
-  const skip = page.getByRole("button", {
-    name: "رد کردن راهنما",
-    exact: true,
-  });
-  if (await skip.isVisible()) await skip.click();
-  const live = page.getByRole("region", { name: "نتایج زنده اسکن" });
   await expect(
-    live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
+    page.getByText("۱۷ تلاش برای دریافت اطلاعات فروشگاه‌ها", { exact: true })
   ).toBeVisible();
-  await expect(live).toContainText("اسکن ادامه دارد");
-  await expect(live).toContainText("۵٬۹۴۸ کالا از فهرست فروشگاه‌ها بررسی شده");
-  await expect(live).toContainText("۱ کالای واجد شرایط");
+  state.scans = [
+    { ...active, execution: { ...active.execution!, attemptCount: 38 } },
+  ];
   await expect(
-    live.getByRole("link", { name: "باز کردن کالا در فروشگاه محله" })
-  ).toHaveAttribute("href", "https://www.okala.com/store/2223/offer/87001");
-  phase = 1;
-  await live
-    .getByRole("button", { name: "نمایش پیشنهادهای بیشتر" })
-    .click({ timeout: 15000 });
+    page.getByText("۳۸ تلاش برای دریافت اطلاعات فروشگاه‌ها", { exact: true })
+  ).toBeVisible({ timeout: 10000 });
+  found = true;
   await expect(
-    live.getByRole("heading", { name: "پیشنهاد زنده دوم", exact: true })
+    page.getByRole("heading", { name: "First Snapp product", exact: true })
+  ).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(".deal-row .product-image")).toBeVisible();
+  await expect(
+    page.getByRole("complementary", { name: "اسکن در حال انجام" })
   ).toBeVisible();
-  phase = 2;
-  await expect(live).toContainText("تازه‌سازی پیشنهادها انجام نشد", {
-    timeout: 20000,
-  });
-  await expect(
-    live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
-  ).toBeVisible();
-  await captureState(page, "live-okala-results");
-  state.scans = [{ ...active, status: "cancelled" }];
-  await expect(live).not.toBeVisible({ timeout: 15000 });
 });

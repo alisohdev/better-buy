@@ -1,3 +1,4 @@
+import { checkedAgo, useFreshnessClock } from "../scans/freshness";
 import { TutorialHint } from "../dashboard/Tutorial";
 import { DiscountSelect } from "../dashboard/DiscountSelect";
 import { useVisitor } from "../guest/VisitorProvider";
@@ -60,11 +61,13 @@ export function DealShelf({
   historical: boolean;
   onOpenCart: (source: CartSource) => void;
 }) {
+  const freshnessNow = useFreshnessClock();
   const { query, setQuery, sort, setSort, reset } = filters;
   const [searchMotion, setSearchMotion] = useState(0);
   const visitor = useVisitor();
   const wishlist = useWishlist();
   const savedItems = wishlist.query.data?.items ?? [];
+  const stale = feeds.some((feed) => feed.ledger.expired);
   const visible = feeds
     .flatMap((feed) => {
       const scan = feed.ledger.scan;
@@ -127,6 +130,19 @@ export function DealShelf({
       <h2 id="offers-title" className="sr-only">
         {historical ? "نتیجه تاریخی" : "تخفیف‌های مناسب شما"}
       </h2>
+      {feeds
+        .filter((feed) => !!feed.ledger.scan)
+        .map((feed) => (
+          <small key={feed.source} role="status">
+            {sourceLabel(feed.source)} ·{" "}
+            {feed.ledger.scan!.status === "running" ||
+            feed.ledger.scan!.status === "queued"
+              ? "اسکن ادامه دارد؛ پیشنهادها به‌روز می‌شوند."
+              : feed.ledger.scan!.status === "cancelled"
+                ? "اسکن متوقف شد؛ پیشنهادهای دریافت‌شده تا زمان توقف"
+                : checkedAgo(feed.ledger.scan!, freshnessNow)}{" "}
+          </small>
+        ))}
       <div className="deal-summary">
         <span role="status">
           {historical && "نتیجه تاریخی · "}
@@ -194,6 +210,9 @@ export function DealShelf({
                                 )
                               )}
                             </time>
+                          </p>
+                          <p role="status">
+                            {checkedAgo(ledger.scan, freshnessNow)}
                           </p>
                           <dl>
                             <div>
@@ -363,8 +382,15 @@ export function DealShelf({
       )}
       {!loading && !hasScan ? (
         <div className="empty">
-          <h2>هنوز نتیجه‌ای برای این انتخاب ندارید</h2>
-          <p>با «پیدا کردن تخفیف‌ها» پیشنهادهای این موقعیت را دریافت کنید.</p>
+          <h2>
+            {stale
+              ? "نتیجه‌ها نیاز به بررسی دوباره دارند"
+              : "هنوز نتیجه‌ای برای این انتخاب ندارید"}
+          </h2>
+          <p>
+            قیمت و موجودی پیشنهادهای قدیمی ممکن است تغییر کرده باشد. برای دیدن
+            پیشنهادهای معتبر، یک اسکن تازه انجام دهید.
+          </p>
         </div>
       ) : (
         hasResults && (
@@ -398,6 +424,7 @@ export function DealShelf({
                       source={feed.source}
                       scanId={scan.id}
                       minDiscount={minDiscount}
+                      provisional={scan.status !== "succeeded"}
                       observedAt={scan.finishedAt ?? scan.createdAt}
                       canAddToCart={canAdd}
                       inCart={cart?.byKey.has(group.key)}

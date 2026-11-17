@@ -43,3 +43,20 @@ it("opens today's successful results using Tehran's date across UTC midnight", (
     initialWorkspace([run], location, new Date("2026-11-16T00:30:00Z"))
   ).toBe("offers");
 });
+
+it("opens cancelled partial results but not an empty cancelled scan", () => {
+  expect(
+    initialWorkspace(
+      [{ ...run, status: "cancelled", dealCount: 1 }],
+      location,
+      now
+    )
+  ).toBe("offers");
+  expect(
+    initialWorkspace(
+      [{ ...run, status: "cancelled", dealCount: 0 }],
+      location,
+      now
+    )
+  ).toBe("scan");
+});

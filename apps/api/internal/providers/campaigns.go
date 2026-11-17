@@ -339,22 +339,8 @@ func (c *Collector) planSnappCampaigns(ctx context.Context, job *scanJob, guest 
 		if isOutOfArea || !delivers || delivery["deliveryStatus"] == "NOT_OPEN" || noAvailableSlot {
 			continue
 		}
-		candidateIDs := make(map[int64]struct{})
-		if sections, ok := info["sections"].([]any); ok {
-			for _, sectionValue := range sections {
-				if err := ctx.Err(); err != nil {
-					return nil, err
-				}
-				section := object(sectionValue)
-				if section == nil || section["type"] != "product-list" || section["collection_type"] != "default" || section["config"] != nil || conditionalMetadata(section) {
-					continue
-				}
-				if id, ok := positiveID(section["value"]); ok {
-					candidateIDs[id] = struct{}{}
-				}
-			}
-		}
-		if code == hintCode {
+		candidateIDs := snappStoreCampaignIDs(root)
+		{ // Discounted categories belong to every eligible store, not only the mall hint.
 			categoryQuery := url.Values{"vendorCode": {code}, "lat": {strconv.FormatFloat(location.Latitude, 'f', -1, 64)}, "long": {strconv.FormatFloat(location.Longitude, 'f', -1, 64)}}
 			categoryResponse, readErr := c.snappRead(ctx, discoveryURL("/mobile/search/categories", categoryQuery, job.DeviceID), job, guest, renewed)
 			if readErr == nil {
@@ -554,6 +540,26 @@ func (c *Collector) enrichSnappCampaigns(ctx context.Context, job *scanJob, scop
 		for pageNumber := 0; ; pageNumber++ {
 			if err := ctx.Err(); err != nil {
 				return scanResult{}, err
+			}
+			// Fetch bounded batches concurrently; merge/checkpoint in page order below.
+			if pageNumber > 0 && (pageNumber-1)%24 == 0 {
+				size := snappCampaignPageSize
+				if scope.ExpectedPageSize != nil {
+					size = *scope.ExpectedPageSize
+				}
+				last := (reportedCount + size - 1) / size
+				pages := []int{}
+				for n := pageNumber; n <= last && n < pageNumber+24; n++ {
+					pages = append(pages, n)
+				}
+				_, err := parallelDigikala(ctx, pages, 24, func(ctx context.Context, n int) (bool, error) {
+					localGuest, localRenewed := *guest, *renewed
+					_, err := c.snappRead(ctx, campaignURL(scope, n, job.Location, job.DeviceID), job, &localGuest, &localRenewed)
+					return err == nil, err
+				})
+				if err != nil {
+					return scanResult{}, err
+				}
 			}
 			target := campaignURL(scope, pageNumber, job.Location, job.DeviceID)
 			response, err := c.snappRead(ctx, target, job, guest, renewed)
@@ -909,4 +915,24 @@ func observationTime(value any) time.Time {
 	text, _ := value.(string)
 	parsed, _ := time.Parse(time.RFC3339Nano, text)
 	return parsed
+}
+
+// The best-deals route requests collection 2192 even when it is absent from
+// homepage sections (verified in the 2026-11-17 capture). Every candidate is
+// probed against the current store before it enters the frozen manifest.
+func snappStoreCampaignIDs(root map[string]any) map[int64]bool {
+	ids := map[int64]bool{2192: true}
+	for _, container := range []map[string]any{root, object(root["vendorInfo"])} {
+		sections, _ := container["sections"].([]any)
+		for _, value := range sections {
+			section := object(value)
+			if section == nil || section["type"] != "product-list" || section["collection_type"] != "default" || section["config"] != nil || conditionalMetadata(section) {
+				continue
+			}
+			if id, ok := positiveID(section["value"]); ok {
+				ids[id] = true
+			}
+		}
+	}
+	return ids
 }

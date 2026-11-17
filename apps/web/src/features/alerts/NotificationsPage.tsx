@@ -1,9 +1,11 @@
+import { useFreshnessClock, SCAN_MAX_AGE } from "../scans/freshness";
 import { Button } from "../../components/ui/button";
 import { faDate, faNumber } from "../dashboard/format";
 import { useInbox } from "./useAlerts";
 
 export function NotificationsPage() {
   const { query, read } = useInbox();
+  const now = useFreshnessClock();
   return (
     <main className="notification-page" dir="rtl">
       <header className="notification-page-header">
@@ -53,14 +55,21 @@ export function NotificationsPage() {
                   <strong className="unread-label">خوانده‌نشده</strong>
                 )}
               </div>
-              <p>{item.body}</p>
+              <p>
+                {now - Date.parse(item.createdAt) >= SCAN_MAX_AGE
+                  ? "این پیشنهاد قدیمی است؛ برای بررسی قیمت و موجودی، اسکن تازه انجام دهید."
+                  : item.body}
+              </p>
               <time dateTime={item.createdAt}>
                 {Number.isNaN(Date.parse(item.createdAt))
                   ? item.createdAt
                   : faDate.format(new Date(item.createdAt))}
               </time>
               <ul className="notification-matches">
-                {item.matches.map((match, index) => (
+                {(now - Date.parse(item.createdAt) < SCAN_MAX_AGE
+                  ? item.matches
+                  : []
+                ).map((match, index) => (
                   <li key={`${match.phrase}-${index}`}>
                     <strong>{match.title}</strong>
                     <p>
@@ -89,9 +98,11 @@ export function NotificationsPage() {
                   </li>
                 ))}
               </ul>
-              <a href={`/?scan=${encodeURIComponent(item.scanId)}`}>
-                باز کردن اسکن
-              </a>
+              {now - Date.parse(item.createdAt) < SCAN_MAX_AGE && (
+                <a href={`/?scan=${encodeURIComponent(item.scanId)}`}>
+                  باز کردن اسکن
+                </a>
+              )}
               {!item.readAt && (
                 <Button
                   variant="outline"

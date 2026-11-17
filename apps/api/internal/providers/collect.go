@@ -182,21 +182,6 @@ func (c *Collector) collectSnapp(ctx context.Context, job *scanJob) (scanResult,
 	}
 	var guest snappGuest
 	renewed := false
-	var scopes []CampaignScope
-	if job.EnrichmentEnabled {
-		if job.ManifestFrozen {
-			scopes = append(scopes, job.Context.Manifest.StoreCampaigns...)
-		} else {
-			var err error
-			scopes, err = c.planSnappCampaigns(ctx, job, &guest, &renewed)
-			if err != nil {
-				return scanResult{}, err
-			}
-			if err := job.FreezeSnappManifest(ctx, scopes); err != nil {
-				return scanResult{}, err
-			}
-		}
-	}
 	vendors := make(map[string]snappVendor)
 	observedAt := make(map[string]string)
 	fingerprints := make(map[string]struct{})
@@ -310,6 +295,25 @@ func (c *Collector) collectSnapp(ctx context.Context, job *scanJob) (scanResult,
 		if err := job.RecordPage(ctx, pageCheckpoint{UnitID: "market_party", Descriptor: `{"kind":"market_party","contractVersion":1}`, Page: page, ResponseBody: response.body, Metadata: string(metadata), Terminal: terminal, TerminalNote: note, Observations: observations}); err != nil {
 			return scanResult{}, err
 		}
+		pageVendors := map[string]snappVendor{}
+		for _, vendor := range body.Data.Vendors {
+			id, _ := scalarString(vendor.ID)
+			pageVendors[id] = vendor
+		}
+		live := []liveObservation{}
+		for _, offer := range normalizeSnapp(pageVendors, observedAt, job.Threshold).Deals {
+			stamp := observedAt[offer.VendorID]
+			at, err := time.Parse(time.RFC3339Nano, stamp)
+			if err != nil {
+				return scanResult{}, err
+			}
+			copy := offer
+			live = append(live, liveObservation{Key: offer.Key, Offer: &copy, ObservedNano: at.UnixNano()})
+		}
+		if err := job.journal.publishLiveOffers(ctx, live); err != nil {
+			return scanResult{}, err
+		}
+
 	}
 	if len(vendors) < totalCount {
 		return scanResult{}, &Failure{Code: "INCOMPLETE_PAGINATION", Message: "Snapp Market returned an incomplete vendor list.", Status: 502}
@@ -320,6 +324,21 @@ func (c *Collector) collectSnapp(ctx context.Context, job *scanJob) (scanResult,
 	result := normalizeSnapp(vendors, observedAt, job.Threshold)
 	if err := ctx.Err(); err != nil {
 		return scanResult{}, err
+	}
+	var scopes []CampaignScope
+	if job.EnrichmentEnabled {
+		if job.ManifestFrozen {
+			scopes = append(scopes, job.Context.Manifest.StoreCampaigns...)
+		} else {
+			var err error
+			scopes, err = c.planSnappCampaigns(ctx, job, &guest, &renewed)
+			if err != nil {
+				return scanResult{}, err
+			}
+			if err := job.FreezeSnappManifest(ctx, scopes); err != nil {
+				return scanResult{}, err
+			}
+		}
 	}
 	if len(scopes) == 0 {
 		return result, nil

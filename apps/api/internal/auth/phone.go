@@ -292,3 +292,15 @@ func (s *Service) Cleanup(ctx context.Context) error {
 	_, e := s.db.ExecContext(ctx, `DELETE FROM session WHERE expiresAt<?`, time.Now().UTC().Format(time.RFC3339Nano))
 	return e
 }
+
+// VerifyAccountPassword rechecks the current account for destructive admin actions.
+func (s *Service) VerifyAccountPassword(ctx context.Context, userID, password string) bool {
+	if len(password) < 8 || len(password) > 1024 {
+		return false
+	}
+	var hash string
+	if err := s.db.QueryRowContext(ctx, `SELECT password_hash FROM "user" WHERE id=? AND phoneVerified=1`, userID).Scan(&hash); err != nil {
+		return false
+	}
+	return verifyPassword(hash, password)
+}

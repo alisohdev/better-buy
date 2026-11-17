@@ -24,6 +24,9 @@ func TestProductDetailRequiresOwningAccount(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if _, err := db.Exec(`UPDATE scans SET created_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id='scan'`); err != nil {
+		t.Fatal(err)
+	}
 	queue, err := scans.NewQueue(db, nil, scans.Options{})
 	if err != nil {
 		t.Fatal(err)

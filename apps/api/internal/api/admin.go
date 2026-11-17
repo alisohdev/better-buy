@@ -78,6 +78,7 @@ func registerAnalytics(mux *http.ServeMux, db *sql.DB, cfg config.Config, authSe
 			next.ServeHTTP(w, r)
 		}))
 	}
+	registerAdminScans(mux, db, cfg, authService, admin)
 	mux.Handle("GET /api/admin/analytics", admin(func(w http.ResponseWriter, r *http.Request) {
 		result, err := store.Overview(r.Context())
 		if err != nil {
@@ -118,5 +119,18 @@ func registerAnalytics(mux *http.ServeMux, db *sql.DB, cfg config.Config, authSe
 	}))
 }
 
-// Deny by default until a separately audited passkey/TOTP step-up is implemented.
-func adminAllowed(user auth.User, phones []string) bool { return false }
+func adminAllowed(user auth.User, phones []string) bool {
+	if !user.PhoneVerified {
+		return false
+	}
+	phone, err := auth.NormalizePhone(user.Phone)
+	if err != nil {
+		return false
+	}
+	for _, allowed := range phones {
+		if phone == allowed {
+			return true
+		}
+	}
+	return false
+}

@@ -9,7 +9,6 @@ Group=better-buy
 WorkingDirectory=/srv/better-buy/current/apps/api
 EnvironmentFile=/etc/better-buy/better-buy.env
 Environment=VPS_BACKUP_DIR=/var/backups/better-buy
-Environment=VPS_BACKUP_RETENTION_DAYS=14
 ExecStart=/usr/local/bin/better-buy-backup
 NoNewPrivileges=true
 PrivateTmp=true

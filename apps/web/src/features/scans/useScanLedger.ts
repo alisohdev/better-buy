@@ -1,3 +1,4 @@
+import { scanExpired, useFreshnessClock } from "./freshness";
 import {
   useInfiniteQuery,
   useQueryClient,
@@ -16,7 +17,8 @@ export async function loadDealLedger(
   query = "",
   sort = "discount",
   cursor: string | null = null,
-  minDiscount = 15
+  minDiscount = 15,
+  preview = false
 ) {
   const params = new URLSearchParams({
     page: "1",
@@ -26,7 +28,7 @@ export async function loadDealLedger(
   });
   if (cursor) params.set("cursor", cursor);
   const page = await api(
-    `/api/scans/${scanId}/products?${params}`,
+    `/api/scans/${scanId}/${preview ? "preview" : "products"}?${params}`,
     { signal },
     productPageSchema.parse
   );
@@ -67,6 +69,7 @@ export function useScanLedger({
   minDiscount?: number;
 }) {
   const client = useQueryClient();
+  const now = useFreshnessClock();
   const contextual = scans
     .filter(
       (run) =>
@@ -81,8 +84,16 @@ export function useScanLedger({
     (selectedRunId
       ? contextual.find((run) => run.id === selectedRunId)
       : null) ??
-    contextual.find((run) => run.status === "succeeded") ??
+    contextual.find(
+      (run) =>
+        run.status === "succeeded" ||
+        run.status === "running" ||
+        run.status === "queued" ||
+        (run.status === "cancelled" && run.dealCount > 0)
+    ) ??
     null;
+  const provisional = !!requestedScan && requestedScan.status !== "succeeded";
+  const expired = !!requestedScan && scanExpired(requestedScan, now);
   const baseKey = [
     "ledger",
     selected,
@@ -94,13 +105,18 @@ export function useScanLedger({
     wishlistRevision,
     cartRevision,
     minDiscount,
+    requestedScan?.status,
   ];
   const ledger = useInfiniteQuery({
     queryKey: baseKey,
     initialPageParam: null as string | null,
     gcTime: 600_000,
-    staleTime: 600_000,
-    enabled: !busy && requestedScan?.status === "succeeded",
+    staleTime: provisional ? 0 : 600_000,
+    refetchInterval:
+      requestedScan?.status === "running" || requestedScan?.status === "queued"
+        ? 5000
+        : false,
+    enabled: !busy && !expired && !!requestedScan,
     queryFn: ({ signal, pageParam }) =>
       loadDealLedger(
         requestedScan!.id,
@@ -108,7 +124,8 @@ export function useScanLedger({
         query,
         sort,
         pageParam,
-        minDiscount
+        minDiscount,
+        provisional
       ),
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
@@ -116,14 +133,16 @@ export function useScanLedger({
     client.getQueryData<InfiniteData<ProductPage>>([
       ...baseKey.slice(0, 4),
       id,
-      ...baseKey.slice(5),
+      ...baseKey.slice(5, -1),
+      "succeeded",
     ])?.pages ?? [];
-  const currentPages = ledger.data?.pages ?? [];
+  const currentPages = expired ? [] : (ledger.data?.pages ?? []);
   const prior =
-    !currentPages.length && !selectedRunId
+    !expired && !provisional && !currentPages.length && !selectedRunId
       ? contextual.find(
           (run) =>
             run.status === "succeeded" &&
+            !scanExpired(run, now) &&
             run.id !== requestedScan?.id &&
             cachedPages(run.id).length > 0
         )
@@ -137,7 +156,8 @@ export function useScanLedger({
     pages.flatMap((page) => page.items).map((group) => [group.key, group])
   );
   return {
-    scan: prior ?? requestedScan,
+    expired,
+    scan: expired ? null : (prior ?? requestedScan),
     requestedScan,
     dealGroups: [...groups.values()],
     totalCount: pages[0]?.totalCount ?? null,

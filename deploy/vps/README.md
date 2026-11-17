@@ -60,7 +60,7 @@ Keep secrets out of Git and logs. Create `/var/lib/better-buy` and `/var/backups
 
 Install `better-buy-api.service`, `better-buy-backup.service`, and `better-buy-backup.timer` into `/etc/systemd/system/`. Install `Caddyfile` in the Caddy configuration. The API unit can write only to `/var/lib/better-buy`; the backup unit can also write to `/var/backups/better-buy`.
 
-Run `better-buy-migrate` as the `better-buy` account with `VPS_DATABASE_PATH` set to the production database path before enabling the API unit. Enable `better-buy-api.service` and `better-buy-backup.timer`; the backup timer retains 14 daily SQLite backups by default.
+Run `better-buy-migrate` as the `better-buy` account with `VPS_DATABASE_PATH` set to the production database path before enabling the API unit. Enable `better-buy-api.service` and `better-buy-backup.timer`; the backup timer retains only the newest successfully completed SQLite backup. The previous backup is removed after the new file is published; a failed backup leaves the previous copy intact.
 
 After an authorized rollout, confirm only one `better-buy-api` process is running, then record its RSS after the server has been idle. Compare that single-process reading with the earlier two-process backend baseline; host-level used memory also includes Caddy, the kernel, and filesystem cache.
 
@@ -75,3 +75,7 @@ See [phone authentication](../../docs/phone-auth.md) for required SMS secrets, t
 Digikala supermarket is always enabled in the frontend and API. No environment flag is required.
 
 Always build the frontend with `pnpm --filter @better-buy/web build` or root `pnpm build`. The web prebuild regenerates shared runtime validators. Calling `next build` directly can embed stale shared validators and reject valid DigiKala Fresh history.
+
+### Release retention
+
+Keep the current release and exactly one previous release for rollback. After a successful deployment and health verification, remove older releases, source/static archives, staging directories and redundant API binary copies. Keep the rollback API binary with its matching static release. Never prune the resolved current symlink target. Current rollback is `/srv/better-buy/releases/rollback-before-snapp-expanded-20261117`; its backend is `apps/api/better-buy-api` inside that release.

@@ -38,10 +38,10 @@ describe("scan progress", () => {
   });
   it("does not show 100 before finalization or round running work up to 100", () => {
     expect(scanProgressPercent([run("snappmarket", 10, 10)])).toBeNull();
-    expect(scanProgressPercent([run("snappmarket", 999, 1000)])).toBe(99);
+    expect(scanProgressPercent([run("snappmarket", 999, 1000)])).toBeNull();
   });
-  it("shows a measurable partial percentage and 100 only after success", () => {
-    expect(scanProgressPercent([run("snappmarket", 1, 4)])).toBe(25);
+  it("keeps ongoing work indeterminate and shows 100 only after success", () => {
+    expect(scanProgressPercent([run("snappmarket", 1, 4)])).toBeNull();
     expect(scanProgressPercent([run("okala", 12, 12, "succeeded")])).toBe(100);
     expect(scanProgressPercent([])).toBeNull();
   });

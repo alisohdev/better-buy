@@ -1,4 +1,5 @@
 "use client";
+import { AdminScans } from "./AdminScans";
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -61,6 +62,7 @@ function UserDetails({ id, phone }: { id: string; phone: string }) {
       )}
       {data && (
         <div className="admin-user-detail">
+          <AdminScans userId={id} />
           {detail.isError && <ReadError retry={() => void detail.refetch()} />}
           <header>
             <strong>{data.user.name}</strong>
@@ -200,6 +202,7 @@ export function AdminDashboard({ onClose }: { onClose: () => void }) {
           </Button>
         </div>
       </header>
+      <AdminScans />
       {overview.isPending && <p role="status">در حال دریافت آمار…</p>}
       {overview.isError && <ReadError retry={() => void overview.refetch()} />}
       {data && (

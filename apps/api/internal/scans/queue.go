@@ -233,6 +233,9 @@ func (q *Queue) Offers(ctx context.Context, userID, scanID string) ([]Deal, erro
 	if err != nil {
 		return nil, err
 	}
+	if Expired(item, time.Now()) {
+		return nil, &Error{Code: "SCAN_EXPIRED", Message: "These results are out of date. Run a fresh scan.", Status: 410}
+	}
 	if item.Status != "succeeded" {
 		return nil, &Error{Code: "SCAN_NOT_PUBLISHED", Message: "Scan results are not available yet.", Status: 409}
 	}
@@ -260,7 +263,7 @@ func (q *Queue) Offers(ctx context.Context, userID, scanID string) ([]Deal, erro
 }
 
 func (q *Queue) List(ctx context.Context, userID string) ([]Record, error) {
-	rows, err := q.db.QueryContext(ctx, `SELECT id FROM scans WHERE user_id=? ORDER BY created_at DESC,id DESC LIMIT 101`, userID)
+	rows, err := q.db.QueryContext(ctx, `SELECT id FROM scans WHERE user_id=? AND id IN (SELECT id FROM retained_scan_history) ORDER BY created_at DESC,id DESC LIMIT 101`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +365,7 @@ func (q *Queue) History(ctx context.Context, userID, boxKey, locationID, source 
 		}
 		before = &position
 	}
-	conditions := []string{"user_id=?"}
+	conditions := []string{"user_id=?", "id IN (SELECT id FROM retained_scan_history)"}
 	args := []any{userID}
 	if locationID != "" {
 		conditions = append(conditions, "location_id=?")

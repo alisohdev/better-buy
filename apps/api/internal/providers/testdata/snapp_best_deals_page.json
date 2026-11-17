@@ -1,0 +1,387 @@
+{
+  "status": true,
+  "data": {
+    "id": 2192,
+    "title": " حراج روز اسمارت ",
+    "count": 2318,
+    "type": "default",
+    "finalResult": [
+      {
+        "id": 9770344,
+        "type": "PRODUCT",
+        "data": {
+          "id": 9770344,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/bd52b5e9_20250318-408078-1.jpg",
+              "thumb": "https://static.snapp.express/product-hub/bd52b5e9_20250318-408078-1.jpg",
+              "position": 1,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "موج",
+          "brand_id": 4395,
+          "discountRatio": 74.97,
+          "discount": 212689,
+          "document_id": "9770344-117172",
+          "price": 283700,
+          "title": "کارد یکبارمصرف پلاستیکی موج 50 عددی",
+          "badges": [],
+          "product_entity": "کارد",
+          "root_category_id": 731218,
+          "root_category_title": "خانه و سبک زندگی",
+          "root_category_slug": "home-lifestyle",
+          "vendor_id": 117172,
+          "menu_category_id": 731323,
+          "menu_category_title": "لوازم یکبارمصرف",
+          "menu_category_slug": "disposable-supplies",
+          "stock": 111,
+          "sub_vendor_id": null
+        }
+      },
+      {
+        "id": 9811469,
+        "type": "PRODUCT",
+        "data": {
+          "id": 9811469,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/d0d9e400_679646b34b025.jpg",
+              "thumb": "https://static.snapp.express/product-hub/d0d9e400_679646b34b025.jpg",
+              "position": 15001,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "دارکوب",
+          "brand_id": 8025,
+          "discountRatio": 74.0,
+          "discount": 295778,
+          "document_id": "9811469-117172",
+          "price": 399700,
+          "title": "کیسه زباله بزرگ مشکی دارکوب  16 عددی",
+          "badges": [
+            {
+              "name": "قیمت قدیم",
+              "icon": "",
+              "description": "قیمت قدیم",
+              "active": true,
+              "id": 116,
+              "type": "OLD_PRICE",
+              "priority": 0
+            }
+          ],
+          "product_entity": "",
+          "root_category_id": 731218,
+          "root_category_title": "خانه و سبک زندگی",
+          "root_category_slug": "home-lifestyle",
+          "vendor_id": 117172,
+          "menu_category_id": 731325,
+          "menu_category_title": "کیسه زباله",
+          "menu_category_slug": "garbage-bag",
+          "stock": 8,
+          "sub_vendor_id": null
+        }
+      },
+      {
+        "id": 15083356,
+        "type": "PRODUCT",
+        "data": {
+          "id": 15083356,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/8e3fc2d6_6263141400717_1.png",
+              "thumb": "https://static.snapp.express/product-hub/8e3fc2d6_6263141400717_1.png",
+              "position": 1,
+              "type": "EXPRESS"
+            },
+            {
+              "main": "https://static.snapp.express/product-hub/f530d72d_6263141400717.png",
+              "thumb": "https://static.snapp.express/product-hub/f530d72d_6263141400717.png",
+              "position": 1,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "اتک",
+          "brand_id": 11836,
+          "discountRatio": 73.73,
+          "discount": 442306,
+          "document_id": "15083356-117172",
+          "price": 599900,
+          "title": "سفره یکبارمصرف اتک 10 متری",
+          "badges": [],
+          "product_entity": "",
+          "root_category_id": 731218,
+          "root_category_title": "خانه و سبک زندگی",
+          "root_category_slug": "home-lifestyle",
+          "vendor_id": 117172,
+          "menu_category_id": 731323,
+          "menu_category_title": "لوازم یکبارمصرف",
+          "menu_category_slug": "disposable-supplies",
+          "stock": 23,
+          "sub_vendor_id": null
+        }
+      },
+      {
+        "id": 15106616,
+        "type": "PRODUCT",
+        "data": {
+          "id": 15106616,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/aa7023b5_6268603315042-1.png",
+              "thumb": "https://static.snapp.express/product-hub/aa7023b5_6268603315042-1.png",
+              "position": 1,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "زیبا سازان",
+          "brand_id": 23205,
+          "discountRatio": 72.25,
+          "discount": 246806,
+          "document_id": "15106616-117172",
+          "price": 341600,
+          "title": "بطری روغن ریز استار 2 زیباسازان",
+          "badges": [],
+          "product_entity": "",
+          "root_category_id": 731218,
+          "root_category_title": "خانه و سبک زندگی",
+          "root_category_slug": "home-lifestyle",
+          "vendor_id": 117172,
+          "menu_category_id": 731327,
+          "menu_category_title": "لوازم خانه و آشپزخانه",
+          "menu_category_slug": "home-kitchen-appliances",
+          "stock": 15,
+          "sub_vendor_id": null
+        }
+      },
+      {
+        "id": 9799574,
+        "type": "PRODUCT",
+        "data": {
+          "id": 9799574,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/aabef86e_673c85cba66a2.jpg",
+              "thumb": "https://static.snapp.express/product-hub/aabef86e_673c85cba66a2.jpg",
+              "position": 15001,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "زبرا",
+          "brand_id": 14095,
+          "discountRatio": 69.0,
+          "discount": 344931,
+          "document_id": "9799574-117172",
+          "price": 499900,
+          "title": "کیسه زباله رولی ضخیم زبرا 500 گرمی",
+          "badges": [
+            {
+              "name": "قیمت قدیم",
+              "icon": "",
+              "description": "قیمت قدیم",
+              "active": true,
+              "id": 116,
+              "type": "OLD_PRICE",
+              "priority": 0
+            }
+          ],
+          "product_entity": "کیسه زباله",
+          "root_category_id": 731218,
+          "root_category_title": "خانه و سبک زندگی",
+          "root_category_slug": "home-lifestyle",
+          "vendor_id": 117172,
+          "menu_category_id": 731325,
+          "menu_category_title": "کیسه زباله",
+          "menu_category_slug": "garbage-bag",
+          "stock": 33,
+          "sub_vendor_id": null
+        }
+      },
+      {
+        "id": 9798473,
+        "type": "PRODUCT",
+        "data": {
+          "id": 9798473,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/ebfdc59c_673c9719523fc.jpg",
+              "thumb": "https://static.snapp.express/product-hub/ebfdc59c_673c9719523fc.jpg",
+              "position": 15001,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "میکرو",
+          "brand_id": 11786,
+          "discountRatio": 68.93,
+          "discount": 87196,
+          "document_id": "9798473-117172",
+          "price": 126500,
+          "title": "نوک بلند 0.9 میکرو",
+          "badges": [],
+          "product_entity": "",
+          "root_category_id": 731218,
+          "root_category_title": "خانه و سبک زندگی",
+          "root_category_slug": "home-lifestyle",
+          "vendor_id": 117172,
+          "menu_category_id": 731328,
+          "menu_category_title": "کتاب و لوازم تحریر",
+          "menu_category_slug": "stationery",
+          "stock": 7,
+          "sub_vendor_id": null
+        }
+      },
+      {
+        "id": 15084243,
+        "type": "PRODUCT",
+        "data": {
+          "id": 15084243,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/81079d9e_20260511-473787-1.jpg",
+              "thumb": "https://static.snapp.express/product-hub/81079d9e_20260511-473787-1.jpg",
+              "position": 1,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "پیک نیک",
+          "brand_id": 6431,
+          "discountRatio": 68.33,
+          "discount": 507008,
+          "document_id": "15084243-117172",
+          "price": 742000,
+          "title": "لیوان یکبارمصرف الماس پیک نیک 10 عددی",
+          "badges": [],
+          "product_entity": "",
+          "root_category_id": 731218,
+          "root_category_title": "خانه و سبک زندگی",
+          "root_category_slug": "home-lifestyle",
+          "vendor_id": 117172,
+          "menu_category_id": 731323,
+          "menu_category_title": "لوازم یکبارمصرف",
+          "menu_category_slug": "disposable-supplies",
+          "stock": 68,
+          "sub_vendor_id": null
+        }
+      },
+      {
+        "id": 9682661,
+        "type": "PRODUCT",
+        "data": {
+          "id": 9682661,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/93779ce9_6200ef1e2b193.jpg",
+              "thumb": "https://static.snapp.express/product-hub/93779ce9_6200ef1e2b193.jpg",
+              "position": 15001,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "سی‌گل",
+          "brand_id": 16830,
+          "discountRatio": 68.0,
+          "discount": 782000,
+          "document_id": "9682661-117176",
+          "price": 1150000,
+          "title": "روغن برنزه کننده و ویتامینه SPF6 سی گل (250 میلی لیتر)",
+          "badges": [
+            {
+              "name": "قیمت قدیم",
+              "icon": "",
+              "description": "قیمت قدیم",
+              "active": true,
+              "id": 116,
+              "type": "OLD_PRICE",
+              "priority": 0
+            }
+          ],
+          "product_entity": "روغن برنزه",
+          "root_category_id": 731210,
+          "root_category_title": "آرایشی و بهداشتی",
+          "root_category_slug": "health-beauty",
+          "vendor_id": 117176,
+          "menu_category_id": 731269,
+          "menu_category_title": "بهداشت و مراقبت بدن",
+          "menu_category_slug": "body-care",
+          "stock": 14,
+          "sub_vendor_id": null
+        }
+      },
+      {
+        "id": 15080638,
+        "type": "PRODUCT",
+        "data": {
+          "id": 15080638,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/8115c6f8_20260425-455879-1.jpg",
+              "thumb": "https://static.snapp.express/product-hub/8115c6f8_20260425-455879-1.jpg",
+              "position": 1,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "ژنو بایوتیک",
+          "brand_id": 10754,
+          "discountRatio": 67.0,
+          "discount": 1550380,
+          "document_id": "15080638-117176",
+          "price": 2314000,
+          "title": "سرم لیفت کننده Peptide 5x ژنوبایوتیک 30 میلی لیتری",
+          "badges": [
+            {
+              "name": "قیمت قدیم",
+              "icon": "",
+              "description": "قیمت قدیم",
+              "active": true,
+              "id": 116,
+              "type": "OLD_PRICE",
+              "priority": 0
+            }
+          ],
+          "product_entity": "",
+          "root_category_id": 731210,
+          "root_category_title": "آرایشی و بهداشتی",
+          "root_category_slug": "health-beauty",
+          "vendor_id": 117176,
+          "menu_category_id": 731270,
+          "menu_category_title": "بهداشت و مراقبت صورت",
+          "menu_category_slug": "face-care",
+          "stock": 1,
+          "sub_vendor_id": null
+        }
+      },
+      {
+        "id": 6182010,
+        "type": "PRODUCT",
+        "data": {
+          "id": 6182010,
+          "images": [
+            {
+              "main": "https://static.snapp.express/product-hub/2b54f083_5ffe1526c0d86.jpg",
+              "thumb": "https://static.snapp.express/product-hub/2b54f083_5ffe1526c0d86.jpg",
+              "position": 15001,
+              "type": "EXPRESS"
+            }
+          ],
+          "brand": "کاتوس",
+          "brand_id": 5369,
+          "discountRatio": 65.59,
+          "discount": 272198,
+          "document_id": "6182010-117172",
+          "price": 415000,
+          "title": "دستمال آشپزخانه 40*30 کاتوس (یک عدد)",
+          "badges": [],
+          "product_entity": "دستمال آشپزخانه",
+          "root_category_id": 731218,
+          "root_category_title": "خانه و سبک زندگی",
+          "root_category_slug": "home-lifestyle",
+          "vendor_id": 117172,
+          "menu_category_id": 731327,
+          "menu_category_title": "لوازم خانه و آشپزخانه",
+          "menu_category_slug": "home-kitchen-appliances",
+          "stock": 11,
+          "sub_vendor_id": null
+        }
+      }
+    ]
+  }
+}

@@ -18,12 +18,12 @@ export function useDashboardData() {
     queryKey: ["scans"],
     refetchInterval: (query) => {
       const error = query.state.error;
-      if (!error) return false;
+      if (!error) return 60_000;
       if (error instanceof RequestFailure && error.status === 429)
         return Math.max(15_000, error.retryAfterMs ?? 0);
       return recoveryInterval(error);
     },
-    refetchOnWindowFocus: (query) => !!query.state.error,
+    refetchOnWindowFocus: true,
     queryFn: ({ signal }) =>
       api("/api/scans", { signal }, scansReadSchema.parse),
   });

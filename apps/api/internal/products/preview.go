@@ -14,10 +14,10 @@ func (s *Service) previewDeals(ctx context.Context, queue *scans.Queue, userID, 
 	if scan.Status == "succeeded" {
 		return s.Deals(ctx, queue, userID, scanID)
 	}
-	if scan.Source != "okala" || (scan.Status != "running" && scan.Status != "queued") {
+	if scan.Status != "running" && scan.Status != "queued" && scan.Status != "cancelled" {
 		return nil, &scan, &scans.Error{Code: "SCAN_NOT_PUBLISHED", Message: "Live results are unavailable for this scan.", Status: 409}
 	}
-	rows, err := s.db.QueryContext(ctx, `SELECT o.offer_json FROM scan_live_offers o JOIN scans s ON s.id=o.scan_id WHERE o.scan_id=? AND s.user_id=? AND s.status='running' AND o.offer_json IS NOT NULL ORDER BY o.deal_key`, scanID, userID)
+	rows, err := s.db.QueryContext(ctx, `SELECT o.offer_json FROM scan_live_offers o JOIN scans s ON s.id=o.scan_id WHERE o.scan_id=? AND s.user_id=? AND s.status IN ('running','cancelled') AND o.offer_json IS NOT NULL UNION ALL SELECT json_extract(c.offer_json,'$.Offer') FROM scan_campaign_contributions c JOIN scans s ON s.id=c.scan_id WHERE c.scan_id=? AND s.user_id=? AND s.status IN ('running','cancelled') AND c.state='accepted' AND json_type(c.offer_json,'$.Offer')='object' AND c.deal_key NOT IN (SELECT bad.deal_key FROM scan_campaign_contributions bad WHERE bad.scan_id=? AND bad.state='quarantined')`, scanID, userID, scanID, userID, scanID)
 	if err != nil {
 		return nil, &scan, err
 	}
@@ -38,9 +38,17 @@ func (s *Service) previewDeals(ctx context.Context, queue *scans.Queue, userID, 
 		item := value.DealRecord
 		item.ScanID = scanID
 		item.State = "current"
-		item.Availability = "available"
-		quantity := int(item.Stock)
-		item.StockQuantity = &quantity
+		if item.Availability == "" {
+			if item.Stock > 0 {
+				item.Availability = "available"
+			} else {
+				item.Availability = "unavailable"
+			}
+		}
+		if scan.Source != "digikalajet" {
+			quantity := int(item.Stock)
+			item.StockQuantity = &quantity
+		}
 		var facts struct {
 			VendorLogoURL       *string  `json:"vendorLogoUrl"`
 			Benefit             *Benefit `json:"benefit"`

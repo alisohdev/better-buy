@@ -1,0 +1,130 @@
+{
+  "sections": [
+    {
+      "config": null,
+      "type": "coupon",
+      "value": 0,
+      "title": "کوپن",
+      "collection_type": null
+    },
+    {
+      "config": null,
+      "type": "favorites",
+      "value": 104941,
+      "title": "علاقه مندی ها",
+      "collection_type": null
+    },
+    {
+      "config": null,
+      "type": "market-party",
+      "value": 14,
+      "title": "تخفیف نارنجی",
+      "collection_type": null
+    },
+    {
+      "config": null,
+      "type": "banner-list",
+      "value": 9334,
+      "title": "هایپرمدیا",
+      "collection_type": null
+    },
+    {
+      "config": null,
+      "type": "previous-purchase",
+      "value": 0,
+      "title": "خریدهای قبلی",
+      "collection_type": null
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 20853,
+      "title": "پرتخفیف کالابرگی هایپراستار",
+      "collection_type": "default"
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 20552,
+      "title": "تخفیف ویژه",
+      "collection_type": "hot_deals"
+    },
+    {
+      "config": null,
+      "type": "bundle-list",
+      "value": 0,
+      "title": "پک به صرفه",
+      "collection_type": null
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 21115,
+      "title": "ماست و پنیر کف قیمت",
+      "collection_type": "default"
+    },
+    {
+      "config": null,
+      "type": "category",
+      "value": 0,
+      "title": "دسته بندی",
+      "collection_type": null
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 20724,
+      "title": "زندگی به سبک نو!",
+      "collection_type": "default"
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 21417,
+      "title": "ساندویچ سریع آماده می شه! ",
+      "collection_type": "default"
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 21416,
+      "title": " سریع آماده میشه!",
+      "collection_type": "default"
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 20086,
+      "title": "تازه تر از تازه        ",
+      "collection_type": "default"
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 20531,
+      "title": "های کلاب، اختصاصی هایپراستار ",
+      "collection_type": "default"
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 21280,
+      "title": "با ناتسور نفستون رو تازه کنید",
+      "collection_type": "default"
+    },
+    {
+      "config": null,
+      "type": "product-list",
+      "value": 21412,
+      "title": "مارین و شارین ",
+      "collection_type": "default"
+    },
+    {
+      "config": null,
+      "type": "banner",
+      "value": 29883,
+      "title": "محصولات طبیعت",
+      "collection_type": null
+    }
+  ]
+}

@@ -45,6 +45,7 @@ export function ProductRow({
   source,
   scanId,
   minDiscount = 15,
+  provisional = false,
   observedAt,
   canAddToCart = false,
   inCart = false,
@@ -62,6 +63,7 @@ export function ProductRow({
   source: DealSource;
   scanId: string;
   minDiscount?: number;
+  provisional?: boolean;
   observedAt?: string;
   canAddToCart?: boolean;
   inCart?: boolean;
@@ -81,7 +83,14 @@ export function ProductRow({
   const detailReturnFocus = useRef<HTMLButtonElement | null>(null);
   const openingCart = useRef(false);
   const client = useQueryClient();
-  const baseKey = ["offers", scanId, source, group.key, minDiscount];
+  const baseKey = [
+    "offers",
+    scanId,
+    source,
+    group.key,
+    minDiscount,
+    provisional,
+  ];
   const context = JSON.stringify(baseKey);
   const [paging, setPaging] = useState<{
     context: string;
@@ -95,11 +104,13 @@ export function ProductRow({
   const offers = useQuery({
     queryKey: [...baseKey, cursor],
     enabled: canCompareStores && (expanded || detailOpen),
-    staleTime: 600_000,
+    staleTime: provisional ? 0 : 600_000,
+    refetchInterval: provisional ? 5000 : false,
     gcTime: 600_000,
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams({ minDiscount: String(minDiscount) });
       if (cursor) params.set("cursor", cursor);
+      if (provisional) params.set("preview", "1");
       const page = await api(
         `/api/scans/${scanId}/products/${encodeURIComponent(group.key)}/offers?${params}`,
         { signal },

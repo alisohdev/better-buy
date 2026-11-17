@@ -120,6 +120,9 @@ func TestSelectTestProductUsesOwnedSavedScan(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if _, err := db.Exec(`UPDATE scans SET created_at=strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id='scan'`); err != nil {
+		t.Fatal(err)
+	}
 	match, scan, err := selectTestProduct(ctx, db, "key", "owner")
 	if err != nil || scan != "scan" || match.Title != "Tea" || match.VendorTitle != "Store" || match.ProductKey == "" {
 		t.Fatalf("match=%+v scan=%q err=%v", match, scan, err)

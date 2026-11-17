@@ -160,6 +160,9 @@ func (s *Service) Deals(ctx context.Context, queue *scans.Queue, userID, scanID 
 	if err != nil {
 		return nil, nil, err
 	}
+	if scans.Expired(current, time.Now()) {
+		return nil, &current, &scans.Error{Code: "SCAN_EXPIRED", Message: "These results are out of date. Run a fresh scan.", Status: 410}
+	}
 	if current.Status != "succeeded" {
 		return nil, &current, &scans.Error{Code: "SCAN_NOT_PUBLISHED", Message: "Scan results are not available yet.", Status: 409}
 	}
@@ -283,6 +286,9 @@ func (s *Service) productPage(ctx context.Context, queue *scans.Queue, userID, s
 	page.Baseline.Reason = reason
 	if preview && scan.Status != "succeeded" {
 		page.CoverageSummary = "in_progress"
+		if scan.Status == "cancelled" {
+			page.CoverageSummary = "cancelled_partial"
+		}
 
 		var newest time.Time
 		for _, deal := range deals {
@@ -408,11 +414,25 @@ func (s *Service) OfferPage(ctx context.Context, queue *scans.Queue, userID, sca
 	if len([]rune(query.Get("q"))) > 200 {
 		return OfferPage{}, &scans.Error{Code: "INVALID_INPUT", Message: "Invalid offer query.", Status: 400}
 	}
-	position, err := decodeCursor(query.Get("cursor"), cursor{Version: 1, User: userID, Scan: scanID, Kind: "offers", Query: q, Sort: sortBy, Group: groupKey, MinDiscount: minDiscount})
+	cursorKind := "offers"
+	if query.Get("preview") == "1" {
+		cursorKind = "preview_offers"
+	}
+	position, err := decodeCursor(query.Get("cursor"), cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, Group: groupKey, MinDiscount: minDiscount})
 	if err != nil {
 		return OfferPage{}, &scans.Error{Code: "INVALID_CURSOR", Message: "Invalid offer cursor.", Status: 400}
 	}
-	groups, _, err := s.productGroupsAtDiscount(ctx, queue, userID, scanID, minDiscount)
+	var groups []Group
+	if query.Get("preview") == "1" {
+		var deals []DealRecord
+		var scan *scans.Record
+		deals, scan, err = s.previewDeals(ctx, queue, userID, scanID)
+		if err == nil {
+			groups = groupV2(scan.Source, deals, minDiscount)
+		}
+	} else {
+		groups, _, err = s.productGroupsAtDiscount(ctx, queue, userID, scanID, minDiscount)
+	}
 	if err != nil {
 		return OfferPage{}, err
 	}
@@ -472,7 +492,7 @@ func (s *Service) OfferPage(ctx context.Context, queue *scans.Queue, userID, sca
 	end := min(position+limit, len(offers))
 	page := OfferPage{Items: append([]VendorOffer{}, offers[position:end]...)}
 	if end < len(offers) {
-		next, err := encodeCursor(cursor{Version: 1, User: userID, Scan: scanID, Kind: "offers", Query: q, Sort: sortBy, Group: groupKey, MinDiscount: minDiscount, Position: []any{end}})
+		next, err := encodeCursor(cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, Group: groupKey, MinDiscount: minDiscount, Position: []any{end}})
 		if err != nil {
 			return OfferPage{}, err
 		}
@@ -533,7 +553,7 @@ func (s *Service) baseline(ctx context.Context, userID string, scan scans.Record
 	}
 	c := scan.Context
 	var id string
-	err := s.db.QueryRowContext(ctx, `SELECT id FROM scans WHERE user_id=? AND location_id=? AND threshold=? AND source=? AND status='succeeded' AND json_extract(context_json,'$.coverage')='complete' AND json_extract(context_json,'$.scopeHash')=? AND json_extract(context_json,'$.location.revision')=? AND json_extract(context_json,'$.location.latitude')=? AND json_extract(context_json,'$.location.longitude')=? AND json_extract(context_json,'$.eligibilityVersion')=? AND json_extract(context_json,'$.offerKeyVersion')=? AND (created_at<? OR (created_at=? AND id<?)) ORDER BY created_at DESC,id DESC LIMIT 1`, userID, scan.LocationID, scan.Threshold, scan.Source, c.ScopeHash, c.Location.Revision, c.Location.Latitude, c.Location.Longitude, c.EligibilityVersion, c.OfferKeyVersion, scan.CreatedAt, scan.CreatedAt, scan.ID).Scan(&id)
+	err := s.db.QueryRowContext(ctx, `SELECT id FROM scans WHERE user_id=? AND location_id=? AND threshold=? AND source=? AND status='succeeded' AND id IN (SELECT id FROM retained_scan_history) AND json_extract(context_json,'$.coverage')='complete' AND json_extract(context_json,'$.scopeHash')=? AND json_extract(context_json,'$.location.revision')=? AND json_extract(context_json,'$.location.latitude')=? AND json_extract(context_json,'$.location.longitude')=? AND json_extract(context_json,'$.eligibilityVersion')=? AND json_extract(context_json,'$.offerKeyVersion')=? AND (created_at<? OR (created_at=? AND id<?)) ORDER BY created_at DESC,id DESC LIMIT 1`, userID, scan.LocationID, scan.Threshold, scan.Source, c.ScopeHash, c.Location.Revision, c.Location.Latitude, c.Location.Longitude, c.EligibilityVersion, c.OfferKeyVersion, scan.CreatedAt, scan.CreatedAt, scan.ID).Scan(&id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, "no_comparable_baseline", true
 	}

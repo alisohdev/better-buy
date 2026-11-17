@@ -1,3 +1,4 @@
+import { useFreshnessClock, SCAN_MAX_AGE } from "../scans/freshness";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "../../components/ui/button";
 import { Panel, ReadNotice } from "../dashboard/Primitives";
@@ -15,6 +16,7 @@ export function NotificationInbox({
   trigger?: ReactNode;
 } = {}) {
   const { query, read } = useInbox();
+  const now = useFreshnessClock();
   const [localOpen, setLocalOpen] = useState(false);
   const open = controlledOpen ?? localOpen;
   const unread = query.data?.filter((item) => item.readAt === null).length ?? 0;
@@ -91,14 +93,21 @@ export function NotificationInbox({
                     <strong className="unread-label">خوانده‌نشده</strong>
                   )}
                 </div>
-                <p>{item.body}</p>
+                <p>
+                  {now - Date.parse(item.createdAt) >= SCAN_MAX_AGE
+                    ? "این پیشنهاد قدیمی است؛ برای بررسی قیمت و موجودی، اسکن تازه انجام دهید."
+                    : item.body}
+                </p>
                 <time dateTime={item.createdAt}>
                   {Number.isNaN(Date.parse(item.createdAt))
                     ? item.createdAt
                     : faDate.format(new Date(item.createdAt))}
                 </time>
                 <ul className="notification-matches">
-                  {item.matches.map((match, index) => {
+                  {(now - Date.parse(item.createdAt) < SCAN_MAX_AGE
+                    ? item.matches
+                    : []
+                  ).map((match, index) => {
                     const href = safeOfferUrl(match.url);
                     return (
                       <li key={match.phrase + "-" + index}>
@@ -130,9 +139,11 @@ export function NotificationInbox({
                     );
                   })}
                 </ul>
-                <a href={"/?scan=" + encodeURIComponent(item.scanId)}>
-                  باز کردن اسکن این اعلان
-                </a>
+                {now - Date.parse(item.createdAt) < SCAN_MAX_AGE && (
+                  <a href={"/?scan=" + encodeURIComponent(item.scanId)}>
+                    باز کردن اسکن این اعلان
+                  </a>
+                )}
                 {item.readAt === null && (
                   <Button
                     variant="outline"

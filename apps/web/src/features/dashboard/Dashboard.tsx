@@ -1,5 +1,6 @@
 "use client";
 import "../scans/scan-feedback.css";
+import { StickyScanProgress } from "../scans/StickyScanProgress";
 import { useVisitor } from "../guest/VisitorProvider";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu } from "radix-ui";
@@ -30,7 +31,6 @@ import { DealShelf, type DealFeed } from "../deals/DealShelf";
 import { useDealFilters } from "../deals/useDealFilters";
 import type { DealSource } from "./types";
 import { scanProgressPercent as calculateScanProgress } from "../scans/progress";
-import { LiveScanResults } from "../scans/LiveScanResults";
 import { scanFailureMessage } from "../scans/scanFailureMessage";
 import { ScanFeedback } from "../scans/ScanFeedback";
 import { ProviderCart, CartWriteNotice } from "../carts/ProviderCart";
@@ -56,6 +56,7 @@ function DashboardContent() {
   const wishlist = useWishlistQuery();
   const adminAccess = useAdminAccess();
   const [view, setView] = useState<"deals" | "history" | "admin">("deals");
+  const revealedLiveScans = useRef(new Set<string>());
   const [workspaceSection, setWorkspaceSection] = useState<"offers" | "scan">(
     "scan"
   );
@@ -428,7 +429,37 @@ function DashboardContent() {
     (total, run) => total + (run.execution?.totalUnits ?? 0),
     0
   );
+  const requestAttempts = activeRuns.reduce(
+    (total, run) => total + (run.execution?.attemptCount ?? 0),
+    0
+  );
+  const observedRows = activeRuns.reduce(
+    (total, run) => total + (run.execution?.observedRows ?? 0),
+    0
+  );
   const scanProgressPercent = calculateScanProgress(activeRuns);
+  useEffect(() => {
+    for (const feed of feeds) {
+      const run = feed.ledger.scan;
+      if (
+        run?.status === "running" &&
+        feed.ledger.dealGroups.length &&
+        !revealedLiveScans.current.has(run.id)
+      ) {
+        revealedLiveScans.current.add(run.id);
+        setWorkspaceSection("offers");
+      }
+    }
+  }, [feeds]);
+
+  useEffect(() => {
+    if (
+      scanAttemptBaseIds &&
+      freshSuccessfulRuns.length > 0 &&
+      activeRuns.length > 0
+    )
+      setWorkspaceSection("offers");
+  }, [scanAttemptBaseIds, freshSuccessfulRuns.length, activeRuns.length]);
   const openCart = (_source: CartSource) => {
     if (!visitor.requireAccount("نگهداری سبد خرید")) return;
     setCartOpen(true);
@@ -684,111 +715,23 @@ function DashboardContent() {
                         ? scanProgressPercent === null
                           ? `${faNumber.format(progressCompleted)} بخش بررسی شده · بررسی ادامه دارد`
                           : `${faNumber.format(progressCompleted)} از ${faNumber.format(progressTotal)} بخش بررسی شده`
-                        : "در انتظار دریافت اطلاعات فروشگاه‌ها"}
+                        : requestAttempts > 0
+                          ? `${faNumber.format(requestAttempts)} تلاش برای دریافت اطلاعات فروشگاه‌ها`
+                          : "در انتظار دریافت اطلاعات فروشگاه‌ها"}
                     </p>
+                    {progressTotal > 0 && requestAttempts > 0 && (
+                      <p className="scan-observation-count">
+                        {faNumber.format(requestAttempts)} تلاش برای دریافت
+                        اطلاعات فروشگاه‌ها
+                      </p>
+                    )}
+                    {observedRows > 0 && (
+                      <p className="scan-observation-count">
+                        {faNumber.format(observedRows)} رکورد کالا بررسی شده
+                      </p>
+                    )}
                   </section>
                 )}
-                {activeOkala?.status === "running" && (
-                  <LiveScanResults key={activeOkala.id} scan={activeOkala} />
-                )}
-                {scanPageStage === "complete" && (
-                  <section
-                    className="scan-stage scan-stage-complete"
-                    role="status"
-                    aria-live="polite"
-                  >
-                    <div className="scan-completion-mark" aria-hidden="true">
-                      <AppIcon name="check" />
-                    </div>
-                    <h2>اسکن با موفقیت انجام شد</h2>
-                    <p>
-                      {faNumber.format(completedProductCount)} کالا بررسی شد.
-                    </p>
-                    <div className="scan-complete-providers">
-                      {freshSuccessfulRuns.map((run) => (
-                        <span className="scan-complete-provider" key={run.id}>
-                          <ProviderMark source={run.source} />
-                          <span>{sourceLabel(run.source)}</span>
-                          <strong>{faNumber.format(run.productCount)}</strong>
-                        </span>
-                      ))}
-                    </div>
-                    <div className="scan-stage-actions">
-                      <Button
-                        className="primary"
-                        data-tutorial-target={tutorial.step === "results"}
-                        onClick={() => {
-                          tutorial.send("results-opened");
-                          setWorkspaceSection("offers");
-                        }}
-                      >
-                        <AppIcon name="list" />
-                        مشاهده نتایج
-                      </Button>
-                      <Button variant="outline" onClick={newScan}>
-                        <AppIcon name="scan" />
-                        اسکن دوباره
-                      </Button>
-                    </div>
-                  </section>
-                )}
-                {data.locationsQuery.error && (
-                  <ReadNotice
-                    title="موقعیت‌ها دریافت نشدند"
-                    retry={() => void data.locationsQuery.refetch()}
-                    busy={data.locationsQuery.isFetching}
-                  >
-                    {data.locationsQuery.data
-                      ? "موقعیت‌های ذخیره‌شده نمایش داده می‌شوند؛ تازه‌سازی انجام نشد."
-                      : "برای انتخاب موقعیت، دریافت دوباره را امتحان کنید."}
-                  </ReadNotice>
-                )}
-                {!valid && !data.busy && !data.locationsQuery.error && (
-                  <ReadNotice title="موقعیت خارج از محدوده خدمات است">
-                    فعلاً اسکن برای موقعیت‌های داخل تهران در دسترس است. موقعیت
-                    دیگری را از فهرست بالا انتخاب کنید.
-                  </ReadNotice>
-                )}
-                <div className="scan-feedback-list">
-                  <ScanFeedback
-                    active={activeSnapp ?? null}
-                    polling={snappPolling}
-                    start={snappStart}
-                    locations={data.locations}
-                    onOpenContext={(run) => {
-                      data.setSelected(run.locationId);
-                      setSelection({ source: null, runId: null });
-                      setView("deals");
-                      setWorkspaceSection("offers");
-                    }}
-                  />
-                  <ScanFeedback
-                    active={activeOkala ?? null}
-                    polling={okalaPolling}
-                    start={okalaStart}
-                    locations={data.locations}
-                    onOpenContext={(run) => {
-                      data.setSelected(run.locationId);
-                      setSelection({ source: null, runId: null });
-                      setView("deals");
-                      setWorkspaceSection("offers");
-                    }}
-                  />
-                  {digikalaSupermarketEnabled && (
-                    <ScanFeedback
-                      active={activeDigikala ?? null}
-                      polling={digikalaPolling}
-                      start={digikalaStart}
-                      locations={data.locations}
-                      onOpenContext={(run) => {
-                        data.setSelected(run.locationId);
-                        setSelection({ source: null, runId: null });
-                        setView("deals");
-                        setWorkspaceSection("offers");
-                      }}
-                    />
-                  )}
-                </div>
               </section>
             ) : !valid && !data.busy && !data.locationsQuery.error ? (
               <ReadNotice title="موقعیت خارج از محدوده خدمات است">
@@ -797,6 +740,11 @@ function DashboardContent() {
               </ReadNotice>
             ) : (
               <>
+                <StickyScanProgress
+                  runs={activeRuns.filter(
+                    (run) => run.locationId === data.selected
+                  )}
+                />
                 {feeds.map((feed) => {
                   const attempt = data.scans
                     .filter(
@@ -812,8 +760,10 @@ function DashboardContent() {
                       key={feed.source}
                       title={`${sourceLabel(feed.source)} · ${attempt.status === "failed" ? "اسکن ناموفق بود" : "به‌روزرسانی لغو شد"}`}
                     >
-                      {scanFailureMessage(attempt)}
-                      {feed.ledger.scan &&
+                      {attempt.status === "cancelled" && attempt.dealCount > 0
+                        ? "اسکن متوقف شد؛ پیشنهادهای دریافت‌شده از همین اسکن نمایش داده می‌شوند."
+                        : scanFailureMessage(attempt)}
+                      {feed.ledger.scan?.status === "succeeded" &&
                         " نتیجه موفق قبلی همچنان نمایش داده می‌شود."}
                     </ReadNotice>
                   ) : null;

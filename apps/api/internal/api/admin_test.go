@@ -3,6 +3,9 @@ package api
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
+	"fmt"
+	"golang.org/x/crypto/argon2"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -56,7 +59,7 @@ func analyticsTestRequest(handler http.Handler, method, path, body string, cooki
 	return recorder
 }
 
-func TestAdminDenyWithoutStepUp(t *testing.T) {
+func TestAdminRequiresVerifiedAllowlistedPhone(t *testing.T) {
 	db, cfg := analyticsTestDatabase(t)
 	cookie := analyticsTestUser(t, db, cfg, "admin", "legacy-admin", true)
 	_, err := db.Exec(`UPDATE "user" SET phone='+989123456789',phoneVerified=1 WHERE id='admin'`)
@@ -64,8 +67,8 @@ func TestAdminDenyWithoutStepUp(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{"/api/admin/analytics", "/api/admin/users", "/api/admin/users/admin"} {
-		if r := analyticsTestRequest(New(db, cfg, nil), "GET", path, "", cookie); r.Code != 403 {
-			t.Fatalf("matching verified phone bypassed step-up: %d", r.Code)
+		if r := analyticsTestRequest(New(db, cfg, nil), "GET", path, "", cookie); r.Code != 200 {
+			t.Fatalf("verified allowlisted admin denied: %d", r.Code)
 		}
 		if r := analyticsTestRequest(New(db, cfg, nil), "GET", path, "", nil); r.Code != 401 {
 			t.Fatal(r.Code)
@@ -173,5 +176,54 @@ func TestAnalyticsRejectsUntrustedOriginsAndInvalidEvents(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("stored %d rejected events", count)
+	}
+}
+
+func TestAdminScanOperationsRejectOtherUsersAndRequirePassword(t *testing.T) {
+	db, cfg := analyticsTestDatabase(t)
+	cookie := analyticsTestUser(t, db, cfg, "operator", "legacy-operator", true)
+	h := New(db, cfg, nil)
+	for _, path := range []string{"/api/admin/scans", "/api/admin/scan-logs"} {
+		if r := analyticsTestRequest(h, "GET", path, "", cookie); r.Code != 403 {
+			t.Fatalf("nonadmin accessed %s: %d", path, r.Code)
+		}
+	}
+	db.Exec(`UPDATE "user" SET phone='+989123456789',phoneVerified=0 WHERE id='operator'`)
+	if r := analyticsTestRequest(h, "GET", "/api/admin/scans", "", cookie); r.Code != 403 {
+		t.Fatal("unverified phone allowed")
+	}
+	db.Exec(`UPDATE "user" SET phoneVerified=1 WHERE id='operator'`)
+	if r := analyticsTestRequest(h, "GET", "/api/admin/scans", "", cookie); r.Code != 200 {
+		t.Fatal(r.Code, r.Body.String())
+	}
+	if r := analyticsTestRequest(h, "DELETE", "/api/admin/scans", `{"confirmation":"DELETE SCANS","password":"wrong-password"}`, cookie); r.Code != 403 {
+		t.Fatal("delete without password allowed", r.Code, r.Body.String())
+	}
+}
+
+func TestAdminQueuesDeletionWithPasswordAndAuditsIt(t *testing.T) {
+	db, cfg := analyticsTestDatabase(t)
+	cookie := analyticsTestUser(t, db, cfg, "operator", "legacy-operator", true)
+	salt := []byte("1234567890123456")
+	key := argon2.IDKey([]byte("test-password"), salt, 2, 19456, 1, 32)
+	hash := fmt.Sprintf("argon2id:2:19456:1:%s:%s", hex.EncodeToString(salt), hex.EncodeToString(key))
+	if _, err := db.Exec(`UPDATE "user" SET phone='+989123456789',phoneVerified=1,password_hash=? WHERE id='operator'`, hash); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`INSERT INTO scans(id,user_id,location_id,threshold,source,mode,status,created_at) VALUES('target','someone','loc',15,'okala','full','succeeded',strftime('%Y-%m-%dT%H:%M:%fZ','now'))`); err != nil {
+		t.Fatal(err)
+	}
+	r := analyticsTestRequest(New(db, cfg, nil), "DELETE", "/api/admin/scans", `{"scanId":"target","confirmation":"DELETE SCANS","password":"test-password"}`, cookie)
+	if r.Code != 202 {
+		t.Fatal(r.Code, r.Body.String())
+	}
+	var count int
+	db.QueryRow(`SELECT count(*) FROM scan_delete_requests WHERE scan_id='target'`).Scan(&count)
+	if count != 1 {
+		t.Fatal("deletion request missing")
+	}
+	db.QueryRow(`SELECT count(*) FROM admin_scan_audit WHERE admin_id='operator'`).Scan(&count)
+	if count != 1 {
+		t.Fatal("audit missing")
 	}
 }

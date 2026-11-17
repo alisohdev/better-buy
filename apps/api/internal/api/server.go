@@ -86,6 +86,10 @@ var cancelPath = regexp.MustCompile(`^/api/scans/[^/]+/cancel$`)
 
 func consumeRateLimit(ctx context.Context, db *sql.DB, userID, method, path string) (int, error) {
 	bucket, limit := "read", 120
+	if method == http.MethodDelete && path == "/api/admin/scans" {
+		bucket, limit = "read", 3
+		userID = "admin-delete:" + userID
+	}
 	if method == http.MethodPost && path == "/api/scans" {
 		bucket, limit = "start", 5
 	} else if method == http.MethodPost && cancelPath.MatchString(path) {

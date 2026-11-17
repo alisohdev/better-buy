@@ -1,4 +1,5 @@
 "use client";
+import { useFreshnessClock, SCAN_MAX_AGE } from "../scans/freshness";
 import { Button } from "@/components/ui/button";
 
 import { useRef, useState } from "react";
@@ -26,14 +27,19 @@ export function ProviderCart({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
+  const now = useFreshnessClock();
   const titleRef = useRef<HTMLHeadingElement>(null);
   const controls = useRef(new Map<string, HTMLButtonElement>());
   const rows = carts.flatMap(({ source, controller }) => {
     const data = controller.cart.data;
     return (data?.lines ?? []).map((line) => {
-      const store = data?.recommendation.stores.find((store) =>
-        store.items.some((item) => item.key === line.key)
-      );
+      const fresh =
+        !!data?.observedAt && now - Date.parse(data.observedAt) < SCAN_MAX_AGE;
+      const store = fresh
+        ? data?.recommendation.stores.find((store) =>
+            store.items.some((item) => item.key === line.key)
+          )
+        : undefined;
       const offer = store?.items.find((item) => item.key === line.key);
       return {
         source,
@@ -133,6 +139,12 @@ export function ProviderCart({
               </div>
             ))}
             {loading && <p role="status">در حال دریافت سبد…</p>}
+            {rows.length > 0 && !priced.length && (
+              <p role="status">
+                کالاهای شما نگهداری شده‌اند؛ برای دیدن قیمت و موجودی معتبر، اسکن
+                تازه انجام دهید.
+              </p>
+            )}
             {!locationId && (
               <p className="cart-state-note">
                 برای مشاهده قیمت‌ها موقعیت تحویل را انتخاب کنید.
