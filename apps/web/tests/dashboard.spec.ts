@@ -2244,6 +2244,9 @@ for (const liveSource of ["okala", "snappmarket", "digikalajet"] as const)
     });
     await expect(sticky).toBeVisible();
     await expect(sticky).toContainText("اسکن هنوز ادامه دارد");
+    await expect
+      .poll(async () => (await sticky.boundingBox())?.height ?? Infinity)
+      .toBeLessThan(190);
     const layout = await sticky.evaluate((el) => ({
       position: getComputedStyle(el).position,
       height: el.getBoundingClientRect().height,
@@ -2534,12 +2537,20 @@ test("Snapp shows request activity before first product then opens the home list
   await expect(
     page.getByText("۱۷ تلاش برای دریافت اطلاعات فروشگاه‌ها", { exact: true })
   ).toBeVisible();
+  const progress = page.getByRole("progressbar", {
+    name: "پیشرفت تقریبی اسکن",
+  });
+  const firstPercent = Number(await progress.getAttribute("aria-valuenow"));
+  expect(firstPercent).toBeGreaterThan(0);
   state.scans = [
     { ...active, execution: { ...active.execution!, attemptCount: 38 } },
   ];
   await expect(
     page.getByText("۳۸ تلاش برای دریافت اطلاعات فروشگاه‌ها", { exact: true })
   ).toBeVisible({ timeout: 10000 });
+  await expect
+    .poll(async () => Number(await progress.getAttribute("aria-valuenow")))
+    .toBeGreaterThan(firstPercent);
   found = true;
   await expect(
     page.getByRole("heading", { name: "First Snapp product", exact: true })
@@ -2548,4 +2559,197 @@ test("Snapp shows request activity before first product then opens the home list
   await expect(
     page.getByRole("complementary", { name: "اسکن در حال انجام" })
   ).toBeVisible();
+});
+
+test("finished scans show their actual duration in results and history", async ({
+  page,
+}) => {
+  const end = new Date();
+  const completed = run({
+    createdAt: new Date(end.getTime() - 219_000).toISOString(),
+    startedAt: new Date(end.getTime() - 219_000).toISOString(),
+    finishedAt: end.toISOString(),
+  });
+  await mock(page, {
+    scans: [completed],
+    groups: [group("Timed scan product")],
+  });
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "بهتر بخر، پیشنهادها" }).click();
+  await expect(page.getByText(/مدت اسکن: ۳ دقیقه و ۳۹ ثانیه/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "تاریخچه", exact: true })
+    .first()
+    .click();
+  await expect(
+    page
+      .locator(".history-page")
+      .getByText("مدت اسکن: ۳ دقیقه و ۳۹ ثانیه", { exact: true })
+  ).toBeVisible();
+});
+
+test("scan completion banner persists until dismissal and scan setup stays usable", async ({
+  page,
+}) => {
+  test.setTimeout(60000);
+  const state = await mock(page);
+  let found = false;
+  await page.route("**/api/scans", async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    const input = route.request().postDataJSON();
+    const stamp = new Date().toISOString();
+    state.scans = [
+      run({
+        ...input,
+        id: "banner-run",
+        status: "running",
+        createdAt: stamp,
+        startedAt: stamp,
+        finishedAt: null,
+        productCount: 380,
+        execution: {
+          kind: "workflow",
+          phase: "collecting",
+          completedUnits: 1,
+          totalUnits: 1,
+          completedPages: 1,
+          observedRows: 380,
+          eligibleOffers: 1,
+          attemptCount: 3,
+          heartbeatAt: stamp,
+          deadlineAt: null,
+          dispatchState: "running",
+          cancelRequested: false,
+        },
+      }),
+    ];
+    await route.fulfill({ status: 202, json: { data: state.scans[0] } });
+  });
+  await page.route("**/api/scans/banner-run/preview**", (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          ...products(
+            found ? [group("Banner test product", "banner-run")] : []
+          ),
+          coverageSummary: "in_progress",
+        },
+      },
+    })
+  );
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await page.locator(".provider-option").filter({ hasText: "اکالا" }).click();
+  await page
+    .locator(".provider-option")
+    .filter({ hasText: "سوپرمارکت دیجی‌کالا" })
+    .click();
+  await page.getByRole("button", { name: "شروع اسکن", exact: true }).click();
+  const stage = page.locator(".scan-stage-running");
+  await expect(stage).toBeVisible();
+  await expect(stage.locator(".scan-stage-track")).toHaveCSS("height", "8px");
+  await expect(stage.locator(".scan-stage-track > span")).toHaveCSS(
+    "background-color",
+    "rgb(109, 40, 217)"
+  );
+  found = true;
+  const running = page.getByRole("complementary", {
+    name: "اسکن در حال انجام",
+  });
+  await expect(running).toBeVisible({ timeout: 15000 });
+  await expect(page.locator(".shopping-scan-action")).toBeDisabled();
+  for (const button of await page
+    .getByRole("button", { name: "اسکن تخفیف‌ها", exact: true })
+    .all())
+    await expect(button).toBeDisabled();
+  await expect(running.locator(".sticky-scan-track")).toHaveCSS(
+    "height",
+    "8px"
+  );
+  await captureState(page, "scan-banner-running");
+  const end = new Date();
+  state.scans = state.scans.map((item) => ({
+    ...item,
+    status: "succeeded",
+    startedAt: new Date(end.getTime() - 313_000).toISOString(),
+    finishedAt: end.toISOString(),
+    context: {
+      location: {
+        name: home.name,
+        latitude: home.latitude,
+        longitude: home.longitude,
+        revision: 1,
+      },
+      requestedThreshold: 15,
+      effectiveThreshold: 15,
+      policyVersion: "automatic-v1",
+      manifest: {
+        adapter: "snapp-market-party",
+        contractVersion: 1,
+        feedKinds: ["market_party"],
+      },
+      scopeHash: "fixture",
+      eligibilityVersion: 1,
+      offerKeyVersion: 1,
+      coverage: "complete",
+    },
+  }));
+  state.groups = [group("Banner test product", "banner-run")];
+  const completed = page.getByRole("complementary", { name: "نتیجه اسکن" });
+  await expect(completed).toBeVisible({ timeout: 15000 });
+  await expect(completed).toContainText("مدت اسکن: ۵ دقیقه و ۱۳ ثانیه");
+  await expect(completed.getByRole("progressbar")).toHaveAttribute(
+    "aria-valuenow",
+    "100"
+  );
+  await expect(page.locator(".shopping-scan-action")).toBeEnabled();
+  await captureState(page, "scan-banner-completed");
+  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await expect(completed.locator(".sticky-scan-track > span")).toHaveCSS(
+    "background-color",
+    "rgb(180, 154, 255)"
+  );
+  await expect(completed.locator(".scan-finished-mark")).toHaveCSS(
+    "animation-name",
+    "none"
+  );
+  await captureState(page, "scan-banner-completed-dark");
+  await page.emulateMedia({
+    colorScheme: "light",
+    reducedMotion: "no-preference",
+  });
+
+  await page.locator(".shopping-scan-action").click();
+  await expect(completed).toBeVisible();
+  await expect(page.locator(".scan-page")).toHaveAttribute(
+    "data-stage",
+    "complete"
+  );
+  await expect(
+    page.getByRole("region", { name: "تنظیم اسکن تخفیف‌ها" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "اسکن دوباره", exact: true })
+  ).toBeEnabled();
+  await captureState(page, "scan-setup-after-completion");
+  await page
+    .getByRole("button", { name: "بازگشت به پیشنهادها", exact: true })
+    .click();
+  await expect(completed).toBeVisible();
+  await page.reload();
+  await expect(completed).toBeVisible();
+  await completed.getByRole("button", { name: "بستن نتیجه اسکن" }).click();
+  await expect(completed).toHaveCount(0);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "Banner test product", exact: true })
+  ).toBeVisible();
+  await expect(completed).toHaveCount(0);
 });

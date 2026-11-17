@@ -57,3 +57,33 @@ func TestSnappStreamsBaselineBeforeCampaignDiscovery(t *testing.T) {
 		t.Fatal("discovery never started")
 	}
 }
+
+func TestSnappDiscoveryCountersAreDistinctAndClaimAware(t *testing.T) {
+	db := openJournalTestDB(t)
+	now := time.Now().UTC().Format(time.RFC3339Nano)
+	claim := insertRunningJournalScan(t, db, "discovery-counts", now, now)
+	c := &Collector{db: db}
+	job, err := c.loadScanJob(context.Background(), claim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	observations := []scanObservation{{Kind: "vendor", Identity: "1"}, {Kind: "product", Identity: "1:1"}, {Kind: "product", Identity: "1:1"}, {Kind: "product", Identity: "1:2"}}
+	for i := 0; i < 2; i++ {
+		if err := job.journal.recordDiscoveryObservations(context.Background(), observations); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := job.Progress(context.Background(), 0, 1); err != nil {
+		t.Fatal(err)
+	}
+	var products, vendors int
+	if err := db.QueryRow(`SELECT product_count,vendor_count FROM scans WHERE id=?`, claim.ScanID).Scan(&products, &vendors); err != nil || products != 2 || vendors != 1 {
+		t.Fatalf("products=%d vendors=%d err=%v", products, vendors, err)
+	}
+	if _, err := db.Exec(`UPDATE scans SET status='cancelled' WHERE id=?`, claim.ScanID); err != nil {
+		t.Fatal(err)
+	}
+	if err := job.journal.recordDiscoveryObservations(context.Background(), []scanObservation{{Kind: "product", Identity: "1:3"}}); err == nil {
+		t.Fatal("stopped collector updated progress")
+	}
+}

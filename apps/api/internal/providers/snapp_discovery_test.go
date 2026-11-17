@@ -117,6 +117,21 @@ func TestSnappDiscoversNonMallStoreAndPaginatesBestDeals(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	var liveCount int
+	if err := db.QueryRow(`SELECT COUNT(*) FROM scan_live_offers WHERE scan_id=? AND offer_json IS NOT NULL`, claim.ScanID).Scan(&liveCount); err != nil || liveCount == 0 {
+		t.Fatalf("discovery products not streamed: %d %v", liveCount, err)
+	}
+	var observedCount int
+	if err := db.QueryRow(`SELECT product_count FROM scans WHERE id=?`, claim.ScanID).Scan(&observedCount); err != nil || observedCount == 0 {
+		t.Fatalf("examined product count stuck during discovery: %d %v", observedCount, err)
+	}
+	if err := job.Progress(context.Background(), 0, 0); err != nil {
+		t.Fatal(err)
+	}
+	var replayCount int
+	if err := db.QueryRow(`SELECT product_count FROM scans WHERE id=?`, claim.ScanID).Scan(&replayCount); err != nil || replayCount != observedCount {
+		t.Fatalf("progress regressed: %d -> %d (%v)", observedCount, replayCount, err)
+	}
 	if !categoryCalls["other"] || !categoryCalls["0wqkoz"] {
 		t.Fatalf("not all stores discovered: %v", categoryCalls)
 	}

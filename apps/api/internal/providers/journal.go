@@ -392,7 +392,7 @@ func (j *journal) freezeDigikalaManifest(ctx context.Context, contextJSON string
 
 func (j *journal) progress(ctx context.Context, vendors, products int) error {
 	now := time.Now().UTC().Format(time.RFC3339Nano)
-	result, err := j.db.ExecContext(ctx, `UPDATE scans SET vendor_count=?,product_count=? WHERE id=? AND user_id=? AND status='running' AND EXISTS(SELECT 1 FROM scan_execution e JOIN vps_scan_jobs q ON q.scan_id=e.scan_id WHERE e.scan_id=scans.id AND e.instance_id=? AND e.cancel_requested=0 AND q.instance_id=? AND q.owner_boot_id=? AND q.state='running' AND q.stop_requested=0)`, vendors, products, j.claim.ScanID, j.claim.UserID, j.claim.InstanceID, j.claim.InstanceID, j.claim.OwnerBootID)
+	result, err := j.db.ExecContext(ctx, `UPDATE scans SET vendor_count=MAX(vendor_count,?),product_count=MAX(product_count,?) WHERE id=? AND user_id=? AND status='running' AND EXISTS(SELECT 1 FROM scan_execution e JOIN vps_scan_jobs q ON q.scan_id=e.scan_id WHERE e.scan_id=scans.id AND e.instance_id=? AND e.cancel_requested=0 AND q.instance_id=? AND q.owner_boot_id=? AND q.state='running' AND q.stop_requested=0)`, vendors, products, j.claim.ScanID, j.claim.UserID, j.claim.InstanceID, j.claim.InstanceID, j.claim.OwnerBootID)
 	if err != nil {
 		return err
 	}

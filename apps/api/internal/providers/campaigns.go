@@ -291,6 +291,7 @@ func (c *Collector) planSnappCampaigns(ctx context.Context, job *scanJob, guest 
 	}
 	sort.Strings(orderedCodes)
 	resolvedOwners := make(map[int64]string)
+	eligibleOwners := make(map[int64]CampaignScope)
 	scopes := make([]CampaignScope, 0)
 	for _, code := range orderedCodes {
 		if err := ctx.Err(); err != nil {
@@ -339,6 +340,7 @@ func (c *Collector) planSnappCampaigns(ctx context.Context, job *scanJob, guest 
 		if isOutOfArea || !delivers || delivery["deliveryStatus"] == "NOT_OPEN" || noAvailableSlot {
 			continue
 		}
+		eligibleOwners[vendorID] = CampaignScope{VendorID: vendorID, VendorCode: code, VendorTitle: title}
 		candidateIDs := snappStoreCampaignIDs(root)
 		{ // Discounted categories belong to every eligible store, not only the mall hint.
 			categoryQuery := url.Values{"vendorCode": {code}, "lat": {strconv.FormatFloat(location.Latitude, 'f', -1, 64)}, "long": {strconv.FormatFloat(location.Longitude, 'f', -1, 64)}}
@@ -413,6 +415,35 @@ scopeLoop:
 			}
 			scope.ExpectedPageSize = &size
 		}
+		// Probe pages already contain validated product observations. Expose them
+		// immediately instead of waiting for every store/category to be planned.
+		live := []liveObservation{}
+		observations := []scanObservation{{Kind: "vendor", Identity: strconv.FormatInt(scope.VendorID, 10)}}
+		at, err := time.Parse(time.RFC3339Nano, probe.observedAt)
+		if err != nil {
+			return nil, err
+		}
+		for _, row := range first.Rows {
+			contribution, identity, unresolved, err := campaignProductForScope(row, scope, eligibleOwners, job.Threshold, probe.observedAt, job.StartedAt())
+			if unresolved {
+				job.Context.Coverage = "incomplete"
+			}
+			if err != nil {
+				return nil, err
+			}
+			observations = append(observations, scanObservation{Kind: "product", Identity: identity})
+			owner, _, _ := strings.Cut(identity, ":")
+			observations = append(observations, scanObservation{Kind: "vendor", Identity: owner})
+			if contribution.Offer != nil {
+				live = append(live, liveObservation{Key: contribution.DealKey, Offer: contribution.Offer, ObservedNano: at.UnixNano()})
+			}
+		}
+		if err := job.journal.recordDiscoveryObservations(ctx, observations); err != nil {
+			return nil, err
+		}
+		if err := job.journal.publishLiveOffers(ctx, live); err != nil {
+			return nil, err
+		}
 		validated = append(validated, scope)
 	}
 	sort.Slice(validated, func(a, b int) bool {
@@ -484,6 +515,11 @@ func (c *Collector) enrichSnappCampaigns(ctx context.Context, job *scanJob, scop
 	vendorIDs := make(map[string]struct{}, len(baselineVendors)+len(scopes))
 	productKeys := make(map[string]struct{}, baseline.ProductCount)
 	vendorTitles := make(map[int64]string)
+	knownStores := make(map[int64]CampaignScope)
+	for _, scope := range scopes {
+		knownStores[scope.VendorID] = scope
+	}
+	countDrifted := false
 	for _, scope := range scopes {
 		if err := ctx.Err(); err != nil {
 			return scanResult{}, err
@@ -534,7 +570,7 @@ func (c *Collector) enrichSnappCampaigns(ctx context.Context, job *scanJob, scop
 		if err != nil {
 			return scanResult{}, err
 		}
-		var reportedCount int
+		var reportedCount, initialCount, countMovement int
 		var rawCount int
 		fingerprints := make(map[string]struct{})
 		for pageNumber := 0; ; pageNumber++ {
@@ -575,13 +611,24 @@ func (c *Collector) enrichSnappCampaigns(ctx context.Context, job *scanJob, scop
 				return scanResult{}, err
 			}
 			if pageNumber == 0 {
-				reportedCount = page.Count
+				reportedCount, initialCount = page.Count, page.Count
 			} else if page.Count != reportedCount {
-				return scanResult{}, &Failure{Code: "INCOMPLETE_PAGINATION", Message: "Snapp Market campaign count changed during collection.", Status: 502}
+				delta := page.Count - reportedCount
+				if delta < 0 {
+					delta = -delta
+				}
+				countMovement += delta
+				// Live inventory can change between requests. Bound cumulative
+				// movement, keep fetching to the empty page, and label coverage incomplete.
+				if countMovement > max(snappCampaignPageSize, initialCount/10) {
+					return scanResult{}, &Failure{Code: "INCOMPLETE_PAGINATION", Message: "Snapp Market campaign count changed excessively during collection.", Status: 502}
+				}
+				countDrifted = true
+				reportedCount = page.Count
 			}
 			pageSize := len(page.Rows)
 			if pageSize == 0 {
-				if rawCount != reportedCount {
+				if distance := int(math.Abs(float64(rawCount - reportedCount))); distance > countMovement {
 					return scanResult{}, &Failure{Code: "INCOMPLETE_PAGINATION", Message: "Snapp Market campaign ended before its reported count.", Status: 502}
 				}
 				metadata, err := json.Marshal(map[string]any{"contractVersion": 1, "page": pageNumber, "reportedCount": reportedCount, "rawCount": rawCount, "pageSize": 0, "terminal": true})
@@ -608,7 +655,12 @@ func (c *Collector) enrichSnappCampaigns(ctx context.Context, job *scanJob, scop
 				if vendorTitle == "" {
 					vendorTitle = scope.VendorCode
 				}
-				contribution, identity, err := campaignProduct(row, scope, vendorTitle, job.Threshold, response.observedAt, job.StartedAt())
+				rowScope := scope
+				rowScope.VendorTitle = vendorTitle
+				contribution, identity, unresolved, err := campaignProductForScope(row, rowScope, knownStores, job.Threshold, response.observedAt, job.StartedAt())
+				if unresolved {
+					countDrifted = true
+				}
 				if err != nil {
 					return scanResult{}, err
 				}
@@ -624,7 +676,7 @@ func (c *Collector) enrichSnappCampaigns(ctx context.Context, job *scanJob, scop
 			}
 			fingerprints[string(encodedFingerprint)] = struct{}{}
 			rawCount += pageSize
-			if rawCount > reportedCount {
+			if rawCount > reportedCount+countMovement {
 				return scanResult{}, &Failure{Code: "INCOMPLETE_PAGINATION", Message: "Snapp Market campaign exceeded its reported count.", Status: 502}
 			}
 			metadata, err := json.Marshal(map[string]any{"contractVersion": 1, "page": pageNumber, "reportedCount": reportedCount, "rawCount": rawCount, "pageSize": pageSize, "terminal": false})
@@ -688,7 +740,7 @@ func (c *Collector) enrichSnappCampaigns(ctx context.Context, job *scanJob, scop
 		return deals[a].Key < deals[b].Key
 	})
 	coverage := baseline.Coverage
-	if quarantined {
+	if quarantined || countDrifted || job.Context.Coverage == "incomplete" {
 		coverage = "incomplete"
 	}
 	return scanResult{VendorCount: len(vendorIDs), ProductCount: len(productKeys), Deals: deals, Coverage: coverage}, nil
@@ -701,6 +753,26 @@ func campaignProductMatchesCategory(row map[string]any, categoryID int64) bool {
 	}
 	productCategoryID, ok := positiveID(value)
 	return ok && productCategoryID == categoryID
+}
+
+// A campaign may contain several stores. Only resolve foreign rows to a store
+// whose code and delivery eligibility were verified; never relabel it as the parent.
+func campaignProductForScope(row map[string]any, scope CampaignScope, stores map[int64]CampaignScope, threshold int, observedAt string, startedAt time.Time) (campaignContribution, string, bool, error) {
+	owner, valid := positiveID(row["vendor_id"])
+	if valid && owner != scope.VendorID {
+		store, known := stores[owner]
+		if !known {
+			id, ok := positiveID(row["id"])
+			if !ok {
+				return campaignContribution{}, "", false, &Failure{Code: "UPSTREAM_CHANGED", Message: "Snapp Market product identity changed.", Status: 502}
+			}
+			identity := fmt.Sprintf("%d:%d", owner, id)
+			return campaignContribution{DealKey: identity, Signature: "unverified-store-owner"}, identity, true, nil
+		}
+		scope.VendorID, scope.VendorCode, scope.VendorTitle = store.VendorID, store.VendorCode, store.VendorTitle
+	}
+	contribution, identity, err := campaignProduct(row, scope, scope.VendorTitle, threshold, observedAt, startedAt)
+	return contribution, identity, false, err
 }
 
 func campaignProduct(row map[string]any, scope CampaignScope, vendorTitle string, threshold int, observedAt string, startedAt time.Time) (campaignContribution, string, error) {

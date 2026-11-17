@@ -19,6 +19,7 @@ export function AppHeader({
   onAdmin,
   view,
   scanning = false,
+  scanDisabled = false,
   wishlistOpen = false,
   cartOpen = false,
   locationsOpen = false,
@@ -30,6 +31,7 @@ export function AppHeader({
   onHome: () => void;
   onScan: () => void;
   scanning?: boolean;
+  scanDisabled?: boolean;
   wishlistOpen?: boolean;
   cartOpen?: boolean;
   locationsOpen?: boolean;
@@ -115,6 +117,7 @@ export function AppHeader({
             variant="ghost"
             aria-current={scanning && !overlayActive ? "page" : undefined}
             data-active={scanning && !overlayActive}
+            disabled={scanDisabled}
             onClick={onScan}
           >
             <AppIcon name="scan" />
@@ -283,6 +286,7 @@ export function AppHeader({
                 <Button
                   variant="ghost"
                   data-active={scanning}
+                  disabled={scanDisabled}
                   onClick={() => mobileAction(onScan)}
                 >
                   <AppIcon name="scan" />

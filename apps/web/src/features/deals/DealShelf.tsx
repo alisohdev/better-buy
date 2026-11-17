@@ -140,7 +140,10 @@ export function DealShelf({
               ? "اسکن ادامه دارد؛ پیشنهادها به‌روز می‌شوند."
               : feed.ledger.scan!.status === "cancelled"
                 ? "اسکن متوقف شد؛ پیشنهادهای دریافت‌شده تا زمان توقف"
-                : checkedAgo(feed.ledger.scan!, freshnessNow)}{" "}
+                : checkedAgo(feed.ledger.scan!, freshnessNow)}
+            {feed.ledger.scan!.status === "succeeded" &&
+              feed.ledger.scan!.context?.coverage === "incomplete" &&
+              " · پوشش کامل تأیید نشده؛ پیشنهادهای دریافت‌شده نمایش داده می‌شوند."}{" "}
           </small>
         ))}
       <div className="deal-summary">

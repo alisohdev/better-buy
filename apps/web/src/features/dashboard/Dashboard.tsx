@@ -3,6 +3,7 @@ import "../scans/scan-feedback.css";
 import { StickyScanProgress } from "../scans/StickyScanProgress";
 import { useVisitor } from "../guest/VisitorProvider";
 import { Button } from "@/components/ui/button";
+import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import { DropdownMenu } from "radix-ui";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -30,7 +31,7 @@ import { LocationManager } from "../locations/LocationManager";
 import { DealShelf, type DealFeed } from "../deals/DealShelf";
 import { useDealFilters } from "../deals/useDealFilters";
 import type { DealSource } from "./types";
-import { scanProgressPercent as calculateScanProgress } from "../scans/progress";
+import { useScanProgress as calculateScanProgress } from "../scans/progress";
 import { scanFailureMessage } from "../scans/scanFailureMessage";
 import { ScanFeedback } from "../scans/ScanFeedback";
 import { ProviderCart, CartWriteNotice } from "../carts/ProviderCart";
@@ -44,7 +45,9 @@ import { useSearchAnalytics } from "../admin/useAnalytics";
 export function Dashboard() {
   return (
     <TutorialProvider>
-      <DashboardContent />
+      <LayoutGroup id="scan-feedback">
+        <DashboardContent />
+      </LayoutGroup>
     </TutorialProvider>
   );
 }
@@ -56,6 +59,19 @@ function DashboardContent() {
   const wishlist = useWishlistQuery();
   const adminAccess = useAdminAccess();
   const [view, setView] = useState<"deals" | "history" | "admin">("deals");
+  const reducedMotion = useReducedMotion();
+  const [dismissedScanIds, setDismissedScanIds] = useState<string[]>(() => {
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem("better-buy:dismissed-scan-banners") ?? "[]"
+      );
+      return Array.isArray(saved)
+        ? saved.filter((id): id is string => typeof id === "string").slice(-100)
+        : [];
+    } catch {
+      return [];
+    }
+  });
   const revealedLiveScans = useRef(new Set<string>());
   const [workspaceSection, setWorkspaceSection] = useState<"offers" | "scan">(
     "scan"
@@ -421,6 +437,37 @@ function DashboardContent() {
   const activeRuns = [activeSnapp, activeOkala, activeDigikala].filter(
     (run): run is ScanRecord => run !== null
   );
+  const completedBannerRuns = providers.flatMap((source) => {
+    const latest = data.scans
+      .filter(
+        (run) =>
+          run.source === source &&
+          run.locationId === data.selected &&
+          (!run.context || run.context.location.revision === coordinateRevision)
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+    return latest?.status === "succeeded" &&
+      !dismissedScanIds.includes(latest.id)
+      ? [latest]
+      : [];
+  });
+  const dismissCompletedBanner = () => {
+    const next = [
+      ...new Set([
+        ...dismissedScanIds,
+        ...completedBannerRuns.map((run) => run.id),
+      ]),
+    ].slice(-100);
+    setDismissedScanIds(next);
+    try {
+      localStorage.setItem(
+        "better-buy:dismissed-scan-banners",
+        JSON.stringify(next)
+      );
+    } catch {
+      /* Dismissal still works for this page. */
+    }
+  };
   const progressCompleted = activeRuns.reduce(
     (total, run) => total + (run.execution?.completedUnits ?? 0),
     0
@@ -437,7 +484,7 @@ function DashboardContent() {
     (total, run) => total + (run.execution?.observedRows ?? 0),
     0
   );
-  const scanProgressPercent = calculateScanProgress(activeRuns);
+  const scanProgressPercent = calculateScanProgress(activeRuns, data.scans);
   useEffect(() => {
     for (const feed of feeds) {
       const run = feed.ledger.scan;
@@ -482,6 +529,7 @@ function DashboardContent() {
           setSelection({ source: null, runId: null });
           setWorkspaceSection("scan");
         }}
+        scanDisabled={active || submitting}
         scanning={view === "deals" && workspaceSection === "scan"}
         wishlistOpen={wishlistOpen}
         cartOpen={cartOpen}
@@ -548,6 +596,14 @@ function DashboardContent() {
       <div
         className={`workspace ${view === "deals" && workspaceSection === "scan" ? "workspace-scan" : ""}`}
       >
+        {!active && !submitting && completedBannerRuns.length > 0 && (
+          <StickyScanProgress
+            runs={[]}
+            history={data.scans}
+            completedRuns={completedBannerRuns}
+            onDismiss={dismissCompletedBanner}
+          />
+        )}
         {view === "admin" && adminAccess.data?.allowed ? (
           <AdminDashboard onClose={goHome} />
         ) : (
@@ -641,7 +697,7 @@ function DashboardContent() {
                     <AppIcon name="scan" />
                   </span>
                 </header>
-                {scanPageStage === "ready" && (
+                {scanPageStage !== "running" && (
                   <ScanControls
                     locations={data.locations}
                     selected={data.selected}
@@ -669,7 +725,14 @@ function DashboardContent() {
                 <TutorialHint at="waiting" />
                 <TutorialHint at="results" />
                 {scanPageStage === "running" && (
-                  <section
+                  <motion.section
+                    layoutId="scan-progress-panel"
+                    layout="position"
+                    transition={
+                      reducedMotion
+                        ? { duration: 0 }
+                        : { type: "spring", stiffness: 280, damping: 30 }
+                    }
                     className="scan-stage scan-stage-running"
                     role="status"
                     aria-live="polite"
@@ -691,13 +754,13 @@ function DashboardContent() {
                           ? "در حال بررسی…"
                           : `${faNumber.format(scanProgressPercent)}٪`}
                       </strong>
-                      <span>پیشرفت اسکن</span>
+                      <span>پیشرفت تقریبی اسکن</span>
                     </div>
                     <div
                       className="scan-progress-track scan-stage-track"
                       data-indeterminate={scanProgressPercent === null}
                       role="progressbar"
-                      aria-label="پیشرفت اسکن"
+                      aria-label="پیشرفت تقریبی اسکن"
                       aria-valuemin={0}
                       aria-valuemax={
                         scanProgressPercent === null ? undefined : 100
@@ -730,7 +793,7 @@ function DashboardContent() {
                         {faNumber.format(observedRows)} رکورد کالا بررسی شده
                       </p>
                     )}
-                  </section>
+                  </motion.section>
                 )}
               </section>
             ) : !valid && !data.busy && !data.locationsQuery.error ? (
@@ -741,6 +804,7 @@ function DashboardContent() {
             ) : (
               <>
                 <StickyScanProgress
+                  history={data.scans}
                   runs={activeRuns.filter(
                     (run) => run.locationId === data.selected
                   )}
@@ -812,6 +876,7 @@ function DashboardContent() {
                   </div>
                   <Button
                     className="shopping-scan-action"
+                    disabled={active || submitting}
                     onClick={() => setWorkspaceSection("scan")}
                   >
                     <AppIcon name="scan" />

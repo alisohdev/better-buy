@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -781,6 +782,9 @@ func (q *Queue) runJob(parent context.Context, claim providers.Claim) {
 		code := "COLLECTION_FAILED"
 		if errors.As(err, &collectorErr) && collectorErr.Code != "" {
 			code = collectorErr.Code
+		}
+		if collectorErr != nil {
+			slog.Warn("scan provider validation failed", "scan_id", claim.ScanID, "code", code, "detail", collectorErr.Message)
 		}
 		q.finishFailure(context.Background(), claim, code)
 		return

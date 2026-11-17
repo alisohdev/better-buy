@@ -1,3 +1,4 @@
+import { formatScanDuration } from "./progress";
 import { scanExpired, useFreshnessClock, checkedAgo } from "./freshness";
 import { Button } from "@/components/ui/button";
 import { scanFailureMessage } from "./scanFailureMessage";
@@ -42,6 +43,9 @@ export function HistoryPanel({
                     {faDate.format(new Date(s.createdAt))}
                   </time>
                   <p>{checkedAgo(s, now)}</p>
+                  {formatScanDuration(s) && (
+                    <p>مدت اسکن: {formatScanDuration(s)}</p>
+                  )}
                 </div>
                 <div>
                   <strong>

@@ -7,7 +7,7 @@ import { faNumber, sourceLabel } from "../dashboard/format";
 import type { useScanPolling } from "./useScanPolling";
 import type { useStartScan } from "./useStartScan";
 import { useCancelScan } from "./useCancelScan";
-import { scanProgressPercent } from "./progress";
+import { useScanProgress } from "./progress";
 export function ScanFeedback({
   active,
   polling,
@@ -22,7 +22,7 @@ export function ScanFeedback({
   onOpenContext: (run: ScanRecord) => void;
 }) {
   const cancel = useCancelScan();
-  const percent = active ? scanProgressPercent([active]) : null;
+  const percent = useScanProgress(active ? [active] : []);
   return (
     <>
       {active && (
@@ -66,11 +66,12 @@ export function ScanFeedback({
                         ? "در انتظار شروع بررسی فروشگاه‌ها"
                         : "در حال دریافت و مقایسه پیشنهادهای فروشگاه‌ها"}
                   </p>
+                  <p>پیشرفت تقریبی: {faNumber.format(percent ?? 0)}٪</p>
                   <div
                     className="scan-progress-track"
                     data-indeterminate={percent === null}
                     role="progressbar"
-                    aria-label="پیشرفت اسکن"
+                    aria-label="پیشرفت تقریبی اسکن"
                     aria-valuemin={0}
                     aria-valuemax={percent === null ? undefined : 100}
                     aria-valuenow={percent ?? undefined}
