@@ -52,29 +52,33 @@ export function StickyScanProgress({
             "پیشنهادهای دریافت‌شده آماده‌اند."
           ) : (
             <>
-              پیشرفت تقریبی: {faNumber.format(percent)}٪ · پیشنهادها به‌تدریج
-              اضافه می‌شوند.
+              <span>پیشرفت تقریبی</span> <bdi>{faNumber.format(percent)}٪</bdi>
             </>
           )}
         </p>
       </div>
-      <div className="sticky-scan-providers">
+      <div className="sticky-scan-providers" data-count={visibleRuns.length}>
         {visibleRuns.map((run) => (
           <div key={run.id}>
             <ProviderMark source={run.source} />
-            <span>{sourceLabel(run.source)}</span>
-            <small>
-              {complete
-                ? `مدت اسکن: ${formatScanDuration(run) ?? "ثبت نشده"}`
-                : run.execution?.cancelRequested
-                  ? "در حال توقف…"
-                  : run.status === "queued"
-                    ? "در انتظار بررسی"
-                    : `${faNumber.format(run.productCount)} کالا بررسی شده`}
-            </small>
+            <div className="scan-provider-copy">
+              <strong>{sourceLabel(run.source)}</strong>
+              <small>
+                {complete
+                  ? `مدت اسکن: ${formatScanDuration(run) ?? "ثبت نشده"}`
+                  : run.execution?.cancelRequested
+                    ? "در حال توقف…"
+                    : run.status === "queued"
+                      ? "در انتظار بررسی"
+                      : `${faNumber.format(run.productCount)} کالا بررسی شده`}
+              </small>
+            </div>
             {!complete && (
               <Button
                 variant="ghost"
+                size="icon"
+                aria-label={`توقف اسکن ${sourceLabel(run.source)}`}
+                title={`توقف اسکن ${sourceLabel(run.source)}`}
                 disabled={cancel.isPending || run.execution?.cancelRequested}
                 onClick={() => cancel.mutate(run.id)}
               >

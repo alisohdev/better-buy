@@ -130,22 +130,6 @@ export function DealShelf({
       <h2 id="offers-title" className="sr-only">
         {historical ? "نتیجه تاریخی" : "تخفیف‌های مناسب شما"}
       </h2>
-      {feeds
-        .filter((feed) => !!feed.ledger.scan)
-        .map((feed) => (
-          <small key={feed.source} role="status">
-            {sourceLabel(feed.source)} ·{" "}
-            {feed.ledger.scan!.status === "running" ||
-            feed.ledger.scan!.status === "queued"
-              ? "اسکن ادامه دارد؛ پیشنهادها به‌روز می‌شوند."
-              : feed.ledger.scan!.status === "cancelled"
-                ? "اسکن متوقف شد؛ پیشنهادهای دریافت‌شده تا زمان توقف"
-                : checkedAgo(feed.ledger.scan!, freshnessNow)}
-            {feed.ledger.scan!.status === "succeeded" &&
-              feed.ledger.scan!.context?.coverage === "incomplete" &&
-              " · پوشش کامل تأیید نشده؛ پیشنهادهای دریافت‌شده نمایش داده می‌شوند."}{" "}
-          </small>
-        ))}
       <div className="deal-summary">
         <span role="status">
           {historical && "نتیجه تاریخی · "}
@@ -237,6 +221,12 @@ export function DealShelf({
                               </dd>
                             </div>
                           </dl>
+                          {ledger.scan.context?.coverage === "incomplete" && (
+                            <p className="result-detail-warning">
+                              پوشش کامل تأیید نشده؛ پیشنهادهای دریافت‌شده نمایش
+                              داده می‌شوند.
+                            </p>
+                          )}
                           {ledger.scan.context == null && (
                             <p className="result-detail-warning">
                               موقعیت و پوشش تاریخی این نتیجه تأیید نشده است.

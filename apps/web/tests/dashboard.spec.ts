@@ -2238,7 +2238,9 @@ for (const liveSource of ["okala", "snappmarket", "digikalajet"] as const)
     await expect(
       live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
     ).toBeVisible();
-    await expect(live).toContainText("اسکن ادامه دارد");
+    await expect(
+      page.getByRole("complementary", { name: "اسکن در حال انجام" })
+    ).toContainText("اسکن هنوز ادامه دارد");
     const sticky = page.getByRole("complementary", {
       name: "اسکن در حال انجام",
     });
@@ -2315,7 +2317,7 @@ for (const liveSource of ["okala", "snappmarket", "digikalajet"] as const)
     await expect(
       live.getByRole("heading", { name: "پیشنهاد زنده اول", exact: true })
     ).toBeVisible();
-    await expect(live).toContainText("اسکن متوقف شد");
+    await expect(page.getByText(/اسکن متوقف شد/).first()).toBeVisible();
     await page.reload();
     await page.getByRole("button", { name: "بهتر بخر، پیشنهادها" }).click();
     await expect(
@@ -2357,7 +2359,13 @@ test("retention shows last checked beside fresh results", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Fresh retention product", exact: true })
   ).toBeVisible();
-  await expect(page.getByText(/۲ ساعت پیش بررسی شد/).first()).toBeVisible();
+  await page.getByRole("button", { name: "جزئیات نتیجه", exact: true }).click();
+  await expect(
+    page
+      .getByRole("dialog")
+      .getByText(/۲ ساعت پیش بررسی شد/)
+      .first()
+  ).toBeVisible();
 });
 
 test("admin scan deletion requires a password and explicit confirmation", async ({
@@ -2752,4 +2760,59 @@ test("scan completion banner persists until dismissal and scan setup stays usabl
     page.getByRole("heading", { name: "Banner test product", exact: true })
   ).toBeVisible();
   await expect(completed).toHaveCount(0);
+});
+
+test("three provider scan banner stays readable without the redundant results text", async ({
+  page,
+}) => {
+  const stamp = new Date().toISOString();
+  const runs = (["snappmarket", "okala", "digikalajet"] as const).map(
+    (source, index) =>
+      run({
+        id: `layout-${source}`,
+        source,
+        status: index === 2 ? "queued" : "running",
+        createdAt: stamp,
+        startedAt: stamp,
+        finishedAt: null,
+        productCount: index === 0 ? 1104 : index === 1 ? 39273 : 0,
+      })
+  );
+  await mock(page, { scans: runs });
+  await page.route("**/api/scans/*/preview**", (route) => {
+    const id = new URL(route.request().url()).pathname.split("/")[3]!;
+    return route.fulfill({
+      json: {
+        data: {
+          ...products([group("Layout test product", id)]),
+          coverageSummary: "in_progress",
+        },
+      },
+    });
+  });
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
+  await page.goto("/");
+  const banner = page.getByRole("complementary", { name: "اسکن در حال انجام" });
+  await expect(banner).toBeVisible();
+  await expect(banner.locator(".sticky-scan-providers > div")).toHaveCount(3);
+  await expect(banner.getByRole("button", { name: /توقف اسکن/ })).toHaveCount(
+    3
+  );
+  await expect(page.locator(".deal-section > small")).toHaveCount(0);
+  await expect
+    .poll(async () => banner.evaluate((el) => getComputedStyle(el).transform))
+    .toBe("none");
+  const layout = await banner.evaluate((el) => ({
+    width: el.getBoundingClientRect().width,
+    viewport: innerWidth,
+    overflow: document.documentElement.scrollWidth > innerWidth,
+  }));
+  expect(layout.width).toBeLessThanOrEqual(layout.viewport);
+  expect(layout.overflow).toBe(false);
+  await captureState(page, "three-provider-banner-light");
+  await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await captureState(page, "three-provider-banner-dark");
 });
