@@ -2666,6 +2666,17 @@ test("scan completion banner persists until dismissal and scan setup stays usabl
     "background-color",
     "rgb(109, 40, 217)"
   );
+  await expect(stage).toHaveCSS("animation-name", "scan-panel-enter");
+  await expect(stage.locator(".scan-stage-track > span")).toHaveCSS(
+    "transition-property",
+    "transform"
+  );
+  await stage.screenshot({
+    path: path.join(
+      evidence,
+      `scan-motion-stage-${test.info().project.name}.png`
+    ),
+  });
   found = true;
   const running = page.getByRole("complementary", {
     name: "اسکن در حال انجام",
@@ -2811,8 +2822,25 @@ test("three provider scan banner stays readable without the redundant results te
   }));
   expect(layout.width).toBeLessThanOrEqual(layout.viewport);
   expect(layout.overflow).toBe(false);
+  await expect(banner).toHaveCSS("animation-name", "scan-banner-enter");
+  await expect(banner.locator(".sticky-scan-track > span")).toHaveCSS(
+    "transition-property",
+    "transform"
+  );
+  await expect(banner).toHaveCSS("animation-duration", "0.26s");
+  await banner.screenshot({
+    path: path.join(
+      evidence,
+      `scan-motion-banner-${test.info().project.name}.png`
+    ),
+  });
   await captureState(page, "three-provider-banner-light");
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
   await expect(page.locator("html")).toHaveClass(/dark/);
+  await expect(banner).toHaveCSS("animation-name", "none");
+  await expect(banner.locator(".sticky-scan-track > span")).toHaveCSS(
+    "transition-duration",
+    "0s"
+  );
   await captureState(page, "three-provider-banner-dark");
 });

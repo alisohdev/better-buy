@@ -1,4 +1,3 @@
-import { motion, useReducedMotion } from "framer-motion";
 import { AppIcon } from "../dashboard/AppIcon";
 import type { ScanRecord } from "@better-buy/shared";
 import { Button } from "@/components/ui/button";
@@ -18,22 +17,14 @@ export function StickyScanProgress({
   onDismiss?: () => void;
 }) {
   const cancel = useCancelScan();
-  const reducedMotion = useReducedMotion();
   const complete = !runs.length;
   const visibleRuns = complete ? completedRuns : runs;
   const percent = useScanProgress(runs, history) ?? 0;
   if (!visibleRuns.length) return null;
   return (
-    <motion.aside
+    <aside
       className="sticky-scan-progress"
       data-complete={complete}
-      layoutId="scan-progress-panel"
-      layout="position"
-      transition={
-        reducedMotion
-          ? { duration: 0 }
-          : { type: "spring", stiffness: 280, damping: 30 }
-      }
       aria-label={complete ? "نتیجه اسکن" : "اسکن در حال انجام"}
     >
       <div className="sticky-scan-copy">
@@ -107,7 +98,9 @@ export function StickyScanProgress({
         aria-valuemax={100}
         aria-valuenow={complete ? 100 : percent}
       >
-        <span style={{ width: `${complete ? 100 : percent}%` }} />
+        <span
+          style={{ transform: `scaleX(${(complete ? 100 : percent) / 100})` }}
+        />
       </div>
       <span className="sr-only" role="status">
         {complete ? "اسکن تمام شد." : "بررسی فروشگاه‌ها همچنان ادامه دارد."}
@@ -115,6 +108,6 @@ export function StickyScanProgress({
       {cancel.error && (
         <p role="alert">توقف اسکن انجام نشد؛ دوباره تلاش کنید.</p>
       )}
-    </motion.aside>
+    </aside>
   );
 }

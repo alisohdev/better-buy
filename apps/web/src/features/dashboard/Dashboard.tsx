@@ -3,7 +3,6 @@ import "../scans/scan-feedback.css";
 import { StickyScanProgress } from "../scans/StickyScanProgress";
 import { useVisitor } from "../guest/VisitorProvider";
 import { Button } from "@/components/ui/button";
-import { LayoutGroup, motion, useReducedMotion } from "framer-motion";
 import { DropdownMenu } from "radix-ui";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -45,9 +44,7 @@ import { useSearchAnalytics } from "../admin/useAnalytics";
 export function Dashboard() {
   return (
     <TutorialProvider>
-      <LayoutGroup id="scan-feedback">
-        <DashboardContent />
-      </LayoutGroup>
+      <DashboardContent />
     </TutorialProvider>
   );
 }
@@ -59,7 +56,6 @@ function DashboardContent() {
   const wishlist = useWishlistQuery();
   const adminAccess = useAdminAccess();
   const [view, setView] = useState<"deals" | "history" | "admin">("deals");
-  const reducedMotion = useReducedMotion();
   const [dismissedScanIds, setDismissedScanIds] = useState<string[]>(() => {
     try {
       const saved = JSON.parse(
@@ -484,7 +480,10 @@ function DashboardContent() {
     (total, run) => total + (run.execution?.observedRows ?? 0),
     0
   );
-  const scanProgressPercent = calculateScanProgress(activeRuns, data.scans);
+  const scanProgressPercent = calculateScanProgress(
+    workspaceSection === "scan" ? activeRuns : [],
+    data.scans
+  );
   useEffect(() => {
     for (const feed of feeds) {
       const run = feed.ledger.scan;
@@ -725,14 +724,7 @@ function DashboardContent() {
                 <TutorialHint at="waiting" />
                 <TutorialHint at="results" />
                 {scanPageStage === "running" && (
-                  <motion.section
-                    layoutId="scan-progress-panel"
-                    layout="position"
-                    transition={
-                      reducedMotion
-                        ? { duration: 0 }
-                        : { type: "spring", stiffness: 280, damping: 30 }
-                    }
+                  <section
                     className="scan-stage scan-stage-running"
                     role="status"
                     aria-live="polite"
@@ -769,7 +761,7 @@ function DashboardContent() {
                     >
                       <span
                         style={{
-                          width: `${scanProgressPercent ?? 0}%`,
+                          transform: `scaleX(${(scanProgressPercent ?? 0) / 100})`,
                         }}
                       />
                     </div>
@@ -793,7 +785,7 @@ function DashboardContent() {
                         {faNumber.format(observedRows)} رکورد کالا بررسی شده
                       </p>
                     )}
-                  </motion.section>
+                  </section>
                 )}
               </section>
             ) : !valid && !data.busy && !data.locationsQuery.error ? (
