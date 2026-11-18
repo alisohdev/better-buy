@@ -2841,3 +2841,35 @@ test("three provider scan banner stays readable without the redundant results te
   );
   await captureState(page, "three-provider-banner-dark");
 });
+
+test("scan failure notice can be dismissed", async ({ page }) => {
+  const stamp = new Date().toISOString();
+  await mock(page, {
+    scans: [
+      run({
+        id: "dismiss-failure",
+        status: "failed",
+        createdAt: stamp,
+        finishedAt: stamp,
+      }),
+    ],
+    groups: [group("Saved product")],
+  });
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
+  await page.goto("/");
+  await page.getByRole("button", { name: "بهتر بخر، پیشنهادها" }).click();
+  const close = page.getByRole("button", { name: "بستن پیام اسکن" }).first();
+  await expect(close).toBeVisible();
+  await close.locator("..").screenshot({
+    path: path.join(
+      evidence,
+      `closable-scan-error-${test.info().project.name}.png`
+    ),
+  });
+  await close.click();
+  await expect(
+    page.getByRole("button", { name: "بستن پیام اسکن" })
+  ).toHaveCount(0);
+});

@@ -45,11 +45,13 @@ export function ReadNotice({
   children,
   retry,
   busy = false,
+  onDismiss,
 }: {
   title: string;
   children?: ReactNode;
   retry?: () => void;
   busy?: boolean;
+  onDismiss?: () => void;
 }) {
   return (
     <Card asChild>
@@ -58,6 +60,16 @@ export function ReadNotice({
           <strong>{title}</strong>
           {children && <p>{children}</p>}
         </div>
+        {onDismiss && (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="بستن پیام اسکن"
+            onClick={onDismiss}
+          >
+            ×
+          </Button>
+        )}
         {retry && (
           <Button
             variant="outline"

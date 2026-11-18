@@ -68,6 +68,7 @@ function DashboardContent() {
       return [];
     }
   });
+  const [dismissedNotices, setDismissedNotices] = useState<string[]>([]);
   const revealedLiveScans = useRef(new Set<string>());
   const [workspaceSection, setWorkspaceSection] = useState<"offers" | "scan">(
     "scan"
@@ -807,10 +808,14 @@ function DashboardContent() {
                     )
                     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
                   return !historical &&
+                    !dismissedNotices.includes(attempt?.id ?? "") &&
                     (attempt?.status === "failed" ||
                       attempt?.status === "cancelled") ? (
                     <ReadNotice
                       key={feed.source}
+                      onDismiss={() =>
+                        setDismissedNotices((ids) => [...ids, attempt.id])
+                      }
                       title={`${sourceLabel(feed.source)} · ${attempt.status === "failed" ? "اسکن ناموفق بود" : "به‌روزرسانی لغو شد"}`}
                     >
                       {attempt.status === "cancelled" && attempt.dealCount > 0
