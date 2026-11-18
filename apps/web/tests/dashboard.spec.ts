@@ -375,10 +375,7 @@ test("enhanced scan feedback distinguishes searching, measured progress and comp
   await expect(progress).toHaveAttribute("aria-valuemax", "100");
   await expect(progress).toHaveAttribute("data-indeterminate", "false");
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect(stage.locator(".scan-activity-mark span").first()).toHaveCSS(
-    "animation-name",
-    "none"
-  );
+  await expect(stage.locator(".scan-activity-mark span")).toHaveCount(0);
   await captureState(page, "enhanced-scan-progress");
   // Finishing the known collection units is not a completed scan: saving and
   // projection may still be running, or another catalogue may be discovered.

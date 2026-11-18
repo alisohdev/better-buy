@@ -731,9 +731,6 @@ function DashboardContent() {
                   >
                     <div className="scan-activity-mark" aria-hidden="true">
                       <AppIcon name="scan" />
-                      <span />
-                      <span />
-                      <span />
                     </div>
                     <h2>در حال اسکن فروشگاه‌ها…</h2>
                     <p>
