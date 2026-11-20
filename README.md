@@ -5,7 +5,7 @@ Better Buy compares discounted products from SnappMarket and Okala for saved del
 ## Architecture
 
 - `apps/api` is the backend, written in Go. One server process serves HTTP, drains the durable SQLite scan queue, runs wishlist schedules, and delivers notifications.
-- `apps/web` is the Next and React frontend. Its production build is a static export in `apps/web/out`.
+- `apps/web` is a React 19 + Vite single-page frontend using TanStack Router and Query. Its production assets are written to `apps/web/out` for Caddy static hosting.
 - `packages/shared` contains TypeScript contracts and helpers used by the frontend.
 - The browser's `/sw.js` handles web push events. Scan work runs in the Go server and does not use a separate process.
 

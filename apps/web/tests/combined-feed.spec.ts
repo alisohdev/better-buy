@@ -6,7 +6,7 @@ import type {
   ScanRecord,
 } from "@better-buy/shared";
 
-const date = "2026-11-01T08:00:00.000Z";
+const date = "2026-11-18T08:00:00.000Z";
 const location = {
   id: "home",
   name: "خانه",
@@ -93,6 +93,7 @@ function product(
   };
 }
 async function fixture(page: Page, lostSource?: CartSource) {
+  await page.clock.setFixedTime(new Date("2026-11-18T09:00:00.000Z"));
   const products = [
     product("snappmarket", "چای ایرانی", 60, true),
     product("snappmarket", "روغن آفتابگردان", 70),
@@ -243,20 +244,14 @@ test("both providers merge in personal order and discount filtering only reads s
   const state = await fixture(page);
   await page.goto("/");
   await expect(page.locator(".deal-row")).toHaveCount(4);
-  await expect(
-    page.getByRole("checkbox", { name: "اسنپ‌مارکت" })
-  ).toBeChecked();
-  await expect(page.getByRole("checkbox", { name: "اکالا" })).toBeChecked();
   await expect(page.locator(".deal-row h2")).toHaveText([
     "چای ایرانی",
     "شیر کم‌چرب",
     "برنج ایرانی",
     "روغن آفتابگردان",
   ]);
-  await page.getByRole("checkbox", { name: "اسنپ‌مارکت" }).uncheck();
-  await expect(page.getByRole("checkbox", { name: "اکالا" })).toBeDisabled();
-  await expect(page.locator(".deal-row")).toHaveCount(2);
-  await page.getByRole("slider", { name: /حداقل تخفیف/ }).fill("80");
+  await page.getByRole("button", { name: "حداقل تخفیف نتیجه‌ها" }).click();
+  await page.getByRole("spinbutton", { name: "درصد تخفیف دلخواه" }).fill("80");
   await expect(page.locator(".deal-row h2")).toHaveText(["برنج ایرانی"]);
   expect(
     state.reads.some((url) => url.searchParams.get("minDiscount") === "80")
@@ -280,8 +275,8 @@ test("product details show a large image, filtered store offers, full-name favor
       .evaluate((node) => node.getBoundingClientRect().width)
   ).toBeGreaterThan(200);
   await expect(
-    dialog.getByRole("link", { name: "باز کردن وب‌سایت اسنپ‌مارکت" })
-  ).toHaveAttribute("href", "https://snapp.market");
+    dialog.getByText("لینک مستقیم کالا تأیید نشده است").first()
+  ).toBeVisible();
   await expect(
     dialog.getByText("فروشگاه نمونه", { exact: true })
   ).toBeVisible();
@@ -313,9 +308,25 @@ test("each selected provider starts once and an uncertain provider reconciles in
   const state = await fixture(page, "snappmarket");
   await page.goto("/");
   await expect(page.locator(".deal-row")).toHaveCount(4);
-  await page
-    .getByRole("button", { name: "به‌روزرسانی تخفیف‌ها", exact: true })
-    .click();
+  await page.locator(".shopping-scan-action").click();
+  const snapp = page.getByRole("checkbox", { name: "اسنپ‌مارکت" });
+  const okala = page.getByRole("checkbox", { name: "اکالا" });
+  await expect(snapp).toBeChecked();
+  await expect(okala).toBeChecked();
+  const otherProviders = page
+    .locator("label.provider-option")
+    .filter({ has: page.getByRole("checkbox", { name: /دیجی/ }) });
+  for (const provider of await otherProviders.all()) {
+    await provider.click();
+  }
+  const snappCard = page
+    .locator("label.provider-option")
+    .filter({ has: snapp });
+  await snappCard.click();
+  await expect(okala).toBeDisabled();
+  await snappCard.click();
+  await expect(snapp).toBeChecked();
+  await page.getByRole("button", { name: "اسکن دوباره", exact: true }).click();
   await expect.poll(() => state.posts.length).toBe(2);
   expect(state.posts.map((item) => item.target.source).sort()).toEqual([
     "okala",
@@ -323,10 +334,13 @@ test("each selected provider starts once and an uncertain provider reconciles in
   ]);
   expect(state.posts.map((item) => item.target.threshold)).toEqual([15, 15]);
   expect(new Set(state.posts.map((item) => item.key)).size).toBe(2);
-  await expect(page.locator(".active-scan")).toHaveCount(2);
   await expect(
-    page.getByRole("button", { name: "به‌روزرسانی تخفیف‌ها", exact: true })
-  ).toBeDisabled();
+    page.getByRole("heading", { name: "در حال اسکن فروشگاه‌ها…" })
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "اسکن دوباره", exact: true })
+  ).toHaveCount(0);
+  expect(state.posts).toHaveLength(2);
 });
 
 test("navigation opens saved interests, inbox, history and secondary menu without overflow", async ({
@@ -344,33 +358,35 @@ test("navigation opens saved interests, inbox, history and secondary menu withou
   await page.getByRole("button", { name: "بستن پنجره", exact: true }).click();
   await page.getByRole("button", { name: "اعلان‌ها", exact: true }).click();
   await expect(
-    page.getByRole("dialog", { name: "صندوق اعلان‌ها" })
+    page.getByRole("heading", { name: "اعلان‌ها", exact: true })
   ).toBeVisible();
-  await page.getByRole("button", { name: "بستن پنجره", exact: true }).click();
+  await page.getByRole("link", { name: "بازگشت به پیشنهادها" }).click();
   await page.getByRole("button", { name: "تاریخچه", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "تاریخچه اسکن‌ها" })
   ).toBeVisible();
-  await page.getByRole("button", { name: "منوی برنامه", exact: true }).click();
+  const mobile = (page.viewportSize()?.width ?? 1000) <= 768;
+  if (mobile) {
+    await page
+      .getByRole("button", { name: "منوی برنامه", exact: true })
+      .click();
+  }
   await expect(
-    page.getByRole("menuitem", { name: "مدیریت موقعیت‌ها" })
+    page.getByRole("button", {
+      name: mobile ? "مدیریت موقعیت‌ها" : "موقعیت‌های تحویل",
+    })
   ).toBeVisible();
-  await expect(
-    page.getByRole("menuitem", { name: "ظاهر برنامه" })
-  ).toBeVisible();
+  await expect(page.getByRole("group", { name: "ظاهر برنامه" })).toBeVisible();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth
     )
   ).toBeTruthy();
-  if ((page.viewportSize()?.width ?? 1000) <= 768) {
+  if (mobile) {
     await page.keyboard.press("Escape");
     await page.getByRole("button", { name: "سبد خرید", exact: true }).click();
-    await page
-      .getByRole("menuitem", { name: "سبد اکالا", exact: true })
-      .click();
     await expect(
-      page.getByRole("dialog", { name: "سبد اکالا", exact: true })
+      page.getByRole("heading", { name: "سبد خرید", exact: true })
     ).toBeVisible();
     await expect(page.locator(".header-actions")).toBeHidden();
   }

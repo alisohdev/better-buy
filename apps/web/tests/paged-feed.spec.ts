@@ -59,6 +59,7 @@ function summary(key: string) {
   return { ...item, conditionalOfferCount: 0 };
 }
 async function setup(page: Page) {
+  await page.clock.setFixedTime(new Date("2026-10-10T10:00:00.000Z"));
   const state = { reads: [] as URL[], posts: [] as string[], scans: [run] };
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());

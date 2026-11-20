@@ -25,9 +25,7 @@ export function WishlistPanel({
   trigger?: ReactNode;
 }) {
   const { query, mutation } = useWishlist();
-  const devEnabled =
-    process.env.NODE_ENV === "development" &&
-    query.data?.devScanEnabled === true;
+  const devEnabled = import.meta.env.DEV && query.data?.devScanEnabled === true;
   const devScan = useDevWishlistScan(devEnabled);
   const [phrase, setPhrase] = useState("");
   const [minDiscount, setMinDiscount] = useState(15);

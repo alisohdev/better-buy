@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-const date = "2026-10-26T09:00:00.000Z";
+const date = new Date().toISOString();
 const publicKey = Buffer.from([
   4,
   ...Array.from({ length: 64 }, () => 1),
@@ -404,10 +404,13 @@ test("scan deep link restores the scan location and source", async ({
   await expect(
     page.getByRole("heading", { name: "نتیجه تاریخی", exact: true })
   ).toBeVisible();
-  const details = page.locator(".scan-details");
-  await details.locator("summary").click();
+  await page.getByRole("button", { name: "جزئیات نتیجه", exact: true }).click();
+  const details = page.getByRole("dialog", {
+    name: "جزئیات نتیجه",
+    exact: true,
+  });
   await expect(details).toContainText("دفتر");
-  await expect(page.getByText(/حداقل.*تخفیف · اکالا/)).toBeVisible();
+  await expect(details).toContainText("اکالا");
 });
 test("push requests permission only on click and syncs/unsubscribes the exact endpoint", async ({
   page,

@@ -74,7 +74,11 @@ See [phone authentication](../../docs/phone-auth.md) for required SMS secrets, t
 
 Digikala supermarket is always enabled in the frontend and API. No environment flag is required.
 
-Always build the frontend with `pnpm --filter @better-buy/web build` or root `pnpm build`. The web prebuild regenerates shared runtime validators. Calling `next build` directly can embed stale shared validators and reject valid DigiKala Fresh history.
+Build the frontend with `pnpm --filter @better-buy/web build` or root `pnpm build`. The web prebuild regenerates shared runtime validators. Vite writes a static SPA to `apps/web/out`; Caddy serves hashed assets immutably and falls back to `index.html` for application routes while keeping missing assets as 404s.
+
+### Atomic frontend deployment and rollback
+
+Build into an isolated release directory, then point the release's `apps/web/out` at the completed Vite output. Keep the current release and one previous release. Switch `/srv/better-buy/current` atomically only after validating `index.html`, every referenced `/assets/*` file, `/sw.js`, and `/healthz`. Roll back by atomically restoring the previous symlink; keep its frontend files and matching API binary together. Do not deploy from this local migration work without explicit release authorization.
 
 ### Release retention
 

@@ -14,7 +14,7 @@ async function captureState(page: Page, name: string, fullPage = true) {
     fullPage,
   });
 }
-const date = "2026-10-08T08:00:00.000Z";
+const date = new Date().toISOString();
 const home: LocationRecord = {
   id: "home",
   name: "خانه",

@@ -26,9 +26,9 @@ type AuthResult<T> =
   { data: T; error?: undefined } | { data?: undefined; error: AuthError };
 
 const authBase =
-  process.env.NEXT_PUBLIC_AUTH_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_BASE ||
-  (process.env.NODE_ENV === "development" ? "http://127.0.0.1:8787" : "");
+  import.meta.env.VITE_AUTH_BASE_URL ||
+  import.meta.env.VITE_API_BASE ||
+  (import.meta.env.MODE === "development" ? "http://127.0.0.1:8787" : "");
 const changedEvent = "better-buy-auth-changed";
 
 async function request<T>(
@@ -81,7 +81,7 @@ async function getSession(): Promise<{ data: Identity | null }> {
   return { data: result.data };
 }
 
-function useSession() {
+function useSession(enabled = true) {
   const [data, setData] = useState<Identity | null>(null);
   const [isPending, setPending] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -106,6 +106,7 @@ function useSession() {
   }, []);
 
   useEffect(() => {
+    if (!enabled) return;
     let active = true;
     const refresh = () => {
       void getSession().then(
@@ -132,7 +133,7 @@ function useSession() {
       active = false;
       window.removeEventListener(changedEvent, refresh);
     };
-  }, []);
+  }, [enabled]);
 
   return { data, isPending, error, refetch };
 }

@@ -8,6 +8,8 @@ Better Buy should remain a Persian RTL, manual grocery-deal scanner. The near-te
 
 The execution order is driven by correctness first:
 
+0. **M0 frontend migration:** replace Next.js with Vite, React 19, TanStack Router, and React Compiler while preserving product behavior and static Caddy hosting. M0 must be reviewed and accepted before M1 logging or later monitoring work begins. See the [M0 plan](./M0-frontend-migration-plan.md), [ADR](../adr/0001-vite-spa-frontend.md), and completion report.
+
 1. The displayed results must always match the selected location, provider, threshold, and scan time.
 2. SnappMarket scans use automatic guest access after location selection. Okala scans use public endpoints without credentials or settings setup.
 3. Repeated offers for the same product should become one readable product row without losing vendor-level history.
