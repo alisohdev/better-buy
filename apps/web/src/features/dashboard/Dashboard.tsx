@@ -41,6 +41,21 @@ import { AdminDashboard } from "../admin/AdminDashboard";
 import { useAdminAccess } from "../admin/useAdminAnalytics";
 import { useSearchAnalytics } from "../admin/useAnalytics";
 
+const dismissedScanBannersKey = "better-buy:dismissed-scan-banners";
+
+function readDismissedScanIds(): string[] {
+  try {
+    const stored: unknown = JSON.parse(
+      localStorage.getItem(dismissedScanBannersKey) ?? "[]"
+    );
+    return Array.isArray(stored)
+      ? stored.filter((id): id is string => typeof id === "string")
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 export function Dashboard() {
   return (
     <TutorialProvider>
@@ -56,19 +71,19 @@ function DashboardContent() {
   const wishlist = useWishlistQuery();
   const adminAccess = useAdminAccess();
   const [view, setView] = useState<"deals" | "history" | "admin">("deals");
-  const [dismissedScanIds, setDismissedScanIds] = useState<string[]>(() => {
+  const [dismissedScanIds, setDismissedScanIds] =
+    useState(readDismissedScanIds);
+  const dismissScanBanners = (ids: string[]) => {
+    const next = [
+      ...new Set([...readDismissedScanIds(), ...dismissedScanIds, ...ids]),
+    ];
+    setDismissedScanIds(next);
     try {
-      const saved = JSON.parse(
-        localStorage.getItem("better-buy:dismissed-scan-banners") ?? "[]"
-      );
-      return Array.isArray(saved)
-        ? saved.filter((id): id is string => typeof id === "string").slice(-100)
-        : [];
+      localStorage.setItem(dismissedScanBannersKey, JSON.stringify(next));
     } catch {
-      return [];
+      /* Dismissal still works for this page. */
     }
-  });
-  const [dismissedNotices, setDismissedNotices] = useState<string[]>([]);
+  };
   const revealedLiveScans = useRef(new Set<string>());
   const [workspaceSection, setWorkspaceSection] = useState<"offers" | "scan">(
     "scan"
@@ -272,6 +287,10 @@ function DashboardContent() {
     query: filters.query,
     sort: filters.sort,
     coordinateRevision,
+    productFilters: {
+      stores: filters.stores,
+      categories: filters.categories,
+    },
     minDiscount,
   };
   const snappLedger = useScanLedger({
@@ -448,23 +467,6 @@ function DashboardContent() {
       ? [latest]
       : [];
   });
-  const dismissCompletedBanner = () => {
-    const next = [
-      ...new Set([
-        ...dismissedScanIds,
-        ...completedBannerRuns.map((run) => run.id),
-      ]),
-    ].slice(-100);
-    setDismissedScanIds(next);
-    try {
-      localStorage.setItem(
-        "better-buy:dismissed-scan-banners",
-        JSON.stringify(next)
-      );
-    } catch {
-      /* Dismissal still works for this page. */
-    }
-  };
   const progressCompleted = activeRuns.reduce(
     (total, run) => total + (run.execution?.completedUnits ?? 0),
     0
@@ -601,7 +603,9 @@ function DashboardContent() {
             runs={[]}
             history={data.scans}
             completedRuns={completedBannerRuns}
-            onDismiss={dismissCompletedBanner}
+            onDismiss={() =>
+              dismissScanBanners(completedBannerRuns.map((run) => run.id))
+            }
           />
         )}
         {view === "admin" && adminAccess.data?.allowed ? (
@@ -808,14 +812,12 @@ function DashboardContent() {
                     )
                     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
                   return !historical &&
-                    !dismissedNotices.includes(attempt?.id ?? "") &&
+                    !dismissedScanIds.includes(attempt?.id ?? "") &&
                     (attempt?.status === "failed" ||
                       attempt?.status === "cancelled") ? (
                     <ReadNotice
                       key={feed.source}
-                      onDismiss={() =>
-                        setDismissedNotices((ids) => [...ids, attempt.id])
-                      }
+                      onDismiss={() => dismissScanBanners([attempt.id])}
                       title={`${sourceLabel(feed.source)} · ${attempt.status === "failed" ? "اسکن ناموفق بود" : "به‌روزرسانی لغو شد"}`}
                     >
                       {attempt.status === "cancelled" && attempt.dealCount > 0
@@ -836,38 +838,36 @@ function DashboardContent() {
                   </div>
                 )}
                 <header className="shopping-page-heading">
-                  <div>
-                    <h1>پیشنهادهای امروز</h1>
-                    <button
-                      type="button"
-                      className="shopping-location"
-                      data-tutorial-target={tutorial.step === "location"}
-                      onClick={() =>
-                        setLocationDialog(
-                          tutorial.step === "location" ? "create" : "list"
-                        )
-                      }
+                  <h1>پیشنهادهای امروز</h1>
+                  <button
+                    type="button"
+                    className="shopping-location"
+                    data-tutorial-target={tutorial.step === "location"}
+                    onClick={() =>
+                      setLocationDialog(
+                        tutorial.step === "location" ? "create" : "list"
+                      )
+                    }
+                  >
+                    <AppIcon name="location" />
+                    <span>
+                      {selectedLocation?.name ?? "انتخاب موقعیت تحویل"}
+                    </span>
+                    <svg
+                      className="shopping-location-chevron"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      aria-hidden="true"
                     >
-                      <AppIcon name="location" />
-                      <span>
-                        {selectedLocation?.name ?? "انتخاب موقعیت تحویل"}
-                      </span>
-                      <svg
-                        className="shopping-location-chevron"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="m7 10 5 5 5-5"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </button>
-                  </div>
+                      <path
+                        d="m7 10 5 5 5-5"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
                   <Button
                     className="shopping-scan-action"
                     disabled={active || submitting}

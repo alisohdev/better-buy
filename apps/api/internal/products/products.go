@@ -120,6 +120,7 @@ type ProductSummary struct {
 }
 
 type ProductPage struct {
+	Facets          *productFacets   `json:"facets,omitempty"`
 	TotalCount      int              `json:"totalCount"`
 	Items           []ProductSummary `json:"items"`
 	NextCursor      *string          `json:"nextCursor"`
@@ -144,6 +145,7 @@ type cursor struct {
 	Query       string `json:"q"`
 	Sort        string `json:"sort"`
 	MinDiscount int    `json:"minDiscount"`
+	Filters     string `json:"filters,omitempty"`
 	Group       string `json:"group,omitempty"`
 	Position    []any  `json:"position"`
 }
@@ -214,7 +216,7 @@ func (s *Service) PreviewPage(ctx context.Context, queue *scans.Queue, userID, s
 }
 
 func (s *Service) productPage(ctx context.Context, queue *scans.Queue, userID, scanID string, query url.Values, preview bool) (ProductPage, error) {
-	minDiscount, err := minimumDiscount(query)
+	filters, err := parseProductFilters(query)
 	if err != nil {
 		return ProductPage{}, err
 	}
@@ -251,11 +253,12 @@ func (s *Service) productPage(ctx context.Context, queue *scans.Queue, userID, s
 	if preview {
 		cursorKind = "preview_products"
 	}
-	position, err := decodeCursor(query.Get("cursor"), cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, MinDiscount: minDiscount})
+	cursorContext := cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, MinDiscount: filters.Minimum, Filters: filters.signature()}
+	position, err := decodeCursor(query.Get("cursor"), cursorContext)
 	if err != nil {
 		return ProductPage{}, &scans.Error{Code: "INVALID_CURSOR", Message: "Invalid product cursor.", Status: 400}
 	}
-	groups := groupV2(scan.Source, deals, minDiscount)
+	groups := groupV2(scan.Source, deals, filters)
 	if q != "" {
 		filtered := groups[:0]
 		for _, group := range groups {
@@ -282,6 +285,10 @@ func (s *Service) productPage(ctx context.Context, queue *scans.Queue, userID, s
 	}
 	page := ProductPage{TotalCount: len(groups), Items: make([]ProductSummary, 0, end-position), ObservedAt: observedAt, CoverageSummary: "legacy_unverified"}
 	baselineID, reason, _ := s.baseline(ctx, userID, *scan)
+	if position == 0 {
+		facets := scanProductFacets(deals)
+		page.Facets = &facets
+	}
 	page.Baseline.ScanID = baselineID
 	page.Baseline.Reason = reason
 	if preview && scan.Status != "succeeded" {
@@ -309,7 +316,8 @@ func (s *Service) productPage(ctx context.Context, queue *scans.Queue, userID, s
 		page.Items = append(page.Items, ProductSummary{Key: group.Key, GroupKeyVersion: 2, ScanID: group.ScanID, Title: group.Title, Image: group.Image, CategoryTitle: group.CategoryTitle, PriceRials: group.PriceRials, DiscountRials: group.DiscountRials, FinalPriceRials: group.FinalPriceRials, DiscountRatio: group.DiscountRatio, State: group.State, BestCurrentOffer: group.BestCurrentOffer, CurrentStoreOfferCount: group.CurrentStoreOfferCount, Diagnostics: group.Diagnostics, ConditionalOfferCount: len(group.ConditionalOffers), CartQuantity: cartQuantities[group.Key], WishlistMatch: matchesWishlist(group.Title, wishlistPhrases)})
 	}
 	if end < len(groups) {
-		next, err := encodeCursor(cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, MinDiscount: minDiscount, Position: []any{end}})
+		cursorContext.Position = []any{end}
+		next, err := encodeCursor(cursorContext)
 		if err != nil {
 			return ProductPage{}, err
 		}
@@ -319,15 +327,15 @@ func (s *Service) productPage(ctx context.Context, queue *scans.Queue, userID, s
 }
 
 func (s *Service) ProductGroups(ctx context.Context, queue *scans.Queue, userID, scanID string) ([]Group, *scans.Record, error) {
-	return s.productGroupsAtDiscount(ctx, queue, userID, scanID, discounts.Minimum)
+	return s.productGroupsWithFilters(ctx, queue, userID, scanID, productFilters{Minimum: discounts.Minimum})
 }
 
-func (s *Service) productGroupsAtDiscount(ctx context.Context, queue *scans.Queue, userID, scanID string, minDiscount int) ([]Group, *scans.Record, error) {
+func (s *Service) productGroupsWithFilters(ctx context.Context, queue *scans.Queue, userID, scanID string, filters productFilters) ([]Group, *scans.Record, error) {
 	deals, scan, err := s.Deals(ctx, queue, userID, scanID)
 	if err != nil {
 		return nil, scan, err
 	}
-	return groupV2(scan.Source, deals, minDiscount), scan, nil
+	return groupV2(scan.Source, deals, filters), scan, nil
 }
 
 func LegacyGroups(source string, deals []DealRecord) []map[string]any {
@@ -394,7 +402,7 @@ func LegacyGroups(source string, deals []DealRecord) []map[string]any {
 }
 
 func (s *Service) OfferPage(ctx context.Context, queue *scans.Queue, userID, scanID, groupKey string, query url.Values) (OfferPage, error) {
-	minDiscount, err := minimumDiscount(query)
+	filters, err := parseProductFilters(query)
 	if err != nil {
 		return OfferPage{}, err
 	}
@@ -418,7 +426,8 @@ func (s *Service) OfferPage(ctx context.Context, queue *scans.Queue, userID, sca
 	if query.Get("preview") == "1" {
 		cursorKind = "preview_offers"
 	}
-	position, err := decodeCursor(query.Get("cursor"), cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, Group: groupKey, MinDiscount: minDiscount})
+	cursorContext := cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, Group: groupKey, MinDiscount: filters.Minimum, Filters: filters.signature()}
+	position, err := decodeCursor(query.Get("cursor"), cursorContext)
 	if err != nil {
 		return OfferPage{}, &scans.Error{Code: "INVALID_CURSOR", Message: "Invalid offer cursor.", Status: 400}
 	}
@@ -428,10 +437,10 @@ func (s *Service) OfferPage(ctx context.Context, queue *scans.Queue, userID, sca
 		var scan *scans.Record
 		deals, scan, err = s.previewDeals(ctx, queue, userID, scanID)
 		if err == nil {
-			groups = groupV2(scan.Source, deals, minDiscount)
+			groups = groupV2(scan.Source, deals, filters)
 		}
 	} else {
-		groups, _, err = s.productGroupsAtDiscount(ctx, queue, userID, scanID, minDiscount)
+		groups, _, err = s.productGroupsWithFilters(ctx, queue, userID, scanID, filters)
 	}
 	if err != nil {
 		return OfferPage{}, err
@@ -492,7 +501,8 @@ func (s *Service) OfferPage(ctx context.Context, queue *scans.Queue, userID, sca
 	end := min(position+limit, len(offers))
 	page := OfferPage{Items: append([]VendorOffer{}, offers[position:end]...)}
 	if end < len(offers) {
-		next, err := encodeCursor(cursor{Version: 1, User: userID, Scan: scanID, Kind: cursorKind, Query: q, Sort: sortBy, Group: groupKey, MinDiscount: minDiscount, Position: []any{end}})
+		cursorContext.Position = []any{end}
+		next, err := encodeCursor(cursorContext)
 		if err != nil {
 			return OfferPage{}, err
 		}
@@ -602,7 +612,7 @@ func (s *Service) cartQuantities(ctx context.Context, userID, source string) (ma
 	return quantities, rows.Err()
 }
 
-func groupV2(provider string, deals []DealRecord, minDiscount int) []Group {
+func groupV2(provider string, deals []DealRecord, filters productFilters) []Group {
 	buckets := make(map[string][]DealRecord)
 	variants := make(map[string]map[string]struct{})
 	for _, row := range deals {
@@ -617,7 +627,7 @@ func groupV2(provider string, deals []DealRecord, minDiscount int) []Group {
 	}
 	groups := make([]Group, 0, len(buckets))
 	for identity, rows := range buckets {
-		g := buildGroup(provider, identity, rows, variants, minDiscount)
+		g := buildGroup(provider, identity, rows, variants, filters)
 		if len(g.Vendors) > 0 || len(g.ConditionalOffers) > 0 {
 			groups = append(groups, g)
 		}
@@ -626,7 +636,7 @@ func groupV2(provider string, deals []DealRecord, minDiscount int) []Group {
 	return groups
 }
 
-func buildGroup(provider, identity string, rows []DealRecord, variants map[string]map[string]struct{}, minDiscount int) Group {
+func buildGroup(provider, identity string, rows []DealRecord, variants map[string]map[string]struct{}, filters productFilters) Group {
 	type observation struct {
 		row        DealRecord
 		provenance map[string]struct{}
@@ -663,7 +673,7 @@ func buildGroup(provider, identity string, rows []DealRecord, variants map[strin
 	rowsByKey := map[string]DealRecord{}
 	for id, ob := range observations {
 		row := ob.row
-		if row.DiscountRatio < float64(minDiscount) {
+		if !filters.matches(row) {
 			continue
 		}
 		rowsByKey[row.Key] = row
@@ -997,7 +1007,7 @@ func decodeCursor(value string, context cursor) (int, error) {
 		return 0, err
 	}
 	var decoded cursor
-	if json.Unmarshal(bytes, &decoded) != nil || decoded.Version != 1 || decoded.User != context.User || decoded.Scan != context.Scan || decoded.Kind != context.Kind || decoded.Query != context.Query || decoded.Sort != context.Sort || decoded.Group != context.Group || decoded.MinDiscount != context.MinDiscount || len(decoded.Position) != 1 {
+	if json.Unmarshal(bytes, &decoded) != nil || decoded.Version != 1 || decoded.User != context.User || decoded.Scan != context.Scan || decoded.Kind != context.Kind || decoded.Query != context.Query || decoded.Sort != context.Sort || decoded.Group != context.Group || decoded.MinDiscount != context.MinDiscount || decoded.Filters != context.Filters || len(decoded.Position) != 1 {
 		return 0, errors.New("invalid cursor")
 	}
 	n, ok := decoded.Position[0].(float64)

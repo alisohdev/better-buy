@@ -16,6 +16,17 @@ const run: ScanRecord = {
   vendorCount: 30,
   productCount: 200,
   dealCount: 80,
+  context: {
+    location: { name: "خانه", latitude: 35.7, longitude: 51.4, revision: 1 },
+    requestedThreshold: 40,
+    effectiveThreshold: 15,
+    policyVersion: "automatic-v1",
+    manifest: { adapter: "snappmarket", contractVersion: 1, feedKinds: [] },
+    scopeHash: "fixture",
+    eligibilityVersion: 1,
+    offerKeyVersion: 1,
+    coverage: "complete",
+  },
   errorCode: null,
   errorMessage: null,
 };
@@ -39,7 +50,7 @@ function group(key: string): DealGroupRecord {
     scanId: "saved",
     title: key,
     image: null,
-    categoryTitle: null,
+    categoryTitle: "خواربار",
     priceRials: 100000,
     discountRials: 50000,
     finalPriceRials: 50000,
@@ -59,6 +70,10 @@ function summary(key: string) {
   return { ...item, conditionalOfferCount: 0 };
 }
 async function setup(page: Page) {
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
+  await page.clock.setFixedTime(new Date("2026-10-10T09:00:00.000Z"));
   const state = { reads: [] as URL[], posts: [] as string[], scans: [run] };
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
@@ -103,6 +118,15 @@ async function setup(page: Page) {
         (url.searchParams.get("cursor") ? "صفحه دوم" : "صفحه نخست");
       data = {
         items: [summary(key)],
+        facets: {
+          stores: [
+            "فروشگاه نمونه",
+            "هایپرمارکت مرکزی",
+            "فروشگاه بهار",
+            "سوپرمارکت گلریز",
+          ],
+          categories: ["نوشیدنی", "میوه و سبزیجات", "لبنیات", "خواربار"],
+        },
         nextCursor:
           url.searchParams.get("cursor") || url.searchParams.get("q")
             ? null
@@ -132,26 +156,57 @@ async function setup(page: Page) {
 }
 test("saved pages, server search and store disclosure are read-only", async ({
   page,
+  isMobile,
 }) => {
+  if (isMobile) await page.setViewportSize({ width: 360, height: 780 });
   const state = await setup(page);
   await page.goto("/");
   await expect(
     page.getByRole("heading", { name: "صفحه نخست", exact: true })
   ).toBeVisible();
+  const firstCard = page.locator(".product-result").filter({
+    has: page.getByRole("heading", { name: "صفحه نخست", exact: true }),
+  });
+  if (isMobile) {
+    const card = (await firstCard.boundingBox())!;
+    const price = (await firstCard.locator(".price-label").boundingBox())!;
+    const metadata = (await firstCard.locator(".product-meta").boundingBox())!;
+    const disclosure = (await firstCard.locator("summary").boundingBox())!;
+    expect(card.height).toBeLessThan(248);
+    expect(price.width).toBeGreaterThan(card.width - 32);
+    expect(metadata.width).toBe(price.width);
+    expect(disclosure.height).toBeGreaterThanOrEqual(44);
+  }
+  await expect(firstCard.locator(".product-meta")).not.toContainText(
+    "در فهرست فعلی"
+  );
+  const category = firstCard.getByRole("button", {
+    name: "دسته‌بندی: خواربار",
+  });
+  if (isMobile) await category.tap();
+  else await category.hover();
+  const tooltip = page.getByRole("tooltip");
+  await expect(tooltip).toHaveText("خواربار");
+  await page.keyboard.press("Escape");
+  await expect(tooltip).toHaveCount(0);
   expect(state.reads[0]!.searchParams.get("page")).toBe("1");
   expect(state.reads[0]!.searchParams.get("sort")).toBe("wishlist");
-  await page.getByRole("button", { name: /^نمایش محصولات بیشتر/ }).click();
+  await page.locator(".feed-load-sentinel").scrollIntoViewIfNeeded();
   await expect(
     page.getByRole("heading", { name: "صفحه دوم", exact: true })
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "صفحه نخست", exact: true })
   ).toBeVisible();
+  const filterSheet = page.getByRole("button", { name: "فیلتر و مرتب‌سازی" });
+  if (await filterSheet.isVisible()) await filterSheet.click();
   await page.getByRole("combobox", { name: "مرتب‌سازی", exact: true }).click();
   await page.getByRole("option", { name: "کمترین قیمت", exact: true }).click();
   await expect
     .poll(() => state.reads.at(-1)?.searchParams.get("sort"))
     .toBe("price");
+  if (await page.getByRole("dialog", { name: "فیلتر و مرتب‌سازی" }).isVisible())
+    await page.getByRole("button", { name: "نمایش نتایج" }).click();
   await page.getByRole("searchbox").fill("آبمیوه");
   await expect(
     page.getByRole("heading", { name: "آبمیوه", exact: true })
@@ -375,4 +430,160 @@ test("saved navigation passes twenty pages with a bounded retained window", asyn
   ).toBeVisible();
   await expect(page.locator(".deal-row")).toHaveCount(1);
   expect(state.posts).toEqual([]);
+});
+
+test("minimum discount slider and facet picks update paginated requests", async ({
+  page,
+  isMobile,
+}) => {
+  const state = await setup(page);
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "صفحه نخست", exact: true })
+  ).toBeVisible();
+
+  const location = await page.locator(".shopping-location").boundingBox();
+  const scan = await page.locator(".shopping-scan-action").boundingBox();
+  expect(location?.y).toBe(scan?.y);
+  if (isMobile) {
+    const search = await page.getByRole("searchbox").boundingBox();
+    const icon = await page
+      .getByRole("button", { name: "فیلتر و مرتب‌سازی", exact: true })
+      .boundingBox();
+    expect(icon?.y).toBe(search?.y);
+    expect(icon?.width).toBe(44);
+    expect(icon!.x + icon!.width).toBeLessThan(search!.x);
+  }
+
+  await page
+    .getByRole("button", {
+      name: isMobile ? "فیلتر و مرتب‌سازی" : "حداقل تخفیف نتیجه‌ها",
+      exact: true,
+    })
+    .click();
+  if (isMobile) {
+    const sheet = page.getByRole("dialog", { name: "فیلتر و مرتب‌سازی" });
+    await expect(sheet.getByText("مرتب‌سازی", { exact: true })).toBeVisible();
+    await expect(
+      sheet.getByRole("combobox", { name: "مرتب‌سازی", exact: true })
+    ).toHaveCSS("border-top-width", "1px");
+  }
+  const minimum = page.getByRole("slider", {
+    name: "حداقل تخفیف",
+    exact: true,
+  });
+  await expect(minimum).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(
+    page.getByRole("spinbutton", { name: "درصد تخفیف دلخواه" })
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("group", { name: "تخفیف‌های پیشنهادی" })
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("slider", { name: "حداکثر تخفیف", exact: true })
+  ).toHaveCount(0);
+  await minimum.press("ArrowLeft");
+  await expect
+    .poll(() => state.reads.at(-1)?.searchParams.get("minDiscount"))
+    .toBe("41");
+  if (!isMobile) {
+    const track = await minimum.boundingBox();
+    expect(track).not.toBeNull();
+    const { x, y, width, height } = track!;
+
+    await page.mouse.move(x + width * 0.6, y + height / 2);
+    await page.mouse.down();
+    await page.mouse.move(x + width * 0.3, y + height / 2, { steps: 4 });
+    expect(state.reads.at(-1)?.searchParams.get("minDiscount")).toBe("41");
+    await page.mouse.up();
+    await expect
+      .poll(() => Number(state.reads.at(-1)?.searchParams.get("minDiscount")))
+      .toBeGreaterThan(41);
+  }
+  if (!isMobile) await page.keyboard.press("Escape");
+
+  const storePicker = page.getByRole("combobox", {
+    name: "فروشگاه‌ها",
+    exact: true,
+  });
+  await storePicker.click();
+  await expect(storePicker).toHaveAttribute("placeholder", "جست‌وجوی فروشگاه");
+  await storePicker.fill("نمونه");
+  const storeOption = page.getByRole("option", {
+    name: "فروشگاه نمونه",
+    exact: true,
+  });
+  await expect(storeOption).toHaveCSS("border-top-width", "0px");
+  await expect(storeOption).toHaveCSS("text-align", "start");
+  await storeOption.click();
+  await page
+    .getByRole("combobox", { name: "دسته‌بندی‌ها", exact: true })
+    .fill("نوشیدنی");
+  await page.getByRole("option", { name: "نوشیدنی", exact: true }).click();
+  await expect
+    .poll(() => {
+      const params = state.reads.at(-1)?.searchParams;
+      return [params?.get("store"), params?.get("category")];
+    })
+    .toEqual(["فروشگاه نمونه", "نوشیدنی"]);
+
+  if (isMobile) {
+    await page.getByRole("button", { name: "نمایش نتایج" }).click();
+    await expect(
+      page.getByRole("dialog", { name: "فیلتر و مرتب‌سازی" })
+    ).toHaveCount(0);
+    await expect(page.locator(".results-filter-count")).toHaveText("۳");
+    await expect(page.locator(".results-filter-count")).toHaveCSS(
+      "animation-name",
+      "results-filter-pop"
+    );
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(page.locator(".results-filter-count")).toHaveCSS(
+      "animation-name",
+      "none"
+    );
+  }
+});
+
+test("a dismissed scan notice stays closed after reload", async ({ page }) => {
+  const state = await setup(page);
+  const cancelled: ScanRecord = {
+    ...run,
+    id: "cancelled-update",
+    status: "cancelled",
+    dealCount: 0,
+    createdAt: "2026-10-10T08:30:00.000Z",
+  };
+  state.scans.push(cancelled);
+  await page.goto("/");
+  const notice = page
+    .locator(".read-notice")
+    .filter({ hasText: "به‌روزرسانی لغو شد" });
+  await expect(notice).toBeVisible();
+  const close = notice.getByRole("button", { name: "بستن پیام اسکن" });
+  const titleBox = await notice.locator("strong").boundingBox();
+  const closeBox = await close.boundingBox();
+  expect(titleBox).not.toBeNull();
+  expect(closeBox).not.toBeNull();
+  expect(
+    Math.abs(
+      titleBox!.y + titleBox!.height / 2 - closeBox!.y - closeBox!.height / 2
+    )
+  ).toBeLessThan(2);
+  await close.click();
+  await expect(notice).toHaveCount(0);
+  await page.reload();
+  await expect(
+    page.getByRole("heading", { name: "صفحه نخست", exact: true })
+  ).toBeVisible();
+  await expect(notice).toHaveCount(0);
+
+  state.scans.push({
+    ...cancelled,
+    id: "another-cancelled-update",
+    createdAt: "2026-10-10T08:45:00.000Z",
+  });
+  await page.reload();
+  await expect(notice).toBeVisible();
 });

@@ -1,18 +1,11 @@
 import { checkedAgo, useFreshnessClock } from "../scans/freshness";
 import { TutorialHint } from "../dashboard/Tutorial";
-import { DiscountSelect } from "../dashboard/DiscountSelect";
+import { DealFilterControls } from "./DealFilterControls";
 import { useVisitor } from "../guest/VisitorProvider";
 import { useEffect, useRef, useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   displayToman,
   type CartSource,
@@ -62,7 +55,16 @@ export function DealShelf({
   onOpenCart: (source: CartSource) => void;
 }) {
   const freshnessNow = useFreshnessClock();
-  const { query, setQuery, sort, setSort, reset } = filters;
+  const { query, setQuery, sort, reset } = filters;
+  const productFilters = {
+    stores: filters.stores,
+    categories: filters.categories,
+  };
+  const hasFacets = filters.stores.length > 0 || filters.categories.length > 0;
+  const clearFacets = () => {
+    filters.setStores([]);
+    filters.setCategories([]);
+  };
   const [searchMotion, setSearchMotion] = useState(0);
   const visitor = useVisitor();
   const wishlist = useWishlist();
@@ -335,22 +337,12 @@ export function DealShelf({
               </button>
             )}
           </Label>
-          <Label className="sort-control">
-            <span className="sr-only">مرتب‌سازی</span>
-            <Select value={sort} onValueChange={setSort}>
-              <SelectTrigger aria-label="مرتب‌سازی">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="wishlist">پیشنهادهای شخصی</SelectItem>
-                <SelectItem value="discount">بیشترین تخفیف</SelectItem>
-                <SelectItem value="price">کمترین قیمت</SelectItem>
-              </SelectContent>
-            </Select>
-          </Label>
-          <div className="discount-control">
-            <DiscountSelect value={minDiscount} onChange={onMinDiscount} />
-          </div>
+          <DealFilterControls
+            filters={filters}
+            feeds={feeds}
+            minDiscount={minDiscount}
+            onMinDiscount={onMinDiscount}
+          />
         </div>
       )}
       {wishlist.mutation.error && (
@@ -417,6 +409,7 @@ export function DealShelf({
                       source={feed.source}
                       scanId={scan.id}
                       minDiscount={minDiscount}
+                      productFilters={productFilters}
                       provisional={scan.status !== "succeeded"}
                       observedAt={scan.finishedAt ?? scan.createdAt}
                       canAddToCart={canAdd}
@@ -458,13 +451,22 @@ export function DealShelf({
                   <h2>
                     {query
                       ? "چیزی با این جست‌وجو پیدا نشد"
-                      : "پیشنهادی با این حداقل تخفیف پیدا نشد"}
+                      : hasFacets
+                        ? "پیشنهادی با این فیلترها پیدا نشد"
+                        : "پیشنهادی با این حداقل تخفیف پیدا نشد"}
                   </h2>
                   <p>
                     {query
                       ? "عبارت جست‌وجو را پاک کنید یا تغییر دهید."
-                      : "حداقل تخفیف را کم کنید؛ نتیجه‌ها بدون اسکن دوباره فیلتر می‌شوند."}
+                      : hasFacets
+                        ? "فیلترهای تخفیف، فروشگاه یا دسته‌بندی را تغییر دهید."
+                        : "حداقل تخفیف را کم کنید؛ نتیجه‌ها بدون اسکن دوباره فیلتر می‌شوند."}
                   </p>
+                  {hasFacets && !query && (
+                    <Button variant="outline" onClick={clearFacets}>
+                      پاک‌کردن فیلترها
+                    </Button>
+                  )}
                   {query && (
                     <Button variant="outline" onClick={reset}>
                       پاک‌کردن جست‌وجو

@@ -233,6 +233,9 @@ export const productSummarySchema = productGroupSchema
     cartQuantity: count.default(0),
   });
 export const productPageSchema = z.object({
+  facets: z
+    .object({ stores: z.array(z.string()), categories: z.array(z.string()) })
+    .optional(),
   totalCount: count.optional(),
   items: z.array(productSummarySchema).max(100),
   nextCursor: z.string().min(1).max(8192).nullable(),

@@ -1,6 +1,8 @@
+import { appendProductFilters, type ProductFilters } from "./useDealFilters";
 import { ProductDestination } from "./ProductDestination";
 import { useRef, useState } from "react";
-import { Dialog } from "radix-ui";
+import { Dialog, Tooltip } from "radix-ui";
+import { Tag } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   offerPageSchema,
@@ -13,6 +15,48 @@ import { faDate, faNumber, money, sourceLabel } from "../dashboard/format";
 import { AppIcon, ProviderMark } from "../dashboard/AppIcon";
 import { feedStateLabel } from "./presentation";
 import { Button } from "@/components/ui/button";
+
+function ProductCategory({ title }: { title: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Tooltip.Provider delayDuration={180}>
+      <Tooltip.Root open={open} onOpenChange={setOpen}>
+        <Tooltip.Trigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label={`دسته‌بندی: ${title}`}
+            className="product-category bg-transparent p-0 text-muted-foreground"
+            onPointerDown={(event) => {
+              if (event.pointerType !== "touch") return;
+              event.preventDefault();
+              setOpen((wasOpen) => !wasOpen);
+            }}
+            onClick={(event) => {
+              if (
+                event.nativeEvent instanceof PointerEvent &&
+                event.nativeEvent.pointerType === "touch"
+              )
+                event.preventDefault();
+            }}
+          >
+            <Tag aria-hidden="true" />
+          </Button>
+        </Tooltip.Trigger>
+        <Tooltip.Portal>
+          <Tooltip.Content
+            dir="rtl"
+            sideOffset={4}
+            className="z-50 max-w-64 rounded-md border border-border bg-card px-2.5 py-1.5 text-start text-xs text-foreground shadow-md"
+          >
+            {title}
+          </Tooltip.Content>
+        </Tooltip.Portal>
+      </Tooltip.Root>
+    </Tooltip.Provider>
+  );
+}
 
 function StoreLogo({
   url,
@@ -45,6 +89,7 @@ export function ProductRow({
   source,
   scanId,
   minDiscount = 15,
+  productFilters = {},
   provisional = false,
   observedAt,
   canAddToCart = false,
@@ -63,6 +108,7 @@ export function ProductRow({
   source: DealSource;
   scanId: string;
   minDiscount?: number;
+  productFilters?: ProductFilters;
   provisional?: boolean;
   observedAt?: string;
   canAddToCart?: boolean;
@@ -89,6 +135,7 @@ export function ProductRow({
     source,
     group.key,
     minDiscount,
+    productFilters,
     provisional,
   ];
   const context = JSON.stringify(baseKey);
@@ -109,6 +156,7 @@ export function ProductRow({
     gcTime: 600_000,
     queryFn: async ({ signal }) => {
       const params = new URLSearchParams({ minDiscount: String(minDiscount) });
+      appendProductFilters(params, productFilters);
       if (cursor) params.set("cursor", cursor);
       if (provisional) params.set("preview", "1");
       const page = await api(
@@ -304,7 +352,7 @@ export function ProductRow({
       }}
     >
       <article
-        className={`deal-row ${group.state === "no_longer_present" ? "historical-offer" : ""}`}
+        className={`deal-row product-result ${group.state === "no_longer_present" ? "historical-offer" : ""}`}
       >
         <Dialog.Trigger asChild>
           <button
@@ -343,11 +391,15 @@ export function ProductRow({
             />
             <bdi>{best?.vendorTitle ?? "پیشنهاد جاری قابل مقایسه نیست"}</bdi>
           </p>
-          <ProductDestination offer={best} source={source} />
-          <small>
-            {feedStateLabel(group.state)}
-            {group.categoryTitle && ` · ${group.categoryTitle}`}
-          </small>
+          <div className="product-meta">
+            <ProductDestination offer={best} source={source} />
+            {(group.state === "new" || group.state === "no_longer_present") && (
+              <small>{feedStateLabel(group.state)}</small>
+            )}
+            {group.categoryTitle && (
+              <ProductCategory title={group.categoryTitle} />
+            )}
+          </div>
         </div>
         <div className="price-label">
           {price}

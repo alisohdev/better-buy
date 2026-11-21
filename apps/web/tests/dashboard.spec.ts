@@ -1310,9 +1310,18 @@ test("saved feed supports search, sorting, inline discount filtering and accessi
     .getByRole("button", { name: "پاک‌کردن جست‌وجو", exact: true })
     .click();
   await expect(page.locator(".deal-row")).toHaveCount(3);
+  const sheetTrigger = page.getByRole("button", { name: "فیلتر و مرتب‌سازی" });
+  const mobileFilters = await sheetTrigger.isVisible();
+  if (mobileFilters) await sheetTrigger.click();
   await chooseSelect(page, "مرتب‌سازی", "کمترین قیمت");
-  await page.getByRole("button", { name: "حداقل تخفیف نتیجه‌ها" }).click();
-  await page.getByRole("button", { name: "۵۰٪", exact: true }).click();
+  if (!mobileFilters)
+    await page.getByRole("button", { name: "حداقل تخفیف نتیجه‌ها" }).click();
+  await page
+    .getByRole("slider", { name: "حداقل تخفیف", exact: true })
+    .press("ArrowUp");
+  if (!mobileFilters) await page.keyboard.press("Escape");
+  if (mobileFilters)
+    await page.getByRole("button", { name: "نمایش نتایج" }).click();
   const detailTrigger = page.getByRole("button", {
     name: `جزئیات ${representative[0]!.title}`,
     exact: true,
@@ -1929,52 +1938,47 @@ test("shopping workspace has right sidebar and compact result toolbar", async ({
     page.getByRole("button", { name: "جزئیات نتیجه", exact: true })
   ).toBeFocused();
   const filter = page.locator(".compact-results-toolbar");
-  const discount = filter.getByRole("button", { name: "حداقل تخفیف نتیجه‌ها" });
-  await discount.click();
-  const presets = page.getByRole("group", { name: "تخفیف‌های پیشنهادی" });
-  await expect(presets.getByRole("button")).toHaveCount(7);
-  await presets.getByRole("button", { name: "۵۰٪", exact: true }).click();
-  await expect(discount).toContainText("۵۰٪");
-  await discount.click();
-  const custom = page.getByRole("spinbutton", { name: "درصد تخفیف دلخواه" });
-  await expect(page.locator(".discount-select-menu")).not.toHaveCSS(
-    "background-color",
-    "rgba(0, 0, 0, 0)"
-  );
-  await page
-    .getByRole("button", { name: "افزایش درصد تخفیف", exact: true })
-    .click();
-  await expect(custom).toHaveValue("51");
-  await page
-    .getByRole("button", { name: "کاهش درصد تخفیف", exact: true })
-    .click();
-  await expect(custom).toHaveValue("50");
-  await captureState(page, "discount-picker-surface", false);
-  await page.emulateMedia({ colorScheme: "dark" });
-  await expect(page.locator(".discount-select-menu")).toHaveCSS(
-    "background-color",
-    "rgb(32, 37, 45)"
-  );
-  await captureState(page, "discount-picker-dark", false);
-  await page.emulateMedia({ colorScheme: "light" });
-  await custom.fill("35");
-  await expect(discount).toContainText("۳۵٪");
-  await custom.press("ArrowUp");
-  await expect(custom).toHaveValue("36");
-  await expect(discount).toContainText("۳۶٪");
-  await custom.fill("90");
-  await custom.press("Tab");
-  await expect(custom).toHaveValue("80");
-  await page.keyboard.press("Escape");
-  await discount.click();
-  await custom.fill("35");
-  await page.keyboard.press("Escape");
+  if (info.project.name === "desktop") {
+    const discount = filter.getByRole("button", {
+      name: "حداقل تخفیف نتیجه‌ها",
+    });
+    await discount.click();
+    const slider = page.getByRole("slider", {
+      name: "حداقل تخفیف",
+      exact: true,
+    });
+    await slider.press("ArrowUp");
+    await expect(discount).toContainText("۴۱٪");
+    await expect(page.locator(".discount-select-menu")).not.toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)"
+    );
+    await captureState(page, "discount-picker-surface", false);
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(page.locator(".discount-select-menu")).toHaveCSS(
+      "background-color",
+      "rgb(32, 37, 45)"
+    );
+    await captureState(page, "discount-picker-dark", false);
+    await page.emulateMedia({ colorScheme: "light" });
+    await page.keyboard.press("Escape");
+  } else {
+    await filter.getByRole("button", { name: "فیلتر و مرتب‌سازی" }).click();
+    const sheet = page.getByRole("dialog", { name: "فیلتر و مرتب‌سازی" });
+    await expect(
+      sheet.getByRole("slider", { name: "حداقل تخفیف", exact: true })
+    ).toBeVisible();
+    await expect(
+      sheet.getByRole("slider", { name: "حداکثر تخفیف", exact: true })
+    ).toHaveCount(0);
+    await sheet.getByRole("button", { name: "نمایش نتایج" }).click();
+  }
   await expect(page.locator(".personalized-note, .result-count")).toHaveCount(
     0
   );
   const toolbar = await filter.boundingBox();
   expect(toolbar?.height).toBeLessThan(
-    info.project.name === "desktop" ? 60 : 110
+    info.project.name === "desktop" ? 130 : 125
   );
   if (info.project.name === "desktop") {
     const header = await page.locator(".app-header").boundingBox();

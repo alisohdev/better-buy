@@ -362,3 +362,47 @@ func productTitles(items []products.ProductSummary) []string {
 	}
 	return titles
 }
+
+func TestProductFacetsFilterBeforePaginationAndOfferSelection(t *testing.T) {
+	f := newDiscountFixture(t)
+	ctx := context.Background()
+	const scanID = "scan-facets"
+	f.scan(t, scanID, time.Now())
+	f.offer(t, scanID, "tea-a", "tea", "a", "Tea", 100, 70, "")
+	f.offer(t, scanID, "tea-b", "tea", "b", "Tea", 200, 50, "")
+	f.offer(t, scanID, "milk-b", "milk", "b", "Milk", 100, 50, "")
+	f.offer(t, scanID, "coffee-b", "coffee", "b", "Coffee", 200, 55, "")
+	if _, err := f.db.ExecContext(ctx, "UPDATE deals SET category_title = CASE WHEN title = 'Milk' THEN 'Dairy' ELSE 'Drinks' END WHERE scan_id = ?", scanID); err != nil {
+		t.Fatal(err)
+	}
+
+	filters := url.Values{"minDiscount": {"40"}, "maxDiscount": {"60"}, "category": {"Drinks"}, "store": {"Store b", "Store a"}, "limit": {"1"}}
+	page, err := f.products.ProductPage(ctx, f.queue, discountUser, scanID, filters)
+	if err != nil || page.TotalCount != 2 || page.NextCursor == nil || page.Items[0].Title != "Coffee" {
+		t.Fatalf("first filtered page = %+v, error %v", page, err)
+	}
+	if page.Facets == nil || !reflect.DeepEqual(page.Facets.Categories, []string{"Dairy", "Drinks"}) {
+		t.Fatalf("scan facets = %+v", page.Facets)
+	}
+	filters.Set("cursor", *page.NextCursor)
+	filters["store"] = []string{"Store a", "Store b"}
+	page, err = f.products.ProductPage(ctx, f.queue, discountUser, scanID, filters)
+	if err != nil || len(page.Items) != 1 || page.Items[0].Title != "Tea" {
+		t.Fatalf("second filtered page = %+v, error %v", page, err)
+	}
+	tea := page.Items[0]
+	if tea.BestCurrentOffer == nil || tea.BestCurrentOffer.VendorID != "b" {
+		t.Fatalf("filtered best offer = %+v", tea.BestCurrentOffer)
+	}
+	filters.Set("store", "Store b")
+	_, err = f.products.ProductPage(ctx, f.queue, discountUser, scanID, filters)
+	requireScanCode(t, err, "INVALID_CURSOR")
+	filters.Del("cursor")
+	offers, err := f.products.OfferPage(ctx, f.queue, discountUser, scanID, tea.Key, filters)
+	if err != nil || len(offers.Items) != 1 || offers.Items[0].DiscountRatio != 50 {
+		t.Fatalf("filtered offers = %+v, error %v", offers, err)
+	}
+	filters.Set("maxDiscount", "39")
+	_, err = f.products.ProductPage(ctx, f.queue, discountUser, scanID, filters)
+	requireScanCode(t, err, "INVALID_INPUT")
+}

@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import type { ReactNode } from "react";
 import { Dialog } from "radix-ui";
+import { AppIcon } from "./AppIcon";
 export function Panel({
   title,
   children,
@@ -56,20 +57,26 @@ export function ReadNotice({
   return (
     <Card asChild>
       <section className="read-notice" role="status">
-        <div>
-          <strong>{title}</strong>
+        <div className={onDismiss ? "min-w-0 flex-1 self-stretch" : undefined}>
+          {onDismiss ? (
+            <div className="flex items-center justify-between gap-2">
+              <strong>{title}</strong>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="bg-transparent p-0 text-muted-foreground"
+                aria-label="بستن پیام اسکن"
+                onClick={onDismiss}
+              >
+                <AppIcon name="close" />
+              </Button>
+            </div>
+          ) : (
+            <strong>{title}</strong>
+          )}
           {children && <p>{children}</p>}
         </div>
-        {onDismiss && (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="بستن پیام اسکن"
-            onClick={onDismiss}
-          >
-            ×
-          </Button>
-        )}
         {retry && (
           <Button
             variant="outline"

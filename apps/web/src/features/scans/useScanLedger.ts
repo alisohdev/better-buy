@@ -1,6 +1,7 @@
 import { scanExpired, useFreshnessClock } from "./freshness";
 import {
   useInfiniteQuery,
+  useQuery,
   useQueryClient,
   type InfiniteData,
 } from "@tanstack/react-query";
@@ -11,6 +12,11 @@ import {
 } from "@better-buy/shared";
 import type { DealSource } from "../dashboard/types";
 import { api, RequestFailure } from "../../lib/api";
+import {
+  appendProductFilters,
+  type ProductFilters,
+} from "../deals/useDealFilters";
+
 export async function loadDealLedger(
   scanId: string,
   signal?: AbortSignal,
@@ -18,7 +24,8 @@ export async function loadDealLedger(
   sort = "discount",
   cursor: string | null = null,
   minDiscount = 15,
-  preview = false
+  preview = false,
+  filters: ProductFilters = {}
 ) {
   const params = new URLSearchParams({
     page: "1",
@@ -26,6 +33,7 @@ export async function loadDealLedger(
     sort,
     minDiscount: String(minDiscount),
   });
+  appendProductFilters(params, filters);
   if (cursor) params.set("cursor", cursor);
   const page = await api(
     `/api/scans/${scanId}/${preview ? "preview" : "products"}?${params}`,
@@ -55,6 +63,7 @@ export function useScanLedger({
   wishlistRevision = 0,
   cartRevision = "",
   minDiscount = 15,
+  productFilters = {},
 }: {
   busy: boolean;
   selected: string;
@@ -67,6 +76,7 @@ export function useScanLedger({
   wishlistRevision?: number;
   cartRevision?: string;
   minDiscount?: number;
+  productFilters?: ProductFilters;
 }) {
   const client = useQueryClient();
   const now = useFreshnessClock();
@@ -105,8 +115,15 @@ export function useScanLedger({
     wishlistRevision,
     cartRevision,
     minDiscount,
+    productFilters,
     requestedScan?.status,
   ];
+  const facetsKey = ["ledger-facets", requestedScan?.id];
+  const facets = useQuery<NonNullable<ProductPage["facets"]>>({
+    queryKey: facetsKey,
+    enabled: false,
+    gcTime: 600_000,
+  });
   const ledger = useInfiniteQuery({
     queryKey: baseKey,
     initialPageParam: null as string | null,
@@ -117,16 +134,20 @@ export function useScanLedger({
         ? 5000
         : false,
     enabled: !busy && !expired && !!requestedScan,
-    queryFn: ({ signal, pageParam }) =>
-      loadDealLedger(
+    queryFn: async ({ signal, pageParam }) => {
+      const page = await loadDealLedger(
         requestedScan!.id,
         signal,
         query,
         sort,
         pageParam,
         minDiscount,
-        provisional
-      ),
+        provisional,
+        productFilters
+      );
+      if (page.facets) client.setQueryData(facetsKey, page.facets);
+      return page;
+    },
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
   const cachedPages = (id: string) =>
@@ -157,6 +178,7 @@ export function useScanLedger({
   );
   return {
     expired,
+    facets: expired ? undefined : facets.data,
     scan: expired ? null : (prior ?? requestedScan),
     requestedScan,
     dealGroups: [...groups.values()],
