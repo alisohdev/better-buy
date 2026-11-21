@@ -14,6 +14,7 @@ const types = {
   ".css": "text/css",
   ".txt": "text/plain",
   ".json": "application/json",
+  ".webmanifest": "application/manifest+json",
   ".svg": "image/svg+xml",
   ".woff2": "font/woff2",
   ".png": "image/png",
@@ -33,11 +34,17 @@ http
         response.writeHead(400).end();
         return;
       }
-      const bytes = await readFile(file);
+      const resolved =
+        pathname === "/" ||
+        (!path.extname(pathname) &&
+          !/^\/(?:api|assets)(?:\/|$)|^\/healthz$/.test(pathname))
+          ? path.join(root, "index.html")
+          : file;
+      const bytes = await readFile(resolved);
       response
         .writeHead(200, {
           "content-type":
-            types[path.extname(file)] ?? "application/octet-stream",
+            types[path.extname(resolved)] ?? "application/octet-stream",
         })
         .end(bytes);
     } catch {

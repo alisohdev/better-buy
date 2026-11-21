@@ -3,17 +3,37 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { QuerySession } from "../features/dashboard/QuerySession";
 import { authClient } from "./auth-client";
-import { Dashboard } from "../features/dashboard/Dashboard";
-import { AuthScreen } from "../features/auth/AuthScreen";
 import { useVisitAnalytics } from "../features/admin/useAnalytics";
-import { useEffect, useState } from "react";
-import { NotificationsPage } from "../features/alerts/NotificationsPage";
-import { ProductDetailPage } from "../features/deals/ProductDetailPage";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { VisitorProvider } from "../features/guest/VisitorProvider";
-import {
-  GuestWorkspace,
-  GuestLocationImport,
-} from "../features/guest/GuestWorkspace";
+const Dashboard = lazy(() =>
+  import("../features/dashboard/Dashboard").then((m) => ({
+    default: m.Dashboard,
+  }))
+);
+const AuthScreen = lazy(() =>
+  import("../features/auth/AuthScreen").then((m) => ({ default: m.AuthScreen }))
+);
+const NotificationsPage = lazy(() =>
+  import("../features/alerts/NotificationsPage").then((m) => ({
+    default: m.NotificationsPage,
+  }))
+);
+const ProductDetailPage = lazy(() =>
+  import("../features/deals/ProductDetailPage").then((m) => ({
+    default: m.ProductDetailPage,
+  }))
+);
+const GuestWorkspace = lazy(() =>
+  import("../features/guest/GuestWorkspace").then((m) => ({
+    default: m.GuestWorkspace,
+  }))
+);
+const GuestLocationImport = lazy(() =>
+  import("../features/guest/GuestWorkspace").then((m) => ({
+    default: m.GuestLocationImport,
+  }))
+);
 export default function Page() {
   const [destination, setDestination] = useState({
     page: "",
@@ -52,7 +72,15 @@ export default function Page() {
         </Card>
       </main>
     );
-  if (!session && destination.page === "login") return <AuthScreen />;
+  if (
+    !session &&
+    (destination.page === "login" || destination.page === "product")
+  )
+    return (
+      <Suspense fallback={<main className="auth-loading" aria-live="polite" />}>
+        <AuthScreen />
+      </Suspense>
+    );
   const content =
     destination.page === "notifications" ? (
       session ? (

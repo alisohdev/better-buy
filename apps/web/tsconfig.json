@@ -1,26 +1,21 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "noEmit": true,
-    "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "incremental": false,
     "paths": {
       "@/*": ["./src/*"]
     },
     "allowJs": true,
-    "isolatedModules": true
+    "isolatedModules": true,
+    "types": ["vite/client", "node"]
   },
   "include": [
-    "next-env.d.ts",
     "src/**/*.ts",
     "src/**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next-dev/types/**/*.ts"
+    "vite.config.ts",
+    "routeTree.gen.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "out"]
 }

@@ -45,7 +45,7 @@ function pause(signal: AbortSignal) {
 }
 
 export function useDevWishlistScan(enabled: boolean) {
-  const { data: session } = authClient.useSession();
+  const { data: session } = authClient.useSession(enabled);
   const userId = session?.user.id;
   const client = useQueryClient();
   const current = useRef<DevWishlistRun | null>(null);

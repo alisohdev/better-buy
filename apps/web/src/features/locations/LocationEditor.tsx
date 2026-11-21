@@ -4,18 +4,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { LocationRecord } from "@better-buy/shared";
 import { isWithinTehranBoundary } from "@better-buy/shared";
 import { useLocationSearch } from "./useLocationSearch";
 import { useLocationMutations } from "./useLocationMutations";
 import { useLocationAddress } from "./useLocationAddress";
 import "./location-editor.css";
-const LocationMap = dynamic(() => import("../../app/LocationMap"), {
-  ssr: false,
-  loading: () => <div className="map-loading">در حال آماده‌سازی نقشه…</div>,
-});
+const LocationMap = lazy(() => import("../../app/LocationMap"));
 export type LocationStage = "map" | "details";
 
 export function LocationEditor({
@@ -112,12 +108,15 @@ export function LocationEditor({
       {stage === "map" ? (
         <>
           <div className="location-map-workspace">
-            <LocationMap
-              latitude={latitude}
-              longitude={longitude}
-              onChange={pick}
-              centerOnMove
-            />
+            <Suspense fallback={<div className="map-loading" />}>
+              {" "}
+              <LocationMap
+                latitude={latitude}
+                longitude={longitude}
+                onChange={pick}
+                centerOnMove
+              />
+            </Suspense>
             <div className="location-map-search" role="search">
               <div className="location-map-search-bar">
                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -273,11 +272,13 @@ export function LocationEditor({
               </svg>
             </div>
             <div inert aria-hidden="true">
-              <LocationMap
-                latitude={latitude}
-                longitude={longitude}
-                onChange={() => {}}
-              />
+              <Suspense fallback={<div className="map-loading" />}>
+                <LocationMap
+                  latitude={latitude}
+                  longitude={longitude}
+                  onChange={() => {}}
+                />
+              </Suspense>
             </div>
             <button
               type="button"

@@ -1,6 +1,8 @@
 # Go VPS production readiness
 
-The target runtime is one Go server process with a persistent SQLite scan queue. The Next frontend is built as static files for the existing web host. This checklist records work that must pass before replacing the current VPS services. No rollout is authorized by this document.
+The frontend migration gate and evidence are tracked in [M0 Frontend Migration Plan](M0-frontend-migration-plan.md), [M0 Frontend Migration Report](M0-frontend-migration-report.md), and [ADR 0001](../adr/0001-vite-spa-frontend.md). M0 remains pending review; do not start M1 logging or deploy the frontend until its acceptance checklist passes.
+
+The target runtime is one Go server process with a persistent SQLite scan queue. The frontend is built as static Vite assets for the existing web host. This checklist records work that must pass before replacing the current VPS services. No rollout is authorized by this document.
 
 ## Runtime and queue
 
@@ -41,7 +43,7 @@ The target runtime is one Go server process with a persistent SQLite scan queue.
 
 ## Web build and delivery
 
-- [ ] Build the Next static export and verify API requests reach the Go server through the production reverse proxy.
+- [ ] Build the Vite static output and verify API requests reach the Go server through the production reverse proxy.
 - [ ] Verify Caddy serves the static frontend and routes `/api/*` and `/healthz` to the Go listener.
 - [ ] Verify secure cookies and origin-bound SMS hostname and approved pattern through the production domain.
 - [ ] Test service restart, process failure, disk-full behavior, and SQLite backup restoration on staging.
@@ -51,3 +53,12 @@ The target runtime is one Go server process with a persistent SQLite scan queue.
 ## Current status
 
 The Go implementation and frontend static export compile locally. Full API/provider parity, existing-production-database compatibility, systemd behavior, actual push delivery, and VPS memory remain unverified. Snapp store-campaign enrichment and Okala shared-offer caching are not implemented. Do not claim a memory reduction until the Go process is measured on the VPS.
+
+# M0 frontend migration gate
+
+- [x] Vite/React 19/TanStack Router SPA production build passes; Next.js is removed from frontend scripts and runtime source.
+- [x] React Compiler runs in development and production; emitted compiler runtime calls and build timings are recorded.
+- [ ] Auth, scans, results, favorites, cart, history, notifications, settings, PWA deep links, RTL, themes, desktop, and mobile regressions pass. Web unit tests pass; the E2E suite currently fails and is documented in the M0 report.
+- [ ] Route chunks and bundle-size reduction are verified. A mobile throttled fixture run is recorded, but LCP remains 6.3 seconds and no before/after LCP comparison exists.
+- [ ] Caddy static asset/error/cache behavior and direct SPA routes are documented and verified. Caddy runtime validation is pending.
+- [x] Atomic deploy and rollback instructions preserve the previous frontend artifact.

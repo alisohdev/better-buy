@@ -10,14 +10,39 @@ better-buy.ir {
 	}
 
 	handle {
-		@serviceWorker path /sw.js
-		header @serviceWorker Cache-Control "no-cache"
-
-		@nextStatic path /_next/static/*
-		header @nextStatic Cache-Control "public, max-age=31536000, immutable"
-
 		root * /srv/better-buy/current/apps/web/out
-		try_files {path} {path}/index.html /index.html
-		file_server
+
+		handle /sw.js {
+			header Cache-Control "no-cache"
+			file_server
+		}
+
+		@hashedAsset {
+			path /assets/*
+			file
+		}
+		handle @hashedAsset {
+			header Cache-Control "public, max-age=31536000, immutable"
+			file_server
+		}
+
+		@missingAsset path /assets/*
+		handle @missingAsset {
+			header Cache-Control "no-store"
+			respond 404
+		}
+
+		@staticFile {
+			path_regexp staticFile \.((js|mjs|css|woff2?|png|jpe?g|webp|svg|ico|webmanifest|json))$
+		}
+		handle @staticFile {
+			file_server
+		}
+
+		handle {
+			header Cache-Control "no-cache"
+			try_files {path} /index.html
+			file_server
+		}
 	}
 }

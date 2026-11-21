@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { OtpInput } from "@/components/otp-input";
 import { authClient, type OTPPurpose } from "@/app/auth-client";
 import { normalizeDigits, useWebOTP } from "./useWebOTP";
-import Image from "next/image";
+
 import { useForm } from "react-hook-form";
 type Flow =
   | { kind: "login" }
@@ -208,20 +208,13 @@ export function AuthScreen() {
         </figure>
         <div className="auth-supported-stores">
           <span>مقایسه پیشنهادهای</span>
-          <Image
+          <img
             src="/providers/snappmarket.png"
             alt="اسنپ‌مارکت"
             width={88}
             height={32}
-            unoptimized
           />
-          <Image
-            src="/providers/okala.png"
-            alt="اکالا"
-            width={64}
-            height={32}
-            unoptimized
-          />
+          <img src="/providers/okala.png" alt="اکالا" width={64} height={32} />
         </div>
       </aside>
       <section className="phone-auth-card" data-step={flow.kind}>
