@@ -20,7 +20,7 @@ The product turns a location-specific promotional feed into a durable, comparabl
 
 ## Operating Context
 
-The application uses a Go HTTP backend with SQLite and a static Next.js frontend. Each signed-in user owns private delivery locations and scan history and starts scans manually. A valid Tehran location is enough to start a SnappMarket scan: the API obtains public PWA guest access automatically. Okala uses public nearby-store discovery and per-store category catalogues without customer credentials. Saturated categories are split into their children to avoid the 350-product upstream cap; saturated leaf categories fail explicitly rather than reporting complete coverage; Digikala Jet is disabled for new activity and keeps read-only history.
+The application uses a Go HTTP backend with SQLite and a static React frontend built with Vite. Each signed-in user owns private delivery locations and scan history and starts scans manually. A valid Tehran location is enough to start a SnappMarket scan: the API obtains public PWA guest access automatically. Okala uses public nearby-store discovery and per-store category catalogues without customer credentials. Saturated categories are split into their children to avoid the 350-product upstream cap; saturated leaf categories fail explicitly rather than reporting complete coverage; Digikala Jet is disabled for new activity and keeps read-only history.
 
 ## Capabilities and Constraints
 
@@ -30,7 +30,7 @@ The application uses a Go HTTP backend with SQLite and a static Next.js frontend
 - Guest delivery locations remain in browser localStorage and restore into a new guest session. After sign-in, confirmed locations are imported idempotently into the account; failed imports retain the browser copy and expose retry. Existing account defaults are not replaced. Guest scan history itself is not imported.
 
 - Persian RTL web interface.
-- Go API, static Next.js frontend, tenant-isolated SQLite history, and location-specific wishlist scans scheduled for 09:00 and 18:00 Asia/Tehran.
+- Go API, static React frontend built with Vite, tenant-isolated SQLite history, and location-specific wishlist scans scheduled for 09:00 and 18:00 Asia/Tehran.
 - API collection only; DOM scraping and purchasing are excluded. Wishlist matches appear in an in-app inbox and, with explicit permission and configured VAPID keys, encrypted browser/PWA Web Push notifications.
 - SnappMarket price amounts are presented as the tomans supplied by the API, without a unit conversion.
 - Authentication material must stay out of browser-readable responses and logs.

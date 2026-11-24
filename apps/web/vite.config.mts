@@ -7,7 +7,12 @@ import { fileURLToPath } from "node:url";
 
 export default defineConfig({
   plugins: [
-    tanstackRouter({ target: "react", autoCodeSplitting: true }),
+    tanstackRouter({
+      target: "react",
+      autoCodeSplitting: true,
+      quoteStyle: "double",
+      semicolons: true,
+    }),
     react(),
     babel({ presets: [reactCompilerPreset({ target: "19" })] }),
   ],

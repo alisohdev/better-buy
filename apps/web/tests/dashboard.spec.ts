@@ -310,10 +310,45 @@ const scanButton = (page: Page) =>
     name: /^(پیدا کردن تخفیف‌ها|به‌روزرسانی تخفیف‌ها)$/,
     exact: true,
   });
+async function mockSavedOffers(
+  page: Page,
+  {
+    scans = [],
+    groups,
+  }: { scans?: ScanRecord[]; groups?: DealGroupRecord[] } = {}
+) {
+  const observedAt = "2026-10-08T08:00:00.000Z";
+  await page.clock.setFixedTime(new Date("2026-10-08T09:00:00.000Z"));
+  await page.addInitScript(() =>
+    localStorage.setItem("better-buy:tutorial:v2", "dismissed")
+  );
+  const saved = run({
+    createdAt: observedAt,
+    startedAt: observedAt,
+    finishedAt: observedAt,
+    context: {
+      location: {
+        name: home.name,
+        latitude: home.latitude,
+        longitude: home.longitude,
+        revision: home.coordinateRevision ?? 1,
+      },
+      requestedThreshold: 40,
+      effectiveThreshold: 15,
+      policyVersion: "automatic-v1",
+      manifest: { adapter: "snappmarket", contractVersion: 1, feedKinds: [] },
+      scopeHash: "fixture",
+      eligibilityVersion: 1,
+      offerKeyVersion: 1,
+      coverage: "complete",
+    },
+  });
+  return mock(page, { scans: [...scans, saved], groups });
+}
 const offerHeading = (page: Page, title = representative[0]!.title) =>
   page.getByRole("heading", { name: title, exact: true });
 const success = async (page: Page) => {
-  const state = await mock(page, { scans: [run()], groups: representative });
+  const state = await mockSavedOffers(page, { groups: representative });
   await page.goto("/");
   await expect(offerHeading(page)).toBeVisible();
   return state;
@@ -726,7 +761,7 @@ test("status transport failure retains the server status and recovers without ma
 test("transient result GET recovers within the bounded retry count", async ({
   page,
 }) => {
-  const state = await mock(page, { scans: [run()], groups: representative });
+  const state = await mockSavedOffers(page, { groups: representative });
   let calls = 0;
   await page.route("**/api/scans/saved/products*", (r) => {
     calls++;
@@ -742,7 +777,7 @@ test("transient result GET recovers within the bounded retry count", async ({
 test("persistent result failures show recovery after success and retry the same saved scan without POST", async ({
   page,
 }) => {
-  const state = await mock(page, { scans: [run()], groups: representative });
+  const state = await mockSavedOffers(page, { groups: representative });
   let fail = true;
   let calls = 0;
   await page.route("**/api/scans/saved/products*", (r) => {
@@ -771,7 +806,7 @@ test("persistent result failures show recovery after success and retry the same 
 test("the feed reads one product projection without downloading raw offers", async ({
   page,
 }) => {
-  const state = await mock(page, { scans: [run()], groups: representative });
+  const state = await mockSavedOffers(page, { groups: representative });
   let rawReads = 0;
   await page.route("**/api/scans/saved/deals", (route) => {
     rawReads++;
@@ -811,7 +846,7 @@ for (const status of [401, 403, 404, 422, 200])
   test(`permanent or invalid result HTTP ${status} is not retried`, async ({
     page,
   }) => {
-    await mock(page, { scans: [run()] });
+    await mockSavedOffers(page);
     let calls = 0;
     await page.route("**/api/scans/saved/products*", (r) => {
       calls++;
@@ -829,7 +864,7 @@ for (const status of [401, 403, 404, 422, 200])
   });
 
 test("long Retry-After prevents rapid repeated requests", async ({ page }) => {
-  await mock(page, { scans: [run()] });
+  await mockSavedOffers(page);
   let calls = 0;
   await page.route("**/api/scans/saved/products*", (r) => {
     calls++;
@@ -1039,7 +1074,7 @@ test("sign-out retires reads and another account cannot see late private results
 test("reconnect refreshes stale failed reads without another scan submission", async ({
   page,
 }) => {
-  const state = await mock(page, { scans: [run()] });
+  const state = await mockSavedOffers(page);
   let fail = true;
   await page.route("**/api/scans/saved/products*", (r) =>
     fail
@@ -1160,7 +1195,7 @@ test("partial Okala history warns when a store could not be checked", async ({
 test("a failed scan retains the previous snapshot and repeating it is an explicit new scan", async ({
   page,
 }) => {
-  const state = await mock(page, {
+  const state = await mockSavedOffers(page, {
     scans: [
       run({
         id: "failed",
@@ -1168,7 +1203,6 @@ test("a failed scan retains the previous snapshot and repeating it is an explici
         createdAt: "2026-10-08T09:00:00Z",
         errorMessage: "پیشنهادها کامل دریافت نشدند.",
       }),
-      run(),
     ],
     groups: representative,
   });

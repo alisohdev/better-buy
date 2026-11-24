@@ -240,6 +240,7 @@ async function fixture(page: Page, lostSource?: CartSource) {
 
 test("both providers merge in personal order and discount filtering only reads saved results", async ({
   page,
+  isMobile,
 }) => {
   const state = await fixture(page);
   await page.goto("/");
@@ -250,8 +251,26 @@ test("both providers merge in personal order and discount filtering only reads s
     "برنج ایرانی",
     "روغن آفتابگردان",
   ]);
-  await page.getByRole("button", { name: "حداقل تخفیف نتیجه‌ها" }).click();
-  await page.getByRole("spinbutton", { name: "درصد تخفیف دلخواه" }).fill("80");
+  await page
+    .getByRole("button", {
+      name: isMobile ? "فیلتر و مرتب‌سازی" : "حداقل تخفیف نتیجه‌ها",
+      exact: true,
+    })
+    .click();
+  const filters = isMobile
+    ? page.getByRole("dialog", { name: "فیلتر و مرتب‌سازی", exact: true })
+    : page;
+  const minimum = filters.getByRole("slider", {
+    name: "حداقل تخفیف",
+    exact: true,
+  });
+  await minimum.press("End");
+  await expect(minimum).toHaveAttribute("aria-valuenow", "80");
+  if (isMobile) {
+    await filters
+      .getByRole("button", { name: "نمایش نتایج", exact: true })
+      .click();
+  }
   await expect(page.locator(".deal-row h2")).toHaveText(["برنج ایرانی"]);
   expect(
     state.reads.some((url) => url.searchParams.get("minDiscount") === "80")

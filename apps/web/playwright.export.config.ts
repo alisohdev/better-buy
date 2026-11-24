@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 import config from "./playwright.config";
 
-// Validate the shipped static app without disturbing an active Next dev cache.
+// Serve the existing production build without rebuilding it.
 export default defineConfig({
   ...config,
   webServer: {

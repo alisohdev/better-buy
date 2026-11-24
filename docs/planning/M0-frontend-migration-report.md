@@ -33,6 +33,8 @@ The initial route still loads a 273.8 kB raw shared JS chunk and a 288.8 kB raw 
 
 ### Stabilization evidence
 
+- The development Playwright suite now starts Vite instead of invoking the removed Next CLI. The wishlist fixture opens the notifications route before checking for an inbox read. All eight wishlist fixture tests passed across desktop and mobile. The production build, workspace type checks, and 110 unit tests also passed.
+
 - Focused Playwright reproduction confirmed test drift in the product link, scan setup, discount filter, notifications, responsive menu, and cart assertions. The pre-migration view code already moved provider selection to scan setup, required an offer-bound retailer destination, and presented notifications as a page. The provider build currently includes Digikala, so the two-provider scenario explicitly deselects it. Combined-feed and paged-feed now pin the browser clock while allowing timers to advance.
 - Three identical mobile fixture runs recorded LCP of 6,180, 6,196, and 6,460 ms, with median TTFB of 168 ms. The LCP element was the tutorial paragraph about saving a delivery address. In the median run the entry JS finished at 2,442 ms, the session request began at 3,307 ms, and the dashboard chunk finished at 5,782 ms. Regular font loading finished at 4,026 ms. The later bold font requests began at about 5,893 ms. The fixture session response itself took 5 ms.
 - Eagerly importing the shared app shell increased observed LCP beyond 7 seconds in the same throttling harness. The import change was reverted. A disabled developer wishlist hook no longer makes a second session request. The retained fix still needs its own repeated performance run.

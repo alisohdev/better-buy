@@ -8,7 +8,7 @@ export default defineConfig({
   testMatch: ["**/wishlist-dev.spec.ts", "**/wishlist-live.spec.ts"],
   use: { ...config.use, baseURL: `http://127.0.0.1:${port}` },
   webServer: {
-    command: `pnpm exec next dev -H 127.0.0.1 -p ${port}`,
+    command: `pnpm --filter @better-buy/shared build && pnpm exec vite --host 127.0.0.1 --port ${port} --strictPort`,
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -145,10 +145,11 @@ test("both providers run sequentially while the modal is closed and preserve par
       exact: true,
     })
   ).toBeEnabled();
-  expect(state.inboxReads).toBeGreaterThan(reads);
   await page.screenshot({
     path: `test-results/wishlist-dev-${test.info().project.name}.png`,
   });
+  await page.goto("/notifications");
+  await expect.poll(() => state.inboxReads).toBeGreaterThan(reads);
 });
 
 test("reload resumes the same scan and shows a genuine no-new-match outcome", async ({

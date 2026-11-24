@@ -4,7 +4,7 @@
 
 The Go API in `apps/api` owns authentication, HTTP routes, provider collection, SQLite persistence, and background maintenance. The operating system starts one Go process. Inside it, the HTTP server, a single-consumer persistent scan queue, and bounded maintenance loops run together. Queued scans survive process restarts because their state is stored in SQLite.
 
-The Next and React frontend in `apps/web` is built as a static export. `packages/shared` supplies TypeScript contracts and display helpers to the frontend. The `/sw.js` file runs only in a user's browser for Web Push; it does not run on the VPS.
+Vite builds the React frontend in `apps/web` as a static SPA. `packages/shared` supplies TypeScript contracts and display helpers to the frontend. The `/sw.js` file runs only in a user's browser for Web Push; it does not run on the VPS.
 
 ## Backend boundaries
 
@@ -38,7 +38,7 @@ pnpm build
 go -C apps/api run ./cmd/migrate
 ```
 
-`pnpm dev` starts the Go server and Next development server. `pnpm build` builds the web app and compiles every Go package. The Go API reads configuration from process environment variables.
+`pnpm dev` starts the Go server and Vite development server. `pnpm build` builds the web app and compiles every Go package. The Go API reads configuration from process environment variables.
 
 ## Incomplete work
 
