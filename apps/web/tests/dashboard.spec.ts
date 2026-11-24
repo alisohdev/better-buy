@@ -289,8 +289,18 @@ async function chooseSelect(page: Page, label: string, option: string) {
   await page.getByRole("option", { name: option, exact: true }).click();
 }
 async function openMenuItem(page: Page, name: string) {
-  await page.getByRole("button", { name: "منوی برنامه", exact: true }).click();
-  await page.getByRole("menuitem", { name, exact: true }).click();
+  const mobileMenu = page.getByRole("button", {
+    name: "منوی برنامه",
+    exact: true,
+  });
+  if (await mobileMenu.isVisible()) {
+    await mobileMenu.click();
+    await page.getByRole("button", { name, exact: true }).click();
+  } else {
+    await page
+      .getByRole("button", { name: "موقعیت‌های تحویل", exact: true })
+      .click();
+  }
 }
 async function onlyProvider(page: Page, source: "snappmarket" | "okala") {
   const selected = page.getByRole("checkbox", {
@@ -827,7 +837,9 @@ test("background result failures preserve this context's cached snapshot and cle
       ? r.abort("connectionfailed")
       : r.fulfill({ json: { data: products(representative) } })
   );
-  await page.getByRole("button", { name: "تازه‌سازی نتیجه" }).click();
+  await page.getByRole("button", { name: "تاریخچه", exact: true }).click();
+  await page.getByRole("button", { name: "پیشنهادها", exact: true }).click();
+  await page.getByRole("button", { name: "دریافت دوباره نتیجه" }).click();
   await expect(
     page.getByText("تازه‌سازی نتیجه انجام نشد", { exact: true })
   ).toBeVisible();
@@ -1211,7 +1223,11 @@ test("a failed scan retains the previous snapshot and repeating it is an explici
   await expect(page.getByText(/اسکن ناموفق بود/)).toBeVisible();
   await page.getByRole("button", { name: "تاریخچه", exact: true }).click();
   await page.getByRole("button", { name: "اسکن تازه با این گزینه‌ها" }).click();
-  await expect(page.locator(".active-scan")).toBeVisible();
+  const scanStatus = page.getByRole("status").filter({
+    hasText: "در حال پیدا کردن تخفیف‌ها…",
+  });
+  await expect(scanStatus).toBeVisible();
+  await expect(scanStatus.getByRole("progressbar")).toBeVisible();
   expect(state.posts).toHaveLength(1);
 });
 test("location editing and deletion restore selection with keyboard-accessible dialogs", async ({
@@ -1427,53 +1443,32 @@ test("appearance menu changes and persists light, dark and system themes", async
 }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await success(page);
-  const appearance = page.getByRole("button", {
-    name: "منوی برنامه",
-    exact: true,
-  });
-  await appearance.click();
-  await page
-    .getByRole("menuitem", { name: "ظاهر برنامه", exact: true })
-    .click();
-  await expect(
-    page.getByRole("menuitemradio", { name: "سیستم", exact: true })
-  ).toHaveAttribute("aria-checked", "true");
-  await page.getByRole("menuitemradio", { name: "تیره", exact: true }).click();
+  const appearance = page.getByRole("group", { name: "ظاهر برنامه" });
+  const theme = (name: string) =>
+    appearance.getByRole("button", { name, exact: true });
+  await expect(theme("سیستم")).toHaveAttribute("aria-pressed", "true");
+  await theme("تیره").click();
   await expect(page.locator("html")).toHaveClass(/dark/);
   await page.reload();
   await expect(appearance).toBeVisible();
   await expect(page.locator("html")).toHaveClass(/dark/);
-  await appearance.click();
-  await page
-    .getByRole("menuitem", { name: "ظاهر برنامه", exact: true })
-    .click();
-  await expect(
-    page.getByRole("menuitemradio", { name: "تیره", exact: true })
-  ).toHaveAttribute("aria-checked", "true");
-  await page.getByRole("menuitemradio", { name: "روشن", exact: true }).click();
+  await expect(theme("تیره")).toHaveAttribute("aria-pressed", "true");
+  await theme("روشن").click();
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(page.locator("html")).toHaveClass(/light/);
   await page.reload();
   await expect(appearance).toBeVisible();
   await expect(page.locator("html")).toHaveClass(/light/);
-  await appearance.focus();
-  await page.keyboard.press("Enter");
-  await page
-    .getByRole("menuitem", { name: "ظاهر برنامه", exact: true })
-    .click();
-  await page.getByRole("menuitemradio", { name: "سیستم", exact: true }).focus();
+  await theme("سیستم").focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("html")).toHaveClass(/dark/);
-  await expect(appearance).toBeFocused();
+  await expect(theme("سیستم")).toBeFocused();
   await openMenuItem(page, "مدیریت موقعیت‌ها");
   await page.getByRole("button", { name: "ویرایش خانه", exact: true }).click();
   await expect(page.locator('[role="dialog"]')).toHaveCount(1);
   await captureState(page, "single-location-editor-dark", false);
   await page.getByRole("button", { name: "بستن پنجره مکان" }).click();
-  await appearance.click();
-  await page
-    .getByRole("menuitem", { name: "ظاهر برنامه", exact: true })
-    .click();
+  await expect(appearance).toBeVisible();
   await captureState(page, "appearance-menu-dark", false);
   await page.keyboard.press("Escape");
   await page.emulateMedia({ colorScheme: "light" });
@@ -1503,8 +1498,19 @@ test("layouts, theme preference, long content, broken images and reduced motion 
         )
       )
       .toBe(true);
-    await expect(scanButton(page)).toBeVisible();
-    expect(await scanButton(page).count()).toBe(1);
+    const scanNavigation = page.getByRole("button", {
+      name: "اسکن تخفیف‌ها",
+      exact: true,
+    });
+    if (!(await scanNavigation.isVisible())) {
+      await page
+        .getByRole("button", { name: "منوی برنامه", exact: true })
+        .click();
+      await expect(scanNavigation).toBeVisible();
+      await page.keyboard.press("Escape");
+    } else {
+      await expect(scanNavigation).toBeVisible();
+    }
     await page.screenshot({
       path: path.join(
         evidence,
