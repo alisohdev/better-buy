@@ -1,0 +1,5 @@
+/android/
+/ios/
+/.expo/
+/modules/engine/android/libs/
+/modules/engine/ios/*.xcframework/

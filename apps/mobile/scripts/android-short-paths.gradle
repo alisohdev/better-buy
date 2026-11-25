@@ -1,0 +1,20 @@
+// Optional Windows workaround for long CMake paths in pnpm's virtual store.
+def stagingRoot = System.getenv('BETTER_BUY_CMAKE_STAGING')
+if (!stagingRoot) {
+  throw new GradleException('Set BETTER_BUY_CMAKE_STAGING to a short absolute build directory.')
+}
+def directory = new File(stagingRoot)
+if (!directory.isAbsolute()) {
+  throw new GradleException('BETTER_BUY_CMAKE_STAGING must be absolute.')
+}
+gradle.beforeProject { project ->
+  ['com.android.library', 'com.android.application'].each { pluginId ->
+    project.plugins.withId(pluginId) {
+      project.extensions.getByName('androidComponents').finalizeDsl { dsl ->
+        if (dsl.externalNativeBuild.cmake.path != null) {
+          dsl.externalNativeBuild.cmake.buildStagingDirectory = new File(directory, project.name)
+        }
+      }
+    }
+  }
+}

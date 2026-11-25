@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "Better Buy Engine Lab",
+    "slug": "better-buy-engine-lab",
+    "version": "0.1.0",
+    "scheme": "better-buy-lab",
+    "android": { "package": "ir.betterbuy.enginelab" },
+    "ios": { "bundleIdentifier": "ir.betterbuy.enginelab" },
+    "plugins": ["expo-router", "expo-sqlite"],
+    "extra": {
+      "observability": {
+        "enabled": false,
+        "provider": "none"
+      }
+    }
+  }
+}
